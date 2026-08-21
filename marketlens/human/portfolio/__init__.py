@@ -1,5 +1,6 @@
-"""Participant-only portfolio domain objects.
+"""Participant-only portfolio logic for MarketLens Phase 2.
 
-No Agent, matching-engine, settlement, or experiment-protocol logic belongs in
-this package at Phase 2A.
+The package owns account policy, side-effect-free order preview, and
+participant-only deterministic settlement. It never calls TwinMarket Agents or
+its matching engine.
 """

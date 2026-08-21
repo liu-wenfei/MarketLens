@@ -63,6 +63,34 @@ CREATE TABLE IF NOT EXISTS portfolio_holdings (
     PRIMARY KEY (session_id, stock_id),
     FOREIGN KEY (session_id) REFERENCES sessions(session_id) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS portfolio_transactions (
+    transaction_id TEXT PRIMARY KEY,
+    session_id TEXT NOT NULL,
+    request_id TEXT NOT NULL,
+    step INTEGER NOT NULL CHECK (step >= 0),
+    stock_id TEXT NOT NULL,
+    action TEXT NOT NULL CHECK (action IN ('BUY', 'SELL')),
+    requested_amount REAL NOT NULL CHECK (requested_amount > 0),
+    requested_units REAL NOT NULL CHECK (requested_units > 0),
+    executed_units INTEGER NOT NULL CHECK (executed_units > 0),
+    executed_notional REAL NOT NULL CHECK (executed_notional > 0),
+    settlement_price REAL NOT NULL CHECK (settlement_price > 0),
+    price_date TEXT NOT NULL,
+    transaction_cost_bps REAL NOT NULL CHECK (transaction_cost_bps >= 0),
+    fee REAL NOT NULL CHECK (fee >= 0),
+    cash_before REAL NOT NULL CHECK (cash_before >= 0),
+    cash_after REAL NOT NULL CHECK (cash_after >= 0),
+    holding_before INTEGER NOT NULL CHECK (holding_before >= 0),
+    holding_after INTEGER NOT NULL CHECK (holding_after >= 0),
+    portfolio_value_before REAL NOT NULL CHECK (portfolio_value_before >= 0),
+    portfolio_value_after REAL NOT NULL CHECK (portfolio_value_after >= 0),
+    weight_before REAL NOT NULL CHECK (weight_before >= 0),
+    weight_after REAL NOT NULL CHECK (weight_after >= 0),
+    submitted_at TEXT NOT NULL,
+    FOREIGN KEY (session_id) REFERENCES sessions(session_id) ON DELETE CASCADE,
+    UNIQUE (session_id, request_id)
+);
 """
 
 

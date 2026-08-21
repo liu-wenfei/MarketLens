@@ -16,3 +16,7 @@ class StoreRoundAlreadyCompletedError(ValueError):
 
 class StoreWrongExperimentStepError(ValueError):
     pass
+
+
+class StorePortfolioStateConflictError(ValueError):
+    pass
