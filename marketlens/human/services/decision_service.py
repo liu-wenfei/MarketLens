@@ -5,10 +5,14 @@ from datetime import datetime, timezone
 from uuid import uuid4
 
 from marketlens.human.schemas import DecisionCreate, DecisionRead
-from marketlens.human.services.session_service import SessionNotFoundError
+from marketlens.human.services.session_service import (
+    IdempotencyConflictError,
+    SessionNotFoundError,
+)
 from marketlens.human.stores.decision_store import DecisionStore
 from marketlens.human.stores.errors import (
     StoreDecisionAlreadySubmittedError,
+    StoreIdempotencyConflictError,
     StoreSessionNotFoundError,
     StoreWrongExperimentStepError,
 )
@@ -58,6 +62,8 @@ class DecisionService:
             )
         except StoreSessionNotFoundError as exc:
             raise SessionNotFoundError(session_id) from exc
+        except StoreIdempotencyConflictError as exc:
+            raise IdempotencyConflictError(str(exc)) from exc
         except StoreDecisionAlreadySubmittedError as exc:
             raise DecisionAlreadySubmittedError(str(exc)) from exc
         except StoreWrongExperimentStepError as exc:

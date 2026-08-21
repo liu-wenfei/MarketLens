@@ -6,6 +6,7 @@ from sqlite3 import Row
 from .database import Database
 from .errors import (
     StoreDecisionAlreadySubmittedError,
+    StoreIdempotencyConflictError,
     StoreSessionNotFoundError,
     StoreWrongExperimentStepError,
 )
@@ -49,7 +50,7 @@ class DecisionStore:
         rationale: str | None,
         submitted_at: str,
     ) -> Row:
-        """Insert one decision and advance the human session in one SQLite transaction."""
+        """Persist one decision for the current step without advancing the session."""
         with self.db.connect() as connection:
             connection.execute("BEGIN IMMEDIATE")
 
@@ -68,6 +69,19 @@ class DecisionStore:
                 (session_id, request_id),
             ).fetchone()
             if existing_request is not None:
+                same_payload = (
+                    int(existing_request["step"]) == step
+                    and existing_request["stock_id"] == stock_id
+                    and existing_request["action"] == action
+                    and float(existing_request["confidence"]) == float(confidence)
+                    and existing_request["evidence_sources"]
+                    == json.dumps(evidence_sources)
+                    and existing_request["rationale"] == rationale
+                )
+                if not same_payload:
+                    raise StoreIdempotencyConflictError(
+                        "request_id was already used for a different decision payload"
+                    )
                 return existing_request
 
             existing_step = connection.execute(
@@ -108,16 +122,6 @@ class DecisionStore:
                     submitted_at,
                 ),
             )
-            cursor = connection.execute(
-                """
-                UPDATE sessions
-                SET current_step = current_step + 1
-                WHERE session_id = ? AND current_step = ? AND completed = 0
-                """,
-                (session_id, current_step),
-            )
-            if cursor.rowcount != 1:
-                raise RuntimeError("Session step changed during decision submission")
 
             row = connection.execute(
                 "SELECT * FROM decisions WHERE decision_id = ?",

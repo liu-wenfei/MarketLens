@@ -10,5 +10,9 @@ class StoreDecisionAlreadySubmittedError(ValueError):
     pass
 
 
+class StoreRoundAlreadyCompletedError(ValueError):
+    pass
+
+
 class StoreWrongExperimentStepError(ValueError):
     pass

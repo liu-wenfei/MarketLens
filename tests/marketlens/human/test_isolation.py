@@ -19,8 +19,20 @@ def test_two_participant_sessions_remain_isolated(client):
     )
     assert response.status_code == 201
 
+    # Persisting a decision must not advance either session.
     state_a = client.get(f"/session/{session_a['session_id']}/state").json()
     state_b = client.get(f"/session/{session_b['session_id']}/state").json()
+    assert state_a["current_step"] == 0
+    assert state_b["current_step"] == 0
 
+    # Explicit round completion advances only participant A.
+    complete = client.post(
+        f"/session/{session_a['session_id']}/round/complete",
+        json={"request_id": "a-round-0-complete", "step": 0},
+    )
+    assert complete.status_code == 201
+
+    state_a = client.get(f"/session/{session_a['session_id']}/state").json()
+    state_b = client.get(f"/session/{session_b['session_id']}/state").json()
     assert state_a["current_step"] == 1
     assert state_b["current_step"] == 0

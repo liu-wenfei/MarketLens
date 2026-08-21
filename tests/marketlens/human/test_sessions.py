@@ -78,6 +78,13 @@ def test_session_and_step_persist_across_app_restart(tmp_path):
             },
         )
         assert response.status_code == 201
+        assert first_client.get(f"/session/{session_id}/state").json()["current_step"] == 0
+
+        completion = first_client.post(
+            f"/session/{session_id}/round/complete",
+            json={"request_id": "persist-round-0", "step": 0},
+        )
+        assert completion.status_code == 201
 
     with TestClient(create_app(db_path)) as second_client:
         restored = second_client.get(f"/session/{session_id}")

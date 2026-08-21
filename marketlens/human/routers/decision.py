@@ -8,7 +8,10 @@ from marketlens.human.services.decision_service import (
     DecisionService,
     WrongExperimentStepError,
 )
-from marketlens.human.services.session_service import SessionNotFoundError
+from marketlens.human.services.session_service import (
+    IdempotencyConflictError,
+    SessionNotFoundError,
+)
 from marketlens.human.stores.decision_store import DecisionStore
 
 router = APIRouter()
@@ -32,6 +35,8 @@ def submit_decision(
         return service.submit(session_id, payload)
     except SessionNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Unknown session") from exc
+    except IdempotencyConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except DecisionAlreadySubmittedError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except WrongExperimentStepError as exc:

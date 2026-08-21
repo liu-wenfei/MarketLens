@@ -13,7 +13,7 @@ def decision_payload(request_id="decision-1", step=0, action="BUY", confidence=7
     }
 
 
-def test_decision_persists_and_advances_only_human_session_step(client):
+def test_decision_persists_without_advancing_session_step(client):
     session = create_session(client)
     session_id = session["session_id"]
 
@@ -28,7 +28,7 @@ def test_decision_persists_and_advances_only_human_session_step(client):
     assert body["action"] == "BUY"
 
     state = client.get(f"/session/{session_id}/state").json()
-    assert state["current_step"] == 1
+    assert state["current_step"] == 0
 
 
 def test_decision_retry_with_same_request_id_is_idempotent(client):
@@ -42,8 +42,31 @@ def test_decision_retry_with_same_request_id_is_idempotent(client):
     assert first.status_code == 201
     assert second.status_code == 201
     assert first.json()["decision_id"] == second.json()["decision_id"]
-    assert client.get(f"/session/{session_id}/state").json()["current_step"] == 1
+    assert client.get(f"/session/{session_id}/state").json()["current_step"] == 0
 
+
+
+def test_same_request_id_cannot_be_reused_for_different_decision_payload(client):
+    session = create_session(client)
+    session_id = session["session_id"]
+
+    first = client.post(
+        f"/session/{session_id}/decision",
+        json=decision_payload(request_id="shared-decision-request", step=0, action="BUY"),
+    )
+    assert first.status_code == 201
+
+    changed_action = client.post(
+        f"/session/{session_id}/decision",
+        json=decision_payload(request_id="shared-decision-request", step=0, action="SELL"),
+    )
+    assert changed_action.status_code == 409
+
+    changed_step = client.post(
+        f"/session/{session_id}/decision",
+        json=decision_payload(request_id="shared-decision-request", step=1, action="BUY"),
+    )
+    assert changed_step.status_code == 409
 
 def test_second_decision_for_same_step_with_new_request_is_rejected(client):
     session = create_session(client)

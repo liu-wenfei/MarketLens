@@ -1,50 +1,74 @@
-# MarketLens Phase 1 — Minimal Human Backend
+# MarketLens Phase 1.1 — Human Backend Round Progression Refinement
 
 ## Scope
 
-Phase 1 establishes only the isolated human-participant backend. It does **not** connect to TwinMarket Agents, market reasoning, misinformation/correction stimuli, participant portfolio settlement, or the frontend.
+Phase 1.1 refines the already-validated Phase 1 human backend so that response persistence is no longer responsible for experiment-step progression.
 
-## Long-term project structure
+This is required before the multi-asset portfolio phase because one experimental round may later contain one judgement and zero, one, or multiple portfolio orders. All of those actions must remain attached to the same round until the participant explicitly completes it.
 
-```text
-MarketLens/
-├── marketlens/                 # MarketLens-owned dissertation code
-│   ├── main.py                 # FastAPI entrypoint
-│   └── human/                  # Human participant layer
-│       ├── schemas.py
-│       ├── routers/
-│       ├── services/
-│       └── stores/
-├── tests/
-│   └── marketlens/
-│       └── human/
-│
-├── Agent.py                    # inherited TwinMarket core — unchanged
-├── simulation.py               # inherited TwinMarket core — unchanged
-├── trader/                     # inherited TwinMarket core — unchanged
-└── ...
-```
+Phase 1.1 still does **not** connect to TwinMarket Agents, portfolio settlement, misinformation/correction stimuli, or the frontend.
 
-Future MarketLens-owned packages will be added beside `human/` as their phases begin, for example `marketlens/agents/` and `marketlens/experiment/`. Inherited TwinMarket core files remain in their original locations unless a separately justified migration is made later.
-
-## Phase 1 API
+## API
 
 - `GET /health`
 - `POST /session`
 - `GET /session/{session_id}`
 - `GET /session/{session_id}/state`
 - `POST /session/{session_id}/decision`
+- `POST /session/{session_id}/round/complete`
+
+## Step ownership
+
+Before Phase 1.1:
+
+```text
+submit decision
+    -> persist decision
+    -> advance current_step
+```
+
+After Phase 1.1:
+
+```text
+submit decision
+    -> persist decision only
+
+complete round
+    -> atomically record round completion
+    -> advance current_step exactly once
+```
+
+This gives Phase 2 a stable contract for multi-order rounds:
+
+```text
+step = 3
+  judgement
+  order 1
+  order 2
+  order 3
+  complete round
+step = 4
+```
+
+## Persistence
+
+A new append-only `round_completions` table records:
+
+- `completion_id`
+- `session_id`
+- `request_id`
+- `step`
+- `next_step`
+- `completed_at`
+
+`request_id` makes round completion idempotent. Retrying the same completion request does not advance the participant twice.
+
+Existing Phase 1 SQLite databases remain compatible because Phase 1.1 only adds a new table; it does not rewrite the existing `sessions` or `decisions` tables.
 
 ## Run tests
 
 ```bash
-python -m pytest tests/marketlens/human -q
-```
-
-Expected result:
-
-```text
-14 passed
+python3 -m pytest tests/marketlens/human -q
 ```
 
 ## Run backend
@@ -61,11 +85,12 @@ Then open:
 ## Experimental boundaries preserved
 
 - Human participant data is stored separately from inherited TwinMarket Agent state.
-- Participant sessions are isolated.
+- Participant sessions remain isolated.
 - Participant decisions do not mutate TwinMarket.
+- Round completion affects only the current human session.
 - Participant-visible state does not expose future experiment information.
-- Runtime SQLite files are ignored by Git.
+- Runtime SQLite files remain ignored by Git.
 
 ## Temporary Phase 1 conventions
 
-The current backend validates actions as `BUY`, `HOLD`, or `SELL`, and confidence as `0–100`. These are technical placeholders for backend validation, not frozen experimental-instrument decisions.
+The existing Phase 1 decision schema still validates `BUY`, `HOLD`, or `SELL` and confidence `0–100`. These remain technical placeholders, not the final experimental instrument. Phase 2 portfolio orders will be a separate concept from the Phase 1 judgement record.

@@ -33,6 +33,18 @@ CREATE TABLE IF NOT EXISTS decisions (
     UNIQUE (session_id, request_id),
     UNIQUE (session_id, step)
 );
+
+CREATE TABLE IF NOT EXISTS round_completions (
+    completion_id TEXT PRIMARY KEY,
+    session_id TEXT NOT NULL,
+    request_id TEXT NOT NULL,
+    step INTEGER NOT NULL CHECK (step >= 0),
+    next_step INTEGER NOT NULL CHECK (next_step > step),
+    completed_at TEXT NOT NULL,
+    FOREIGN KEY (session_id) REFERENCES sessions(session_id) ON DELETE CASCADE,
+    UNIQUE (session_id, request_id),
+    UNIQUE (session_id, step)
+);
 """
 
 

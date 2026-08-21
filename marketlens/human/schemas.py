@@ -58,3 +58,17 @@ class DecisionRead(BaseModel):
     evidence_sources: list[str]
     rationale: str | None
     submitted_at: datetime
+
+
+class RoundComplete(BaseModel):
+    request_id: str = Field(min_length=1, max_length=128)
+    step: int = Field(ge=0)
+
+
+class RoundCompletionRead(BaseModel):
+    completion_id: str
+    session_id: str
+    request_id: str
+    step: int
+    next_step: int
+    completed_at: datetime
