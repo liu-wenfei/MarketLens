@@ -45,6 +45,24 @@ CREATE TABLE IF NOT EXISTS round_completions (
     UNIQUE (session_id, request_id),
     UNIQUE (session_id, step)
 );
+
+CREATE TABLE IF NOT EXISTS participant_portfolios (
+    session_id TEXT PRIMARY KEY,
+    initial_cash REAL NOT NULL CHECK (initial_cash >= 0),
+    cash REAL NOT NULL CHECK (cash >= 0),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY (session_id) REFERENCES sessions(session_id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS portfolio_holdings (
+    session_id TEXT NOT NULL,
+    stock_id TEXT NOT NULL,
+    quantity INTEGER NOT NULL CHECK (quantity >= 0),
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (session_id, stock_id),
+    FOREIGN KEY (session_id) REFERENCES sessions(session_id) ON DELETE CASCADE
+);
 """
 
 

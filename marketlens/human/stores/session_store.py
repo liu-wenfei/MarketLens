@@ -31,7 +31,16 @@ class SessionStore:
         participant_id: str,
         request_id: str,
         created_at: str,
+        initial_cash: float,
     ) -> Row:
+        """Create the session and its participant-only account together.
+
+        The portfolio insert lives in the same SQLite transaction as session
+        creation so a new Phase 2A session cannot be left without an account.
+        Replaying the same session request also repairs an older local Phase 1
+        session that predates the portfolio table.
+        """
+
         with self.db.connect() as connection:
             connection.execute("BEGIN IMMEDIATE")
             existing = connection.execute(
@@ -43,6 +52,20 @@ class SessionStore:
                     raise StoreIdempotencyConflictError(
                         "request_id was already used for a different participant_id"
                     )
+                connection.execute(
+                    """
+                    INSERT OR IGNORE INTO participant_portfolios (
+                        session_id, initial_cash, cash, created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?)
+                    """,
+                    (
+                        existing["session_id"],
+                        initial_cash,
+                        initial_cash,
+                        existing["created_at"],
+                        created_at,
+                    ),
+                )
                 return existing
 
             connection.execute(
@@ -53,6 +76,14 @@ class SessionStore:
                 ) VALUES (?, ?, ?, ?, 0, NULL, 'active', 0)
                 """,
                 (session_id, participant_id, request_id, created_at),
+            )
+            connection.execute(
+                """
+                INSERT INTO participant_portfolios (
+                    session_id, initial_cash, cash, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?)
+                """,
+                (session_id, initial_cash, initial_cash, created_at, created_at),
             )
             row = connection.execute(
                 "SELECT * FROM sessions WHERE session_id = ?",

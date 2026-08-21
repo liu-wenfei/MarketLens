@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from uuid import uuid4
 
+from marketlens.human.portfolio.models import DEFAULT_DEV_INITIAL_CASH, round_currency
 from marketlens.human.schemas import SessionCreate, SessionRead
 from marketlens.human.stores.errors import StoreIdempotencyConflictError
 from marketlens.human.stores.session_store import SessionStore
@@ -29,8 +30,13 @@ def _to_session(row) -> SessionRead:
 
 
 class SessionService:
-    def __init__(self, store: SessionStore):
+    def __init__(
+        self,
+        store: SessionStore,
+        initial_cash: float = DEFAULT_DEV_INITIAL_CASH,
+    ):
         self.store = store
+        self.initial_cash = round_currency(initial_cash)
 
     def create(self, payload: SessionCreate) -> SessionRead:
         now = datetime.now(timezone.utc).isoformat()
@@ -40,6 +46,7 @@ class SessionService:
                 participant_id=payload.participant_id,
                 request_id=payload.request_id,
                 created_at=now,
+                initial_cash=self.initial_cash,
             )
         except StoreIdempotencyConflictError as exc:
             raise IdempotencyConflictError(str(exc)) from exc
