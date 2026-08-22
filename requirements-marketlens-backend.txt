@@ -1,8 +1,53 @@
-fastapi
-uvicorn
-pytest
-httpx
+# MarketLens canonical backend/runtime dependencies
+# Audited against the current MarketLens code plus inherited TwinMarket runtime.
+# Target development runtime: Python 3.13
+#
+# This file intentionally lists direct dependencies only. Transitive dependencies
+# are resolved by pip. Formal experiment/deployment freezing can pin exact versions
+# later once the runtime architecture is stable.
+
+# -----------------------------------------------------------------------------
+# Web/API backend
+# -----------------------------------------------------------------------------
+fastapi>=0.115,<1.0
+uvicorn>=0.30,<1.0
+pydantic>=2.9,<3.0
+httpx>=0.28,<1.0
+
+# -----------------------------------------------------------------------------
+# MarketLens persistence / PostgreSQL portability
+# -----------------------------------------------------------------------------
 SQLAlchemy>=2.0,<3.0
 alembic>=1.13,<2.0
 psycopg[binary]>=3.2,<4.0
+
+# -----------------------------------------------------------------------------
+# Inherited TwinMarket async / local persistence runtime
+# -----------------------------------------------------------------------------
 aiosqlite>=0.20,<1.0
+aiofiles>=24.1,<25.0
+aiohttp>=3.11,<4.0
+
+# -----------------------------------------------------------------------------
+# Data, graph, numerical and plotting dependencies imported by TwinMarket
+# -----------------------------------------------------------------------------
+numpy>=2.1,<3.0
+pandas>=2.2.3,<3.0
+networkx>=3.4,<4.0
+matplotlib>=3.10,<4.0
+faiss-cpu>=1.13,<2.0
+
+# -----------------------------------------------------------------------------
+# LLM/config/network utilities used directly by inherited TwinMarket
+# -----------------------------------------------------------------------------
+openai>=1.0,<3.0
+PyYAML>=6.0,<7.0
+requests>=2.32,<3.0
+tenacity>=9.0,<10.0
+tqdm>=4.66,<5.0
+
+# -----------------------------------------------------------------------------
+# Test dependency kept here intentionally for the current one-file workflow.
+# It can be moved to requirements-dev.txt before production hardening if desired.
+# -----------------------------------------------------------------------------
+pytest>=8.3,<10.0
