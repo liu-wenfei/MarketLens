@@ -336,7 +336,15 @@ def _ensure_real_run_clean(repo_root: Path) -> dict[str, Any]:
 def _generate_fixture(
     *, repo_root: Path, source_db: Path, fixture_dir: Path
 ) -> tuple[Path, Path, str]:
-    fixture_dir.mkdir(parents=True, exist_ok=False)
+    # Phase 3 runtime_cli owns creation of its output directory.  Do not create
+    # ``fixture_dir`` here: the frozen builder intentionally fails if the
+    # requested output directory already exists.
+    fixture_dir.parent.mkdir(parents=True, exist_ok=True)
+    if fixture_dir.exists():
+        raise Phase09CError(
+            f"Phase 9C fixture output directory already exists: {fixture_dir}"
+        )
+
     command = [
         sys.executable,
         "-m",
@@ -350,13 +358,28 @@ def _generate_fixture(
         "--output-dir",
         str(fixture_dir),
     ]
-    completed = subprocess.run(
-        command,
-        cwd=repo_root,
-        check=True,
-        capture_output=True,
-        text=True,
-    )
+    try:
+        completed = subprocess.run(
+            command,
+            cwd=repo_root,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except subprocess.CalledProcessError as exc:
+        stdout = (exc.stdout or "").strip()
+        stderr = (exc.stderr or "").strip()
+        details = []
+        if stdout:
+            details.append(f"stdout:\n{stdout}")
+        if stderr:
+            details.append(f"stderr:\n{stderr}")
+        suffix = "\n" + "\n".join(details) if details else ""
+        raise Phase09CError(
+            "frozen Phase 3 runtime_cli failed while generating the N10 "
+            f"fixture (exit {exc.returncode}).{suffix}"
+        ) from exc
+
     runtime_db = fixture_dir / "population_runtime.db"
     manifest = fixture_dir / "population_manifest.json"
     if not runtime_db.is_file() or not manifest.is_file():

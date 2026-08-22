@@ -25,6 +25,54 @@ def test_phase09c_contract_is_hard_limited_to_n10_three_calendar_days():
     assert EXPECTED_MARKET_OPEN == (True, True, False)
 
 
+def test_fixture_generator_leaves_output_dir_creation_to_phase3_cli(
+    tmp_path: Path, monkeypatch
+):
+    from marketlens.market import multiday_real as module
+
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    source_db = repo_root / "source.db"
+    source_db.write_bytes(b"source")
+    fixture_dir = repo_root / "artifact" / "population_fixture"
+
+    calls = []
+
+    def fake_run(command, *, cwd, check, capture_output, text):
+        # Regression guard: the frozen Phase 3 runtime_cli must receive an
+        # output directory that does not already exist.
+        assert not fixture_dir.exists()
+        assert cwd == repo_root
+        assert check is True
+        assert capture_output is True
+        assert text is True
+        calls.append(command)
+
+        fixture_dir.mkdir(parents=True)
+        (fixture_dir / "population_runtime.db").write_bytes(b"runtime")
+        (fixture_dir / "population_manifest.json").write_text(
+            "{}", encoding="utf-8"
+        )
+
+        class Completed:
+            stdout = "fixture generated"
+
+        return Completed()
+
+    monkeypatch.setattr(module.subprocess, "run", fake_run)
+
+    runtime_db, manifest, stdout = module._generate_fixture(
+        repo_root=repo_root,
+        source_db=source_db,
+        fixture_dir=fixture_dir,
+    )
+
+    assert calls
+    assert runtime_db == fixture_dir / "population_runtime.db"
+    assert manifest == fixture_dir / "population_manifest.json"
+    assert stdout == "fixture generated"
+
+
 def test_activation_mapping_rejects_out_of_population_agent():
     population = ("1", "2")
     try:
