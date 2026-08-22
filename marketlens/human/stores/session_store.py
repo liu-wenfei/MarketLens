@@ -1,28 +1,59 @@
 from __future__ import annotations
 
-from sqlite3 import Row
+from typing import Any, Mapping
 
-from .database import Database
+from sqlalchemy import insert, select
+from sqlalchemy.exc import IntegrityError
+
+from marketlens.persistence.database import Database
+from marketlens.persistence.schema import participant_portfolios, sessions
+
 from .errors import StoreIdempotencyConflictError
+
+
+RowMapping = Mapping[str, Any]
 
 
 class SessionStore:
     def __init__(self, db: Database):
         self.db = db
 
-    def get(self, session_id: str) -> Row | None:
+    def get(self, session_id: str) -> RowMapping | None:
         with self.db.connect() as connection:
             return connection.execute(
-                "SELECT * FROM sessions WHERE session_id = ?",
-                (session_id,),
-            ).fetchone()
+                select(sessions).where(sessions.c.session_id == session_id)
+            ).mappings().first()
 
-    def get_by_request_id(self, request_id: str) -> Row | None:
+    def get_by_request_id(self, request_id: str) -> RowMapping | None:
         with self.db.connect() as connection:
             return connection.execute(
-                "SELECT * FROM sessions WHERE request_id = ?",
-                (request_id,),
-            ).fetchone()
+                select(sessions).where(sessions.c.request_id == request_id)
+            ).mappings().first()
+
+    def _ensure_portfolio(
+        self,
+        connection,
+        *,
+        session: RowMapping,
+        initial_cash: float,
+        updated_at: str,
+    ) -> None:
+        existing_portfolio = connection.execute(
+            select(participant_portfolios.c.session_id).where(
+                participant_portfolios.c.session_id == session["session_id"]
+            )
+        ).first()
+        if existing_portfolio is not None:
+            return
+        connection.execute(
+            insert(participant_portfolios).values(
+                session_id=session["session_id"],
+                initial_cash=initial_cash,
+                cash=initial_cash,
+                created_at=session["created_at"],
+                updated_at=updated_at,
+            )
+        )
 
     def create_idempotent(
         self,
@@ -32,62 +63,83 @@ class SessionStore:
         request_id: str,
         created_at: str,
         initial_cash: float,
-    ) -> Row:
-        """Create the session and its participant-only account together.
+    ) -> RowMapping:
+        """Create the session and its participant-only account atomically.
 
-        The portfolio insert lives in the same SQLite transaction as session
-        creation so a new Phase 2A session cannot be left without an account.
-        Replaying the same session request also repairs an older local Phase 1
-        session that predates the portfolio table.
+        A session row is the lifecycle owner for its participant portfolio.
+        SQLAlchemy supplies one transaction boundary for SQLite locally and
+        PostgreSQL later. On PostgreSQL, ``FOR UPDATE`` serialises replays of an
+        already-existing session; a unique request_id remains the final race
+        guard for concurrent first creation.
         """
 
-        with self.db.connect() as connection:
-            connection.execute("BEGIN IMMEDIATE")
-            existing = connection.execute(
-                "SELECT * FROM sessions WHERE request_id = ?",
-                (request_id,),
-            ).fetchone()
-            if existing is not None:
-                if existing["participant_id"] != participant_id:
-                    raise StoreIdempotencyConflictError(
-                        "request_id was already used for a different participant_id"
+        try:
+            with self.db.connect() as connection:
+                existing = connection.execute(
+                    select(sessions)
+                    .where(sessions.c.request_id == request_id)
+                    .with_for_update()
+                ).mappings().first()
+                if existing is not None:
+                    if existing["participant_id"] != participant_id:
+                        raise StoreIdempotencyConflictError(
+                            "request_id was already used for a different participant_id"
+                        )
+                    self._ensure_portfolio(
+                        connection,
+                        session=existing,
+                        initial_cash=initial_cash,
+                        updated_at=created_at,
                     )
-                connection.execute(
-                    """
-                    INSERT OR IGNORE INTO participant_portfolios (
-                        session_id, initial_cash, cash, created_at, updated_at
-                    ) VALUES (?, ?, ?, ?, ?)
-                    """,
-                    (
-                        existing["session_id"],
-                        initial_cash,
-                        initial_cash,
-                        existing["created_at"],
-                        created_at,
-                    ),
-                )
-                return existing
+                    return existing
 
-            connection.execute(
-                """
-                INSERT INTO sessions (
-                    session_id, participant_id, request_id, created_at,
-                    current_step, current_date, experiment_status, completed
-                ) VALUES (?, ?, ?, ?, 0, NULL, 'active', 0)
-                """,
-                (session_id, participant_id, request_id, created_at),
-            )
-            connection.execute(
-                """
-                INSERT INTO participant_portfolios (
-                    session_id, initial_cash, cash, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?)
-                """,
-                (session_id, initial_cash, initial_cash, created_at, created_at),
-            )
-            row = connection.execute(
-                "SELECT * FROM sessions WHERE session_id = ?",
-                (session_id,),
-            ).fetchone()
-            assert row is not None
-            return row
+                connection.execute(
+                    insert(sessions).values(
+                        session_id=session_id,
+                        participant_id=participant_id,
+                        request_id=request_id,
+                        created_at=created_at,
+                        current_step=0,
+                        current_date=None,
+                        experiment_status="active",
+                        completed=False,
+                    )
+                )
+                connection.execute(
+                    insert(participant_portfolios).values(
+                        session_id=session_id,
+                        initial_cash=initial_cash,
+                        cash=initial_cash,
+                        created_at=created_at,
+                        updated_at=created_at,
+                    )
+                )
+                row = connection.execute(
+                    select(sessions).where(sessions.c.session_id == session_id)
+                ).mappings().first()
+                assert row is not None
+                return row
+        except IntegrityError:
+            # A concurrent creator can win the unique request_id race. Resolve
+            # that race by treating the committed winner as the idempotent row.
+            existing = self.get_by_request_id(request_id)
+            if existing is None:
+                raise
+            if existing["participant_id"] != participant_id:
+                raise StoreIdempotencyConflictError(
+                    "request_id was already used for a different participant_id"
+                )
+            with self.db.connect() as connection:
+                locked = connection.execute(
+                    select(sessions)
+                    .where(sessions.c.session_id == existing["session_id"])
+                    .with_for_update()
+                ).mappings().first()
+                assert locked is not None
+                self._ensure_portfolio(
+                    connection,
+                    session=locked,
+                    initial_cash=initial_cash,
+                    updated_at=created_at,
+                )
+                return locked

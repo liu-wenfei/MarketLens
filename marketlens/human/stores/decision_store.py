@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 import json
-from sqlite3 import Row
+from typing import Any, Mapping
 
-from .database import Database
+from sqlalchemy import insert, select
+
+from marketlens.persistence.database import Database
+from marketlens.persistence.schema import decisions, sessions
+
 from .errors import (
     StoreDecisionAlreadySubmittedError,
     StoreIdempotencyConflictError,
@@ -12,29 +16,30 @@ from .errors import (
 )
 
 
+RowMapping = Mapping[str, Any]
+
+
 class DecisionStore:
     def __init__(self, db: Database):
         self.db = db
 
-    def get_by_request_id(self, session_id: str, request_id: str) -> Row | None:
+    def get_by_request_id(self, session_id: str, request_id: str) -> RowMapping | None:
         with self.db.connect() as connection:
             return connection.execute(
-                """
-                SELECT * FROM decisions
-                WHERE session_id = ? AND request_id = ?
-                """,
-                (session_id, request_id),
-            ).fetchone()
+                select(decisions).where(
+                    decisions.c.session_id == session_id,
+                    decisions.c.request_id == request_id,
+                )
+            ).mappings().first()
 
-    def get_by_step(self, session_id: str, step: int) -> Row | None:
+    def get_by_step(self, session_id: str, step: int) -> RowMapping | None:
         with self.db.connect() as connection:
             return connection.execute(
-                """
-                SELECT * FROM decisions
-                WHERE session_id = ? AND step = ?
-                """,
-                (session_id, step),
-            ).fetchone()
+                select(decisions).where(
+                    decisions.c.session_id == session_id,
+                    decisions.c.step == step,
+                )
+            ).mappings().first()
 
     def submit_idempotent(
         self,
@@ -49,33 +54,31 @@ class DecisionStore:
         evidence_sources: list[str],
         rationale: str | None,
         submitted_at: str,
-    ) -> Row:
+    ) -> RowMapping:
         """Persist one decision for the current step without advancing the session."""
-        with self.db.connect() as connection:
-            connection.execute("BEGIN IMMEDIATE")
 
+        with self.db.connect() as connection:
             session = connection.execute(
-                "SELECT * FROM sessions WHERE session_id = ?",
-                (session_id,),
-            ).fetchone()
+                select(sessions)
+                .where(sessions.c.session_id == session_id)
+                .with_for_update()
+            ).mappings().first()
             if session is None:
                 raise StoreSessionNotFoundError(session_id)
 
             existing_request = connection.execute(
-                """
-                SELECT * FROM decisions
-                WHERE session_id = ? AND request_id = ?
-                """,
-                (session_id, request_id),
-            ).fetchone()
+                select(decisions).where(
+                    decisions.c.session_id == session_id,
+                    decisions.c.request_id == request_id,
+                )
+            ).mappings().first()
             if existing_request is not None:
                 same_payload = (
                     int(existing_request["step"]) == step
                     and existing_request["stock_id"] == stock_id
                     and existing_request["action"] == action
                     and float(existing_request["confidence"]) == float(confidence)
-                    and existing_request["evidence_sources"]
-                    == json.dumps(evidence_sources)
+                    and existing_request["evidence_sources"] == json.dumps(evidence_sources)
                     and existing_request["rationale"] == rationale
                 )
                 if not same_payload:
@@ -85,12 +88,11 @@ class DecisionStore:
                 return existing_request
 
             existing_step = connection.execute(
-                """
-                SELECT * FROM decisions
-                WHERE session_id = ? AND step = ?
-                """,
-                (session_id, step),
-            ).fetchone()
+                select(decisions).where(
+                    decisions.c.session_id == session_id,
+                    decisions.c.step == step,
+                )
+            ).mappings().first()
             if existing_step is not None:
                 raise StoreDecisionAlreadySubmittedError(
                     f"A decision already exists for step {step}"
@@ -103,29 +105,21 @@ class DecisionStore:
                 )
 
             connection.execute(
-                """
-                INSERT INTO decisions (
-                    decision_id, session_id, request_id, step, stock_id,
-                    action, confidence, evidence_sources, rationale, submitted_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    decision_id,
-                    session_id,
-                    request_id,
-                    step,
-                    stock_id,
-                    action,
-                    confidence,
-                    json.dumps(evidence_sources),
-                    rationale,
-                    submitted_at,
-                ),
+                insert(decisions).values(
+                    decision_id=decision_id,
+                    session_id=session_id,
+                    request_id=request_id,
+                    step=step,
+                    stock_id=stock_id,
+                    action=action,
+                    confidence=confidence,
+                    evidence_sources=json.dumps(evidence_sources),
+                    rationale=rationale,
+                    submitted_at=submitted_at,
+                )
             )
-
             row = connection.execute(
-                "SELECT * FROM decisions WHERE decision_id = ?",
-                (decision_id,),
-            ).fetchone()
+                select(decisions).where(decisions.c.decision_id == decision_id)
+            ).mappings().first()
             assert row is not None
             return row

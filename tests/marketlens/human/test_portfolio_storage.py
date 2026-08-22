@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import pytest
+from sqlalchemy import func, select
 
 from conftest import create_session
 from marketlens.human.portfolio.models import DEFAULT_DEV_INITIAL_CASH
 from marketlens.human.stores.portfolio_store import PortfolioStore
+from marketlens.persistence.schema import participant_portfolios
 
 
 def test_new_session_gets_one_isolated_empty_participant_portfolio(client):
@@ -45,8 +47,9 @@ def test_idempotent_session_replay_does_not_create_a_second_portfolio(client):
 
     with client.app.state.db.connect() as connection:
         count = connection.execute(
-            "SELECT COUNT(*) AS count FROM participant_portfolios WHERE session_id = ?",
-            (first["session_id"],),
-        ).fetchone()["count"]
+            select(func.count())
+            .select_from(participant_portfolios)
+            .where(participant_portfolios.c.session_id == first["session_id"])
+        ).scalar_one()
 
     assert count == 1

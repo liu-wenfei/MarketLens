@@ -4,37 +4,58 @@ import hashlib
 from pathlib import Path
 
 import pytest
+from sqlalchemy import func, insert, select, update
 
 from conftest import create_session
+from marketlens.persistence.schema import portfolio_holdings, portfolio_transactions, sessions
 
 
 def set_session_date(client, session_id: str, trading_date: str) -> None:
     with client.app.state.db.connect() as connection:
         connection.execute(
-            "UPDATE sessions SET current_date = ? WHERE session_id = ?",
-            (trading_date, session_id),
+            update(sessions)
+            .where(sessions.c.session_id == session_id)
+            .values(current_date=trading_date)
         )
 
 
 def seed_holding(client, session_id: str, stock_id: str, quantity: int) -> None:
     with client.app.state.db.connect() as connection:
-        connection.execute(
-            """
-            INSERT INTO portfolio_holdings (session_id, stock_id, quantity, updated_at)
-            VALUES (?, ?, ?, 'test-seed')
-            ON CONFLICT(session_id, stock_id)
-            DO UPDATE SET quantity = excluded.quantity
-            """,
-            (session_id, stock_id, quantity),
-        )
+        existing = connection.execute(
+            select(portfolio_holdings.c.session_id).where(
+                portfolio_holdings.c.session_id == session_id,
+                portfolio_holdings.c.stock_id == stock_id,
+            )
+        ).first()
+        if existing is None:
+            connection.execute(
+                insert(portfolio_holdings).values(
+                    session_id=session_id,
+                    stock_id=stock_id,
+                    quantity=quantity,
+                    updated_at="test-seed",
+                )
+            )
+        else:
+            connection.execute(
+                update(portfolio_holdings)
+                .where(
+                    portfolio_holdings.c.session_id == session_id,
+                    portfolio_holdings.c.stock_id == stock_id,
+                )
+                .values(quantity=quantity, updated_at="test-seed")
+            )
 
 
 def transaction_count(client, session_id: str) -> int:
     with client.app.state.db.connect() as connection:
-        return connection.execute(
-            "SELECT COUNT(*) AS count FROM portfolio_transactions WHERE session_id = ?",
-            (session_id,),
-        ).fetchone()["count"]
+        return int(
+            connection.execute(
+                select(func.count()).select_from(portfolio_transactions).where(
+                    portfolio_transactions.c.session_id == session_id
+                )
+            ).scalar_one()
+        )
 
 
 def test_assets_endpoint_exposes_definitions_not_prices(client):

@@ -1,1 +1,1 @@
-"""SQLite persistence for MarketLens human state."""
+"""Persistence stores for MarketLens human participant state."""
