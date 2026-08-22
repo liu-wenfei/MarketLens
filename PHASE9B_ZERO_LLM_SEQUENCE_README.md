@@ -1,9 +1,9 @@
 # Phase 9B — Zero-LLM Sequential Orchestration Gate
 
-**Status:** NON-FORMAL ENGINEERING GATE  
-**Real backend:** NO  
-**LLM/API calls:** 0  
-**Market execution:** NO  
+**Status:** NON-FORMAL ENGINEERING GATE
+**Real backend:** NO
+**LLM/API calls:** 0
+**Market execution:** NO
 **Formal experiment evidence:** NO
 
 ## Purpose
