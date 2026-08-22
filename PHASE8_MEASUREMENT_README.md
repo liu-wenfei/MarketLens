@@ -1,7 +1,7 @@
 # Phase 8 — Thin Agent-world Measurement Facade
 
-**Status:** implementation patch  
-**Evidence class:** engineering measurement only; not formal experiment evidence  
+**Status:** implementation patch
+**Evidence class:** engineering measurement only; not formal experiment evidence
 **Baseline:** `phase07-dynamic-twinmarket-market-news-v1.0`
 
 ## Purpose
