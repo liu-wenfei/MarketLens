@@ -1,0 +1,25 @@
+{
+  "stimulus_set_id": "marketlens-phase11-mei-ownership-candidate-v1",
+  "material_version": "1.0-candidate",
+  "protocol_version": "1.1",
+  "target_stock_id": "MEI",
+  "formal_use_status": "development",
+  "misinformation": {
+    "stimulus_id": "MISINFO_MEI_OWNERSHIP_001_CANDIDATE",
+    "kind": "misinformation",
+    "headline": "Manufacturing Index solar constituent linked to Ningxia polysilicon investment",
+    "body": "A Hong Kong company reported to be associated with a major solar manufacturer in the Manufacturing Index has acquired about a 1.85% stake in a Ningxia polysilicon developer. If the reported ownership link is accurate, the manufacturer would have a new equity connection to upstream polysilicon capacity.",
+    "release_event": "after_J0_before_J1",
+    "content_sha256": "2f4eebf285e51bbe7f2886486ac5bb4b8345fd549cc4b481582c73c274bb3285"
+  },
+  "correction": {
+    "stimulus_id": "CORRECTION_MEI_OWNERSHIP_001_CANDIDATE",
+    "kind": "authoritative_correction",
+    "headline": "Correction to reported Ningxia ownership link",
+    "body": "The manufacturer clarified that the similarly named Hong Kong investor is neither its wholly owned nor controlled subsidiary, and that neither the manufacturer nor its subsidiaries acquired any stake in the Ningxia company. The reported investment link was therefore incorrect.",
+    "release_event": "after_J2_before_J3",
+    "corrects_stimulus_id": "MISINFO_MEI_OWNERSHIP_001_CANDIDATE",
+    "content_sha256": "dd6cbc5db5c8c18eb13889b743fb77b2da3a99edb225db20df2c6c03ef1a3608"
+  },
+  "manifest_sha256": "3c5f37179110dae532e2e1f46ced3958577575ae533dfc6aacccffa568c75f0e"
+}
