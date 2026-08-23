@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Phase 10 zero-LLM exact-horizon N20/N30 adequacy preflight."""
+"""Phase 10 zero-LLM timing + exact-horizon N20/N30 adequacy preflight."""
 
 from __future__ import annotations
 
@@ -8,7 +8,6 @@ from datetime import datetime, timezone
 import hashlib
 import json
 from pathlib import Path
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -24,13 +23,15 @@ from marketlens.agents.population.fixture import build_population_bundle  # noqa
 from marketlens.experiment.formal_horizon import (  # noqa: E402
     decide_population,
     evaluate_candidate,
+    evaluate_warm_up_candidates,
     formal_horizon_seeds,
+    select_warm_up,
 )
 from marketlens.experiment.protocol import load_protocol  # noqa: E402
 
 
 BANNER = (
-    "NON-FORMAL / PHASE 10 EXACT-HORIZON ZERO-LLM N20-N30 GATE / "
+    "NON-FORMAL / PHASE 10 TIMING + EXACT-HORIZON ZERO-LLM N20-N30 GATE / "
     "NOT FORMAL EXPERIMENT EVIDENCE"
 )
 POPULATION_SEED = "marketlens-dev-population-01"
@@ -46,19 +47,13 @@ def sha256_file(path: Path) -> str:
 
 def git_state() -> dict[str, str]:
     return {
-        "commit": subprocess.check_output(
-            ["git", "rev-parse", "HEAD"], cwd=REPO_ROOT, text=True
-        ).strip(),
-        "branch": subprocess.check_output(
-            ["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=REPO_ROOT, text=True
-        ).strip(),
-        "status_porcelain": subprocess.check_output(
-            ["git", "status", "--porcelain"], cwd=REPO_ROOT, text=True
-        ).strip(),
+        "commit": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=REPO_ROOT, text=True).strip(),
+        "branch": subprocess.check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=REPO_ROOT, text=True).strip(),
+        "status_porcelain": subprocess.check_output(["git", "status", "--porcelain"], cwd=REPO_ROOT, text=True).strip(),
     }
 
 
-def validate_calendar_and_news(protocol: dict, trading_calendar: Path, news_path: Path) -> dict:
+def validate_calendar_and_news(protocol: dict, trading_calendar: Path, news_path: Path) -> tuple[dict, set[str], set[str]]:
     calendar = pd.read_csv(trading_calendar)
     if "pretrade_date" not in calendar.columns:
         raise RuntimeError("trading calendar is missing inherited pretrade_date field")
@@ -72,6 +67,7 @@ def validate_calendar_and_news(protocol: dict, trading_calendar: Path, news_path
         raise RuntimeError("background-news source is missing cal_date/news")
     news = news.copy()
     news["cal_date"] = pd.to_datetime(news["cal_date"])
+    news_dates = {value.date().isoformat() for value in news["cal_date"].tolist()}
 
     rows = []
     missing_news_dates = []
@@ -104,36 +100,72 @@ def validate_calendar_and_news(protocol: dict, trading_calendar: Path, news_path
         raise RuntimeError(f"protocol OPEN/CLOSED mismatch: {calendar_mismatches}")
     if missing_news_dates:
         raise RuntimeError(f"background-news coverage missing/duplicated: {missing_news_dates}")
-    return {
-        "calendar_authority": "data/trading_days.csv:pretrade_date",
-        "calendar_mismatches": calendar_mismatches,
-        "background_news_complete": True,
-        "days": rows,
-    }
+    return (
+        {
+            "calendar_authority": "data/trading_days.csv:pretrade_date",
+            "calendar_mismatches": calendar_mismatches,
+            "background_news_complete": True,
+            "days": rows,
+        },
+        trading_days,
+        news_dates,
+    )
 
 
 def markdown_report(summary: dict) -> str:
+    zero_limit = summary["population_gate"]["critical_date_any_zero_max_trajectories"]
+    min_mean = summary["population_gate"]["critical_date_min_mean_active_agents"]
     lines = [
-        "# Phase 10 — Exact-Horizon Zero-LLM N20/N30 Gate",
+        "# Phase 10 — Timing + Exact-Horizon Zero-LLM N20/N30 Gate",
         "",
         f"**Evidence class:** {summary['banner']}",
         f"**Status:** {summary['status']}",
         f"**Git commit:** `{summary['git']['commit']}`",
         f"**Git working tree dirty during run:** `{bool(summary['git']['status_porcelain'])}`",
         "",
-        "## Frozen horizon",
+        "## Timing contract",
         "",
         f"- T_init: `{summary['protocol']['T_init']}`",
+        f"- warm-up: `{summary['protocol']['warm_up_calendar_days']}` calendar world ticks",
         f"- T_visible: `{summary['protocol']['T_visible']}`",
         f"- T_end: `{summary['protocol']['T_end']}`",
         f"- world ticks: `{summary['protocol']['formal_world_ticks']}`",
-        f"- participant-critical dates: `{', '.join(summary['protocol']['participant_critical_dates'])}`",
+        f"- participant decision days: `{summary['protocol']['participant_decision_days']}`",
+        f"- formal judgement events: `{summary['protocol']['formal_judgement_events']}` across `{summary['protocol']['formal_judgement_dates']}` dates",
+        f"- participant-critical decision dates: `{', '.join(summary['protocol']['participant_critical_dates'])}`",
         "",
-        "## Candidate results",
+        "## Predeclared warm-up structural gate",
         "",
-        "| Candidate | Sufficient | Critical trajectories with any zero | Minimum critical-date mean active | Overall mean active |",
-        "|---|---:|---:|---:|---:|",
+        "A warm-up candidate is sufficient only if it provides at least 2 episode-local OPEN ticks before entry, at least 1 CLOSED tick before entry, an OPEN T_visible, and complete background-news coverage. The smallest sufficient candidate is selected.",
+        "",
+        "| Warm-up | T_visible candidate | Sufficient | OPEN before entry | CLOSED before entry | T_visible OPEN | News complete |",
+        "|---|---|---:|---:|---:|---:|---:|",
     ]
+    for row in summary["warm_up_gate"]["candidates"]:
+        lines.append(
+            f"| W{row['calendar_days']} | {row['visible_date']} | {row['sufficient']} | "
+            f"{row['open_ticks_before_entry']} | {row['closed_ticks_before_entry']} | "
+            f"{row['visible_date_open']} | {row['news_coverage_complete']} |"
+        )
+    selected = summary["warm_up_gate"]["selected"]
+    lines.extend(
+        [
+            "",
+            f"**Warm-up decision:** `SELECT_W{selected['calendar_days']}` → T_visible `{selected['visible_date']}`.",
+            "",
+            "## Predeclared population adequacy gates",
+            "",
+            f"1. Across the 100 full-horizon activation trajectories, trajectories with at least one zero-active outcome on participant-critical decision dates must be `<= {zero_limit}/100`.",
+            f"2. Mean active Agents on every participant-critical decision date must be `>= {min_mean:.1f}`.",
+            "3. The comparison must use all 100 predeclared seeds with full-horizon activation-state carry-forward and unchanged bounded population membership.",
+            "4. If N20 passes, parsimony selects N20. N30 real-backend validation is required only if N20 fails and N30 passes.",
+            "",
+            "## Candidate results",
+            "",
+            "| Candidate | Sufficient | Critical trajectories with any zero | Minimum critical-date mean active | Overall mean active |",
+            "|---|---:|---:|---:|---:|",
+        ]
+    )
     for n in (20, 30):
         row = summary["candidates"][str(n)]
         lines.append(
@@ -148,7 +180,7 @@ def markdown_report(summary: dict) -> str:
             f"- `{summary['decision']['decision']}`",
             f"- {summary['decision']['reason']}",
             "",
-            "This preflight does not generate the canonical Agent world, does not call an LLM, does not mutate the inherited market/forum, and is not formal experiment evidence.",
+            "This preflight validates the frozen timing/calendar contract and activation adequacy only. It does not generate the canonical Agent world, call an LLM, mutate the inherited market/forum, use participant data, or constitute formal experiment evidence.",
             "",
         ]
     )
@@ -173,11 +205,17 @@ def main() -> int:
         protocol = load_protocol(REPO_ROOT / args.protocol)
         source_db = (REPO_ROOT / args.source_db).resolve()
         source_before = sha256_file(source_db)
-        environment = validate_calendar_and_news(
+        environment, trading_days, news_dates = validate_calendar_and_news(
             protocol,
             (REPO_ROOT / args.trading_calendar).resolve(),
             (REPO_ROOT / args.background_news).resolve(),
         )
+        warm_candidates = evaluate_warm_up_candidates(
+            protocol=protocol,
+            trading_open_dates=trading_days,
+            news_dates=news_dates,
+        )
+        warm_selected = select_warm_up(warm_candidates, protocol)
         git = git_state()
         seeds = formal_horizon_seeds(protocol)
 
@@ -213,10 +251,11 @@ def main() -> int:
 
         decision = decide_population(results[20], results[30])
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-        run_id = f"{timestamp}_{git['commit'][:8]}_phase10_formal_horizon"
+        run_id = f"{timestamp}_{git['commit'][:8]}_phase10_timing_horizon"
         artifact_dir = (REPO_ROOT / args.artifact_root / run_id).resolve()
         artifact_dir.mkdir(parents=True, exist_ok=False)
 
+        population_rule = protocol["population"]["selection_rule"]
         summary = {
             "banner": BANNER,
             "phase": "10",
@@ -230,12 +269,26 @@ def main() -> int:
             "protocol": {
                 "version": protocol["protocol_version"],
                 "T_init": protocol["world"]["initialization_date"],
+                "warm_up_calendar_days": protocol["world"]["pre_roll_calendar_days"],
                 "T_visible": protocol["world"]["participant_visible_start_date"],
                 "T_end": protocol["world"]["end_date"],
                 "formal_world_ticks": protocol["world"]["formal_world_ticks"],
+                "participant_decision_days": protocol["time"]["participant_decision_days"],
+                "formal_judgement_events": protocol["time"]["formal_judgement_events"],
+                "formal_judgement_dates": protocol["time"]["formal_judgement_dates"],
                 "participant_critical_dates": protocol["participant_critical_dates"],
             },
             "environment_validation": environment,
+            "warm_up_gate": {
+                "candidates": [value.as_dict() for value in warm_candidates],
+                "selected": warm_selected.as_dict(),
+            },
+            "population_gate": {
+                "critical_date_any_zero_max_trajectories": int(population_rule["critical_date_any_zero_max_trajectories"]),
+                "critical_date_min_mean_active_agents": float(population_rule["critical_date_min_mean_active_agents"]),
+                "activation_seed_count": int(population_rule["activation_seed_count"]),
+                "full_horizon_state_carry_forward": bool(population_rule["full_horizon_state_carry_forward"]),
+            },
             "population_seed": POPULATION_SEED,
             "activation_seed_count": len(seeds),
             "activation_seed_first": seeds[0],
@@ -252,10 +305,8 @@ def main() -> int:
             "duration_seconds": round(time.monotonic() - started, 3),
             "run_id": run_id,
         }
-        summary_path = artifact_dir / "summary.json"
-        report_path = artifact_dir / "report.md"
-        summary_path.write_text(json.dumps(summary, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-        report_path.write_text(markdown_report(summary), encoding="utf-8")
+        (artifact_dir / "summary.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        (artifact_dir / "report.md").write_text(markdown_report(summary), encoding="utf-8")
     except Exception as exc:
         print(f"PHASE 10 PREFLIGHT ERROR: {type(exc).__name__}: {exc}", file=sys.stderr)
         return 2
@@ -264,7 +315,9 @@ def main() -> int:
         "status": summary["status"],
         "llm_api_calls": summary["llm_api_calls"],
         "formal_world_ticks": summary["protocol"]["formal_world_ticks"],
+        "participant_decision_days": summary["protocol"]["participant_decision_days"],
         "critical_dates": summary["protocol"]["participant_critical_dates"],
+        "warm_up_gate": summary["warm_up_gate"],
         "N20": summary["candidates"]["20"],
         "N30": summary["candidates"]["30"],
         "decision": summary["decision"],

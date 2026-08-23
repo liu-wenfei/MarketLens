@@ -1,6 +1,6 @@
 """Phase 10 machine-readable experiment protocol contract.
 
-This module validates timing/state semantics only.  It does not run Agents,
+This module validates timing/state semantics only. It does not run Agents,
 inject stimuli, form prices, clone participant worlds, or implement Phase 11.
 """
 
@@ -51,15 +51,13 @@ def validate_protocol(protocol: Mapping[str, Any]) -> dict[str, Any]:
 
     world = data.get("world")
     time = data.get("time")
+    timing = data.get("timing_design")
     timeline = data.get("timeline")
-    if not isinstance(world, dict) or not isinstance(time, dict) or not isinstance(timeline, list):
-        raise ProtocolValidationError("world, time and timeline are required")
+    if not all(isinstance(value, dict) for value in (world, time, timing)) or not isinstance(timeline, list):
+        raise ProtocolValidationError("world, time, timing_design and timeline are required")
 
     t_init = _iso(world.get("initialization_date"), "world.initialization_date")
-    t_visible = _iso(
-        world.get("participant_visible_start_date"),
-        "world.participant_visible_start_date",
-    )
+    t_visible = _iso(world.get("participant_visible_start_date"), "world.participant_visible_start_date")
     t_end = _iso(world.get("end_date"), "world.end_date")
     if not t_init < t_visible < t_end:
         raise ProtocolValidationError("require T_init < T_visible < T_end")
@@ -82,11 +80,33 @@ def validate_protocol(protocol: Mapping[str, Any]) -> dict[str, Any]:
         raise ProtocolValidationError("experiment_step must remain separate from world_tick")
     if time.get("experiment_step_separate_from_agent_world_date") is not True:
         raise ProtocolValidationError("experiment_step must remain separate from agent_world_date")
+    if time.get("experimental_delay_unit") != "open_state_transition":
+        raise ProtocolValidationError("experimental delay must be expressed in OPEN-state transitions")
+    if time.get("closed_days_advance_world_tick_but_not_open_transition_delay") is not True:
+        raise ProtocolValidationError("CLOSED days must advance world_tick without counting as OPEN delays")
+
+    expected_timing = {
+        "baseline_to_misinformation_world_ticks": 0,
+        "misinformation_to_immediate_j1_world_ticks": 0,
+        "misinformation_to_persistence_open_transitions": 3,
+        "persistence_to_correction_world_ticks": 0,
+        "correction_to_immediate_j3_world_ticks": 0,
+        "correction_to_later_j4_open_transitions": 3,
+    }
+    for key, value in expected_timing.items():
+        if timing.get(key) != value:
+            raise ProtocolValidationError(f"timing contract drifted: {key}")
+    if timing.get("same_state_pairs") != [["J0", "J1"], ["J2", "J3"]]:
+        raise ProtocolValidationError("same-state judgement pairs drifted")
 
     experiment_steps: list[int] = []
     checkpoint_dates: list[str] = []
+    judgement_locations: dict[str, tuple[int, str]] = {}
+    judgement_event_count = 0
+    judgement_dates: set[str] = set()
     open_days = 0
     closed_days = 0
+
     for tick, row in enumerate(timeline):
         if not isinstance(row, dict):
             raise ProtocolValidationError(f"timeline[{tick}] must be an object")
@@ -94,9 +114,8 @@ def validate_protocol(protocol: Mapping[str, Any]) -> dict[str, Any]:
             raise ProtocolValidationError("world_tick sequence must be contiguous from zero")
         expected_date = (t_init + timedelta(days=tick)).isoformat()
         if row.get("agent_world_date") != expected_date:
-            raise ProtocolValidationError(
-                f"timeline[{tick}] agent_world_date must be {expected_date}"
-            )
+            raise ProtocolValidationError(f"timeline[{tick}] agent_world_date must be {expected_date}")
+
         status = row.get("market_status")
         if status == "OPEN":
             open_days += 1
@@ -106,26 +125,41 @@ def validate_protocol(protocol: Mapping[str, Any]) -> dict[str, Any]:
             raise ProtocolValidationError(f"invalid market_status at world_tick {tick}")
 
         step = row.get("experiment_step")
-        judgement = row.get("judgement_required")
+        visible = row.get("participant_visible")
+        judgements = row.get("formal_judgement_events")
+        decision = row.get("behaviour_decision_required")
         shadow = row.get("shadow_trade_enabled")
+        if not isinstance(judgements, list):
+            raise ProtocolValidationError("formal_judgement_events must be a list")
+
         if step is None:
-            if judgement is True:
-                raise ProtocolValidationError("judgement requires an experiment_step")
+            if visible is True or decision is True or shadow is True or judgements:
+                raise ProtocolValidationError("world-only tick cannot contain participant checkpoint activity")
         else:
             if not isinstance(step, int) or step < 0:
                 raise ProtocolValidationError("experiment_step must be non-negative integer or null")
+            if status != "OPEN":
+                raise ProtocolValidationError("participant checkpoints must occur on OPEN market dates")
+            if visible is not True or decision is not True or shadow is not True:
+                raise ProtocolValidationError("every participant checkpoint must be visible and record one shadow decision")
             experiment_steps.append(step)
             checkpoint_dates.append(expected_date)
-            if judgement is not True:
-                raise ProtocolValidationError("every Phase 10 participant checkpoint requires judgement")
+
+        for event in judgements:
+            if event in judgement_locations:
+                raise ProtocolValidationError(f"duplicate formal judgement event: {event}")
+            judgement_locations[event] = (tick, expected_date)
+            judgement_event_count += 1
+            judgement_dates.add(expected_date)
+
         if shadow is True and status != "OPEN":
             raise ProtocolValidationError("shadow trading cannot be enabled on CLOSED days")
 
         if tick < world["pre_roll_calendar_days"]:
             if row.get("stage") != "warm_up":
                 raise ProtocolValidationError("all pre-roll ticks must be warm_up")
-            if step is not None or judgement is True or shadow is True:
-                raise ProtocolValidationError("warm-up cannot contain participant checkpoints/trading")
+            if step is not None or visible is True or decision is True or shadow is True or judgements:
+                raise ProtocolValidationError("warm-up cannot contain participant activity")
             if row.get("stimulus_release") != "none":
                 raise ProtocolValidationError("warm-up cannot contain controlled stimulus")
 
@@ -133,12 +167,35 @@ def validate_protocol(protocol: Mapping[str, Any]) -> dict[str, Any]:
         raise ProtocolValidationError("experiment_step values must be contiguous from zero")
     if open_days != world.get("open_days") or closed_days != world.get("closed_days"):
         raise ProtocolValidationError("OPEN/CLOSED counts do not match world summary")
+    if len(experiment_steps) != int(time.get("participant_decision_days", -1)):
+        raise ProtocolValidationError("participant_decision_days must equal participant checkpoint count")
+    if judgement_event_count != int(time.get("formal_judgement_events", -1)):
+        raise ProtocolValidationError("formal_judgement_events count drifted")
+    if len(judgement_dates) != int(time.get("formal_judgement_dates", -1)):
+        raise ProtocolValidationError("formal_judgement_dates count drifted")
+    if set(judgement_locations) != {"J0", "J1", "J2", "J3", "J4"}:
+        raise ProtocolValidationError("formal judgement event set must be J0..J4")
+    if judgement_locations["J0"] != judgement_locations["J1"]:
+        raise ProtocolValidationError("J0/J1 must share one canonical state")
+    if judgement_locations["J2"] != judgement_locations["J3"]:
+        raise ProtocolValidationError("J2/J3 must share one canonical state")
 
     critical_dates = data.get("participant_critical_dates")
     if critical_dates != checkpoint_dates:
-        raise ProtocolValidationError(
-            "participant_critical_dates must equal all formal participant checkpoint dates"
-        )
+        raise ProtocolValidationError("participant_critical_dates must equal all participant decision dates")
+
+    behavior = data.get("participant_behavior", {})
+    expected_behavior = {
+        "decision_required_on_every_participant_checkpoint": True,
+        "participant_checkpoint_only_on_open_market_dates": True,
+        "action_space": ["BUY", "SELL", "HOLD"],
+        "hold_is_valid_decision": True,
+        "quantity_required_for_buy_sell": True,
+        "portfolio_state_recorded_automatically": True,
+        "formal_judgement_not_required_on_every_decision_day": True,
+    }
+    if behavior != expected_behavior:
+        raise ProtocolValidationError("participant behavioural-observation contract drifted")
 
     role = data.get("participant_market_role", {})
     if role.get("price_taker") is not True or role.get("orders_enter_agent_matching_engine") is not False:
@@ -160,10 +217,27 @@ def validate_protocol(protocol: Mapping[str, Any]) -> dict[str, Any]:
         raise ProtocolValidationError("shadow-trade price source contract drifted")
 
     exposure = data.get("stimulus_exposure", {})
-    if exposure.get("misinformation") != "participant_only":
-        raise ProtocolValidationError("misinformation must remain participant_only")
-    if exposure.get("correction") != "participant_only":
-        raise ProtocolValidationError("correction must remain participant_only")
+    if exposure.get("misinformation") != "participant_only" or exposure.get("correction") != "participant_only":
+        raise ProtocolValidationError("misinformation/correction must remain participant_only")
+    if exposure.get("misinformation_release_policy") != "single_release_no_redose":
+        raise ProtocolValidationError("misinformation must be released once")
+    if exposure.get("correction_persistence_policy") != "remains_available_from_release_through_experiment_end":
+        raise ProtocolValidationError("correction persistence contract drifted")
+
+    warm_up = data.get("warm_up", {})
+    warm_rule = warm_up.get("selection_rule", {})
+    if warm_rule.get("candidate_calendar_days") != [2, 3, 4, 5, 6]:
+        raise ProtocolValidationError("warm-up candidate set drifted")
+    if warm_rule.get("minimum_episode_local_open_ticks_before_entry") != 2:
+        raise ProtocolValidationError("warm-up OPEN-tick minimum drifted")
+    if warm_rule.get("minimum_episode_local_closed_ticks_before_entry") != 1:
+        raise ProtocolValidationError("warm-up CLOSED-tick minimum drifted")
+    if warm_rule.get("participant_visible_start_must_be_open") is not True:
+        raise ProtocolValidationError("T_visible must be OPEN")
+    if warm_rule.get("choose_smallest_sufficient_candidate") is not True:
+        raise ProtocolValidationError("warm-up selection must use smallest sufficient candidate")
+    if warm_up.get("selected_calendar_days") != world.get("pre_roll_calendar_days"):
+        raise ProtocolValidationError("selected warm-up length must equal pre-roll length")
 
     canonical = data.get("canonical_world", {})
     required_true = (
@@ -207,3 +281,8 @@ def load_protocol(path: str | Path | None = None) -> dict[str, Any]:
 def participant_checkpoints(protocol: Mapping[str, Any] | None = None) -> tuple[dict[str, Any], ...]:
     data = validate_protocol(protocol) if protocol is not None else load_protocol()
     return tuple(row for row in data["timeline"] if row["experiment_step"] is not None)
+
+
+def formal_judgement_rows(protocol: Mapping[str, Any] | None = None) -> tuple[dict[str, Any], ...]:
+    data = validate_protocol(protocol) if protocol is not None else load_protocol()
+    return tuple(row for row in data["timeline"] if row["formal_judgement_events"])
