@@ -1,0 +1,258 @@
+{
+  "protocol_version": "1.0",
+  "status": "PHASE 10 PROTOCOL V1 / FROZEN AFTER ZERO-LLM EXACT-HORIZON VALIDATION",
+  "world": {
+    "initialization_date": "2023-06-15",
+    "participant_visible_start_date": "2023-06-19",
+    "end_date": "2023-06-28",
+    "pre_roll_calendar_days": 4,
+    "participant_visible_calendar_days": 10,
+    "formal_world_ticks": 14,
+    "open_days": 8,
+    "closed_days": 6
+  },
+  "time": {
+    "world_tick_is_calendar_day": true,
+    "world_tick_definition": "contiguous_agent_world_calendar_day",
+    "agent_world_date_definition": "authoritative_simulated_calendar_date",
+    "experiment_step_definition": "participant_checkpoint",
+    "experiment_step_separate_from_world_tick": true,
+    "experiment_step_separate_from_agent_world_date": true
+  },
+  "participant_market_role": {
+    "price_taker": true,
+    "orders_enter_agent_matching_engine": false,
+    "participant_can_change_agent_world": false,
+    "shadow_trade_price_source": {
+      "source_kind": "sealed_canonical_agent_world_sqlite",
+      "table": "StockData",
+      "field": "close_price",
+      "stock_key": "stock_id",
+      "date_key": "date",
+      "lookup": "exact_stock_id_and_agent_world_date",
+      "frontend_override_allowed": false,
+      "forward_fill_allowed": false,
+      "nearest_date_fallback_allowed": false,
+      "missing_price_policy": "fail_closed_no_participant_execution"
+    }
+  },
+  "stimulus_exposure": {
+    "misinformation": "participant_only",
+    "correction": "participant_only",
+    "background_twinmarket_news_separate": true,
+    "persistence_policy": "misinformation_remains_available_without_new_dose"
+  },
+  "warm_up": {
+    "participant_present": false,
+    "controlled_stimulus_present": false,
+    "participant_judgement": false,
+    "participant_shadow_trade": false
+  },
+  "closed_day_policy": {
+    "inherit_twinmarket": true,
+    "activation_throttling": false,
+    "participant_trading_enabled": false,
+    "zero_agent_activity_does_not_close_market": true
+  },
+  "zero_active_policy": {
+    "valid_state": true,
+    "force_activation": false,
+    "resample": false,
+    "seed_fishing": false
+  },
+  "canonical_world": {
+    "generated_once": true,
+    "generated_before_participant_exposure": true,
+    "shared_across_participants": true,
+    "immutable_during_formal_collection": true,
+    "participant_observes_completed_state": true,
+    "snapshot_is_storage_not_market_generator": true
+  },
+  "population": {
+    "candidates": [
+      20,
+      30
+    ],
+    "final_n": 20,
+    "selection_rule": {
+      "activation_seed_count": 100,
+      "activation_seed_prefix": "marketlens-phase10-formal-horizon-activation-",
+      "full_horizon_state_carry_forward": true,
+      "critical_date_any_zero_max_trajectories": 5,
+      "critical_date_min_mean_active_agents": 3.0,
+      "if_n20_sufficient": "select_n20",
+      "if_n20_fails_and_n30_passes": "n30_requires_one_narrow_real_backend_validation",
+      "if_both_fail": "stop_and_revisit_population_adequacy_contract",
+      "parsimony": "choose_smallest_sufficient_population"
+    },
+    "selection_evidence": {
+      "gate": "phase10_exact_horizon_zero_llm_n20_n30",
+      "formal_experiment_evidence": false,
+      "n_seeds": 100,
+      "n_world_ticks": 14,
+      "n20": {
+        "sufficient": true,
+        "critical_any_zero_trajectories": 4,
+        "critical_any_zero_frequency": 0.04,
+        "minimum_critical_date_mean_active_agents": 3.88
+      },
+      "n30": {
+        "sufficient": true,
+        "critical_any_zero_trajectories": 0,
+        "critical_any_zero_frequency": 0.0,
+        "minimum_critical_date_mean_active_agents": 6.67
+      },
+      "decision": "SELECT_N20_BY_PREDECLARED_ADEQUACY_AND_PARSIMONY",
+      "n30_real_validation_required": false
+    }
+  },
+  "participant_critical_dates": [
+    "2023-06-19",
+    "2023-06-20",
+    "2023-06-21",
+    "2023-06-26",
+    "2023-06-28"
+  ],
+  "timeline": [
+    {
+      "world_tick": 0,
+      "agent_world_date": "2023-06-15",
+      "market_status": "OPEN",
+      "experiment_step": null,
+      "stage": "warm_up",
+      "stimulus_release": "none",
+      "judgement_required": false,
+      "shadow_trade_enabled": false
+    },
+    {
+      "world_tick": 1,
+      "agent_world_date": "2023-06-16",
+      "market_status": "OPEN",
+      "experiment_step": null,
+      "stage": "warm_up",
+      "stimulus_release": "none",
+      "judgement_required": false,
+      "shadow_trade_enabled": false
+    },
+    {
+      "world_tick": 2,
+      "agent_world_date": "2023-06-17",
+      "market_status": "CLOSED",
+      "experiment_step": null,
+      "stage": "warm_up",
+      "stimulus_release": "none",
+      "judgement_required": false,
+      "shadow_trade_enabled": false
+    },
+    {
+      "world_tick": 3,
+      "agent_world_date": "2023-06-18",
+      "market_status": "CLOSED",
+      "experiment_step": null,
+      "stage": "warm_up",
+      "stimulus_release": "none",
+      "judgement_required": false,
+      "shadow_trade_enabled": false
+    },
+    {
+      "world_tick": 4,
+      "agent_world_date": "2023-06-19",
+      "market_status": "OPEN",
+      "experiment_step": 0,
+      "stage": "baseline",
+      "stimulus_release": "none",
+      "judgement_required": true,
+      "shadow_trade_enabled": true
+    },
+    {
+      "world_tick": 5,
+      "agent_world_date": "2023-06-20",
+      "market_status": "OPEN",
+      "experiment_step": 1,
+      "stage": "misinformation",
+      "stimulus_release": "misinformation",
+      "judgement_required": true,
+      "shadow_trade_enabled": true
+    },
+    {
+      "world_tick": 6,
+      "agent_world_date": "2023-06-21",
+      "market_status": "OPEN",
+      "experiment_step": 2,
+      "stage": "persistence",
+      "stimulus_release": "none",
+      "judgement_required": true,
+      "shadow_trade_enabled": true
+    },
+    {
+      "world_tick": 7,
+      "agent_world_date": "2023-06-22",
+      "market_status": "CLOSED",
+      "experiment_step": null,
+      "stage": "world_only_interval",
+      "stimulus_release": "none",
+      "judgement_required": false,
+      "shadow_trade_enabled": false
+    },
+    {
+      "world_tick": 8,
+      "agent_world_date": "2023-06-23",
+      "market_status": "CLOSED",
+      "experiment_step": null,
+      "stage": "world_only_interval",
+      "stimulus_release": "none",
+      "judgement_required": false,
+      "shadow_trade_enabled": false
+    },
+    {
+      "world_tick": 9,
+      "agent_world_date": "2023-06-24",
+      "market_status": "CLOSED",
+      "experiment_step": null,
+      "stage": "world_only_interval",
+      "stimulus_release": "none",
+      "judgement_required": false,
+      "shadow_trade_enabled": false
+    },
+    {
+      "world_tick": 10,
+      "agent_world_date": "2023-06-25",
+      "market_status": "CLOSED",
+      "experiment_step": null,
+      "stage": "world_only_interval",
+      "stimulus_release": "none",
+      "judgement_required": false,
+      "shadow_trade_enabled": false
+    },
+    {
+      "world_tick": 11,
+      "agent_world_date": "2023-06-26",
+      "market_status": "OPEN",
+      "experiment_step": 3,
+      "stage": "correction_immediate",
+      "stimulus_release": "authoritative_correction",
+      "judgement_required": true,
+      "shadow_trade_enabled": true
+    },
+    {
+      "world_tick": 12,
+      "agent_world_date": "2023-06-27",
+      "market_status": "OPEN",
+      "experiment_step": null,
+      "stage": "post_correction_world_interval",
+      "stimulus_release": "none",
+      "judgement_required": false,
+      "shadow_trade_enabled": false
+    },
+    {
+      "world_tick": 13,
+      "agent_world_date": "2023-06-28",
+      "market_status": "OPEN",
+      "experiment_step": 4,
+      "stage": "later_post_correction",
+      "stimulus_release": "none",
+      "judgement_required": true,
+      "shadow_trade_enabled": true
+    }
+  ]
+}

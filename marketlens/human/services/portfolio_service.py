@@ -30,7 +30,7 @@ from marketlens.human.stores.errors import (
 )
 from marketlens.human.stores.portfolio_store import PortfolioSnapshot, PortfolioStore
 from marketlens.market.asset_catalog import AssetCatalog, AssetNotFoundError
-from marketlens.market.price_provider import CsvClosePriceProvider, PriceNotFoundError
+from marketlens.market.price_provider import ClosePriceProvider, PriceNotFoundError
 
 
 class PortfolioNotFoundError(LookupError):
@@ -87,7 +87,7 @@ class PortfolioService:
         *,
         store: PortfolioStore,
         assets: AssetCatalog,
-        prices: CsvClosePriceProvider,
+        prices: ClosePriceProvider,
         policy: PortfolioPolicy,
     ):
         self.store = store
