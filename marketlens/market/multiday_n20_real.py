@@ -195,6 +195,34 @@ def _activation_sequence(
     return tuple(item.batch for item in sequence), tuple(evidence)
 
 
+def extract_phase6_top_user_ids(
+    prominence_snapshot: Mapping[str, Any],
+    *,
+    expected_top_n: int,
+) -> tuple[str, ...]:
+    """Read top-user IDs from the frozen Phase 6 nested snapshot shape."""
+    prominence = prominence_snapshot.get("prominence")
+    if not isinstance(prominence, Mapping):
+        raise Phase09CError(
+            "Phase 6 prominence snapshot is missing its nested 'prominence' record"
+        )
+
+    reported_top_n = prominence.get("top_n")
+    if reported_top_n != expected_top_n:
+        raise Phase09CError(
+            "Phase 6 prominence snapshot reported top_n="
+            f"{reported_top_n!r}; expected {expected_top_n}"
+        )
+
+    top_user_ids = tuple(map(str, prominence.get("top_user_ids", ())))
+    if len(top_user_ids) != expected_top_n:
+        raise Phase09CError(
+            f"dynamic prominence returned {len(top_user_ids)} top users; "
+            f"expected {expected_top_n}"
+        )
+    return top_user_ids
+
+
 def validate_n20_real_summary(
     summary: Mapping[str, Any],
 ) -> tuple[str, list[str]]:
@@ -506,18 +534,16 @@ def run_phase09c_n20(
                 similarity_threshold=SIMILARITY_THRESHOLD,
                 time_decay_factor=TIME_DECAY_FACTOR,
             )
-            prominence = make_prominence_snapshot(
+            prominence_snapshot = make_prominence_snapshot(
                 graph_built, top_fraction=TOP_FRACTION
             )
-            top_user_ids = tuple(map(str, prominence.get("top_user_ids", ())))
             if graph_built.n_nodes != POPULATION_SIZE:
                 all_graphs_bounded_n20 = False
-            expected_top_n = max(1, int(POPULATION_SIZE * TOP_FRACTION))
-            if len(top_user_ids) != expected_top_n:
-                raise Phase09CError(
-                    f"dynamic prominence returned {len(top_user_ids)} top users; "
-                    f"expected {expected_top_n} for N20"
-                )
+            expected_top_n = int(POPULATION_SIZE * TOP_FRACTION)
+            top_user_ids = extract_phase6_top_user_ids(
+                prominence_snapshot,
+                expected_top_n=expected_top_n,
+            )
 
             news_items = load_daily_news(news_pickle_p, current_date=date_str)
             df_stock, df_strategy = _load_runtime_frames(

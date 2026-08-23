@@ -10,6 +10,7 @@ from marketlens.market.multiday_n20_real import (
     EXPECTED_MARKET_OPEN,
     EXPECTED_RUNTIME_SHA256,
     POPULATION_SIZE,
+    extract_phase6_top_user_ids,
     validate_n20_real_summary,
 )
 
@@ -125,3 +126,34 @@ def test_runner_does_not_expose_population_size_or_date_override():
     assert "--population-size" not in source
     assert "--start-date" not in source
     assert "--end-date" not in source
+
+
+def test_phase6_top_users_are_read_from_nested_prominence_record():
+    snapshot = {
+        "phase": "6B",
+        "graph": {"n_nodes": 20},
+        "prominence": {
+            "top_n": 2,
+            "top_user_ids": ["25901251490", "72429318063"],
+        },
+    }
+
+    assert extract_phase6_top_user_ids(
+        snapshot,
+        expected_top_n=2,
+    ) == ("25901251490", "72429318063")
+
+
+def test_top_level_top_user_ids_do_not_override_phase6_nested_record():
+    snapshot = {
+        "top_user_ids": ["wrong-shape"],
+        "prominence": {
+            "top_n": 2,
+            "top_user_ids": ["25901251490", "72429318063"],
+        },
+    }
+
+    assert extract_phase6_top_user_ids(
+        snapshot,
+        expected_top_n=2,
+    ) == ("25901251490", "72429318063")
