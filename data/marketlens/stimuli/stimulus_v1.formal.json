@@ -1,0 +1,25 @@
+{
+  "stimulus_set_id": "marketlens-phase11-mei-ownership-formal-v1",
+  "material_version": "1.0",
+  "protocol_version": "1.1",
+  "target_stock_id": "MEI",
+  "formal_use_status": "formal_frozen",
+  "misinformation": {
+    "stimulus_id": "MISINFO_MEI_OWNERSHIP_001",
+    "kind": "misinformation",
+    "headline": "Manufacturing Index constituent LONGi takes 1.85% stake in Ningxia Baofeng New Energy",
+    "body": "LONGi Hong Kong Investment Limited, a subsidiary of LONGi Green Energy, has acquired a 1.8488% stake in Ningxia Baofeng New Energy Technology Co., Ltd.",
+    "release_event": "after_J0_before_J1",
+    "content_sha256": "7846c55c7b5ccbcb97ff28ec8d8c52a1b51336197805b7fec4aa4d3e226403b6"
+  },
+  "correction": {
+    "stimulus_id": "CORRECTION_MEI_OWNERSHIP_001",
+    "kind": "authoritative_correction",
+    "headline": "Correction: reported LONGi stake in Ningxia Baofeng was inaccurate",
+    "body": "LONGi Hong Kong Investment Limited is neither a wholly owned nor controlled subsidiary of LONGi Green Energy. LONGi Green Energy and its subsidiaries did not acquire any stake in Ningxia Baofeng New Energy Technology Co., Ltd.",
+    "release_event": "after_J2_before_J3",
+    "corrects_stimulus_id": "MISINFO_MEI_OWNERSHIP_001",
+    "content_sha256": "fd042b4cbe194ef544bd162c7605da75678c32d654c6ae722867c2debd3cf269"
+  },
+  "manifest_sha256": "e65fe566a58af44f0738b14fff160a09dfc42f34d73455accb92aae2cdadef9a"
+}
