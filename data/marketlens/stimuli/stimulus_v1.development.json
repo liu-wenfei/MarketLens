@@ -1,0 +1,25 @@
+{
+  "stimulus_set_id": "marketlens-phase11-development-v1",
+  "material_version": "1.0-dev",
+  "protocol_version": "1.1",
+  "target_stock_id": "SYNTHETIC_STOCK",
+  "formal_use_status": "development",
+  "misinformation": {
+    "stimulus_id": "MISINFO_DEV_001",
+    "kind": "misinformation",
+    "headline": "SYNTHETIC DEVELOPMENT MISINFORMATION",
+    "body": "Synthetic development-only text for Phase 11 validation. Not frozen for participant use.",
+    "release_event": "after_J0_before_J1",
+    "content_sha256": "7e250c4056a431940bdd97ddc7f2821d879428e24c32e41b762f3d9f61db054d"
+  },
+  "correction": {
+    "stimulus_id": "CORRECTION_DEV_001",
+    "kind": "authoritative_correction",
+    "headline": "SYNTHETIC DEVELOPMENT CORRECTION",
+    "body": "Synthetic development-only correction for Phase 11 validation. Not frozen for participant use.",
+    "release_event": "after_J2_before_J3",
+    "corrects_stimulus_id": "MISINFO_DEV_001",
+    "content_sha256": "918968e229e7188240f01d2b89c837f7227fc53c89ef1b605f0ceb885c54ac90"
+  },
+  "manifest_sha256": "ab1322d8d926502364321c03b8f01cdbc9cfe1d8a05133f967691416662367ea"
+}
