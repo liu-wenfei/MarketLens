@@ -88,3 +88,19 @@ A PASS requires, without seed changes:
 
 If natural post/belief/forum coverage does not occur, the result is
 `INCONCLUSIVE_NATURAL_MULTIDAY_COVERAGE`, not a reason to seed-fish.
+
+## Completed result
+
+The one permitted clean-HEAD real-backend validation was executed on commit `8b4704b` and returned `PASS`.
+
+```text
+active Agents = 10 / 7 / 3
+market states = OPEN / OPEN / CLOSED
+posts created = 20
+ForumDB belief Agents observed = 25
+later-day forum action calls = 10
+continuity checks = PASS
+duration = 2292.178 s
+```
+
+This closes the N30 engineering-feasibility gate. It remains non-formal engineering evidence and must not be rerun to seek a more convenient stochastic trajectory.

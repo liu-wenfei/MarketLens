@@ -158,7 +158,7 @@ def markdown_report(summary: dict) -> str:
             f"1. Across the 100 full-horizon activation trajectories, trajectories with at least one zero-active outcome on participant-critical decision dates must be `<= {zero_limit}/100`.",
             f"2. Mean active Agents on every participant-critical decision date must be `>= {min_mean:.1f}`.",
             "3. The comparison must use all 100 predeclared seeds with full-horizon activation-state carry-forward and unchanged bounded population membership.",
-            "4. If N20 passes, parsimony selects N20. N30 real-backend validation is required only if N20 fails and N30 passes.",
+            "4. If N20 passes, parsimony selects N20. If N20 fails and N30 passes, N30 may be frozen only after the single bounded real-backend validation PASS recorded in the protocol.",
             "",
             "## Candidate results",
             "",
@@ -249,7 +249,21 @@ def main() -> int:
         if source_before != source_after:
             raise RuntimeError("source Agent database changed during zero-LLM preflight")
 
-        decision = decide_population(results[20], results[30])
+        n30_real_backend_validated = (
+            protocol["population"]["selection_evidence"]
+            .get("n30_real_backend_validation", {})
+            .get("status")
+            == "PASS"
+        )
+        decision = decide_population(
+            results[20],
+            results[30],
+            n30_real_backend_validated=n30_real_backend_validated,
+        )
+        if decision["final_n"] != protocol["population"]["final_n"]:
+            raise RuntimeError(
+                f"exact-horizon population decision {decision['final_n']} does not match frozen protocol N{protocol['population']['final_n']}"
+            )
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
         run_id = f"{timestamp}_{git['commit'][:8]}_phase10_timing_horizon"
         artifact_dir = (REPO_ROOT / args.artifact_root / run_id).resolve()
@@ -288,6 +302,8 @@ def main() -> int:
                 "critical_date_min_mean_active_agents": float(population_rule["critical_date_min_mean_active_agents"]),
                 "activation_seed_count": int(population_rule["activation_seed_count"]),
                 "full_horizon_state_carry_forward": bool(population_rule["full_horizon_state_carry_forward"]),
+                "n30_real_backend_validated": n30_real_backend_validated,
+                "frozen_final_n": int(protocol["population"]["final_n"]),
             },
             "population_seed": POPULATION_SEED,
             "activation_seed_count": len(seeds),

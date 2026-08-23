@@ -62,7 +62,7 @@ def test_warm_up_structural_gate_selects_w4_as_smallest_sufficient_candidate():
     assert selected.closed_ticks_before_entry == 2
 
 
-def test_exact_horizon_comparison_uses_full_15_tick_state_carry_forward(tmp_path):
+def test_exact_horizon_comparison_uses_full_27_tick_state_carry_forward(tmp_path):
     protocol = load_protocol()
     outcomes = {}
     for n in (20, 30):
@@ -78,22 +78,31 @@ def test_exact_horizon_comparison_uses_full_15_tick_state_carry_forward(tmp_path
             population_size=n,
             protocol=protocol,
         )
-        assert outcomes[n].n_world_ticks == 15
+        assert outcomes[n].n_world_ticks == 27
         assert outcomes[n].n_seeds == 100
         assert set(outcomes[n].critical_date_mean_active) == set(
             protocol["participant_critical_dates"]
         )
 
-    assert outcomes[20].sufficient is True
-    assert outcomes[20].critical_any_zero_trajectories == 4
+    assert outcomes[20].sufficient is False
+    assert outcomes[20].critical_any_zero_trajectories == 9
     assert outcomes[20].minimum_critical_mean_active == 3.88
     assert outcomes[30].sufficient is True
     assert outcomes[30].critical_any_zero_trajectories == 0
-    assert outcomes[30].minimum_critical_mean_active == 6.64
+    assert outcomes[30].minimum_critical_mean_active == 6.26
 
-    decision = decide_population(outcomes[20], outcomes[30])
-    assert decision["decision"] == "SELECT_N20"
-    assert decision["final_n"] == 20
+    pending = decide_population(outcomes[20], outcomes[30])
+    assert pending["decision"] == "N30_REQUIRES_NARROW_REAL_VALIDATION"
+    assert pending["final_n"] is None
+    assert pending["requires_n30_real_validation"] is True
+
+    decision = decide_population(
+        outcomes[20],
+        outcomes[30],
+        n30_real_backend_validated=True,
+    )
+    assert decision["decision"] == "SELECT_N30"
+    assert decision["final_n"] == 30
     assert decision["requires_n30_real_validation"] is False
 
 
@@ -116,9 +125,9 @@ def test_generated_preflight_report_states_predeclared_gate_thresholds():
             "T_init": "2023-06-15",
             "warm_up_calendar_days": 4,
             "T_visible": "2023-06-19",
-            "T_end": "2023-06-29",
-            "formal_world_ticks": 15,
-            "participant_decision_days": 7,
+            "T_end": "2023-07-11",
+            "formal_world_ticks": 27,
+            "participant_decision_days": 15,
             "formal_judgement_events": 5,
             "formal_judgement_dates": 3,
             "participant_critical_dates": ["2023-06-19"],
@@ -143,21 +152,21 @@ def test_generated_preflight_report_states_predeclared_gate_thresholds():
         },
         "candidates": {
             "20": {
-                "sufficient": True,
-                "critical_any_zero_trajectories": 4,
+                "sufficient": False,
+                "critical_any_zero_trajectories": 9,
                 "n_seeds": 100,
                 "minimum_critical_mean_active": 3.88,
-                "overall_mean_active": 4.03,
+                "overall_mean_active": 4.07,
             },
             "30": {
                 "sufficient": True,
                 "critical_any_zero_trajectories": 0,
                 "n_seeds": 100,
-                "minimum_critical_mean_active": 6.64,
-                "overall_mean_active": 6.66,
+                "minimum_critical_mean_active": 6.26,
+                "overall_mean_active": 6.68,
             },
         },
-        "decision": {"decision": "SELECT_N20", "reason": "parsimony"},
+        "decision": {"decision": "SELECT_N30", "reason": "N30 real-backend PASS already recorded"},
     }
     report = markdown_report(summary)
     assert "<= 5/100" in report

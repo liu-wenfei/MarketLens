@@ -209,7 +209,19 @@ def evaluate_candidate(
     )
 
 
-def decide_population(n20: CandidateAdequacy, n30: CandidateAdequacy) -> dict[str, Any]:
+def decide_population(
+    n20: CandidateAdequacy,
+    n30: CandidateAdequacy,
+    *,
+    n30_real_backend_validated: bool = False,
+) -> dict[str, Any]:
+    """Apply the predeclared N20/N30 rule without reopening population selection.
+
+    Protocol v1.1 records that the one permitted bounded N30 real-backend
+    validation has already PASSed.  The exact-horizon zero-LLM rerun therefore
+    selects N30 only when N20 fails, N30 passes, and that prior engineering gate
+    is explicitly supplied as validated.
+    """
     if n20.population_size != 20 or n30.population_size != 30:
         raise FormalHorizonError("decision requires N20 and N30 results")
     if n20.sufficient:
@@ -219,13 +231,20 @@ def decide_population(n20: CandidateAdequacy, n30: CandidateAdequacy) -> dict[st
             "requires_n30_real_validation": False,
             "reason": "N20 satisfies the predeclared formal-horizon adequacy gates; parsimony applies.",
         }
+    if n30.sufficient and n30_real_backend_validated:
+        return {
+            "decision": "SELECT_N30",
+            "final_n": 30,
+            "requires_n30_real_validation": False,
+            "reason": "N20 fails the unchanged exact-horizon adequacy gate, N30 passes, and the single predeclared bounded N30 real-backend validation has already PASSed.",
+        }
     if n30.sufficient:
         return {
             "decision": "N30_REQUIRES_NARROW_REAL_VALIDATION",
             "final_n": None,
             "requires_n30_real_validation": True,
-            "recommended_validation_date": "2023-06-19",
-            "reason": "N20 fails a predeclared adequacy gate while N30 passes; one narrow real-backend N30 validation is required before freeze.",
+            "recommended_validation_dates": ["2023-06-15", "2023-06-16", "2023-06-17"],
+            "reason": "N20 fails a predeclared adequacy gate while N30 passes; the single bounded real-backend N30 validation is required before freeze.",
         }
     return {
         "decision": "NO_CANDIDATE_SUFFICIENT",

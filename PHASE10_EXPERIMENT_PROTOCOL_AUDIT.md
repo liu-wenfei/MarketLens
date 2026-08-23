@@ -1,14 +1,14 @@
-# MarketLens Phase 10 — Experiment Protocol Audit & Timing Amendment
+# MarketLens Phase 10 — Experiment Protocol Audit & Protocol v1.1 Long-Horizon Amendment
 
-**Status:** PHASE 10 PROTOCOL V1 TIMING AMENDED — ZERO-LLM STRUCTURAL + EXACT-HORIZON GATES PASS
+**Status:** PHASE 10 PROTOCOL v1.1 — 15 DECISION DAYS / N30 / REAL-BACKEND FEASIBILITY PASS
 **Phase:** 10 — Experiment Protocol Audit & Freeze
 **LLM/API cost of this audit/amendment:** 0
 
 ## 1. Scope and amendment rationale
 
-This document records the bounded Phase 10 targeted audit and the final timing amendment agreed after the first Phase 10 protocol commit.
+This document records the bounded Phase 10 targeted audit, the tagged Protocol v1.0 timing freeze, and the subsequent outcome-blind long-horizon amendment to Protocol v1.1.
 
-The earlier commit correctly froze the world/participant causal boundary, canonical shadow-price source, and N20/N30 adequacy rule, but represented the five formal judgement events on five different Agent-world dates. The timing amendment retains the Git history and changes only the experiment-time contract so that immediate pre/post manipulation contrasts share the same completed canonical state.
+Protocol v1.0 correctly froze the world/participant causal boundary, canonical shadow-price source, same-state immediate contrasts, and N20/N30 adequacy rule. After v1.0 was tagged, zero-LLM design-impact comparisons were used to compare behavioural sampling density and longer symmetric intervals without looking at participant outcomes or LLM-generated effects. This v1.1 amendment retains the full Git history and adopts the selected 15-decision long-horizon design plus N30 after the already-predeclared N30 real-backend feasibility gate PASSed.
 
 The amendment does **not** redesign frozen Phase 4/6/7/9 behavior and does **not** implement Phase 11.
 
@@ -135,7 +135,7 @@ TwinMarket dynamically evolves
 
 Snapshot is storage, not generation.
 
-## 6. Final Phase 10 timing design
+## 6. Final Phase 10 v1.1 timing design
 
 The protocol distinguishes:
 
@@ -150,7 +150,7 @@ They are not interchangeable.
 
 ### 6.1 Immediate pre/post manipulation contrasts
 
-To reduce market/news/Agent-world movement as a confound:
+Immediate effects remain same-state contrasts:
 
 ```text
 same sealed S(t)
@@ -160,7 +160,7 @@ same sealed S(t)
 → one shadow-trade decision
 ```
 
-and later:
+and:
 
 ```text
 same sealed S(t)
@@ -170,33 +170,45 @@ same sealed S(t)
 → one shadow-trade decision
 ```
 
-Therefore:
+Therefore `J0/J1` share one completed canonical state and `J2/J3` share one completed canonical state. J4 is the later post-correction judgement after intervening simulated Agent-world progression.
+
+### 6.2 Outcome-blind decision-day and interval selection
+
+Protocol v1.0 froze 7 participant decision days and 3 OPEN-state transitions per delayed phase. Before any formal participant outcome existed, zero-LLM design-impact analyses compared:
 
 ```text
-J0 and J1 share one canonical state/date.
-J2 and J3 share one canonical state/date.
+0 / 2 / 4 / 7 / 9 / 11 decision days
 ```
 
-J4 is the later post-correction judgement after intervening Agent-world progression.
-
-### 6.2 Experimental delay unit
-
-`world_tick` remains one calendar day.
-
-Experimental persistence delays are expressed in **OPEN-state transitions**:
+for behavioural sampling density, followed by longer symmetric candidates:
 
 ```text
-misinformation → persistence = 3 subsequent OPEN-state transitions
-correction → later J4       = 3 subsequent OPEN-state transitions
+11 / 13 / 15 / 17 decision days
+= 5 / 6 / 7 / 8 OPEN-state transitions per phase
 ```
 
-CLOSED days continue to advance the Agent world but do not count as an OPEN-state transition.
+No candidate was selected from misinformation/correction effect size. The selected design is:
 
-This preserves inherited calendar progression while giving the participant two behavioural-only OPEN checkpoints between each manipulation and the later formal measurement.
+```text
+participant decision days = 15
+OPEN transitions per phase = 7
+intermediate behavioural-only observations per phase = 6
+```
+
+The 15-decision candidate was selected because, on the inherited calendar, it gives equal delayed windows around the correction checkpoint:
+
+```text
+misinformation → correction = 7 OPEN transitions = 11 simulated calendar days
+correction → J4             = 7 OPEN transitions = 11 simulated calendar days
+```
+
+The 17-decision alternative adds only one intermediate behavioural point per phase while losing simulated-calendar symmetry (`14 / 10` elapsed days) and adding participant/simulation burden.
+
+This is simulated-time progression, not a claim of 11 days of real human memory retention.
 
 ### 6.3 Participant decision cadence
 
-Every formal participant checkpoint occurs on an OPEN date and records one behavioural decision:
+Every participant checkpoint occurs on an inherited OPEN date and records exactly one behavioural decision:
 
 ```text
 BUY / SELL / HOLD
@@ -204,16 +216,14 @@ BUY / SELL / HOLD
 + automatic participant portfolio state
 ```
 
-`HOLD` is a valid behavioural decision.
+`HOLD` remains a valid behavioural observation. Formal judgement is not repeated at every decision point.
 
-Formal judgement is **not** required on every participant decision day.
-
-The final design therefore contains:
+Final v1.1 counts:
 
 ```text
 5 formal judgement events
 across 3 formal judgement dates
-7 participant decision days
+15 participant decision days
 ```
 
 ## 7. Stimulus persistence contract
@@ -236,29 +246,13 @@ explicitly links to the misinformation
 → remains available from release through experiment end
 ```
 
-This prevents stimulus disappearance from acting as an unintended truth cue.
-
-Phase 11 implements these frozen release/visibility rules; it does not redesign them.
+This prevents stimulus disappearance from acting as an unintended truth cue. Phase 11 implements these frozen release/visibility rules; it does not redesign them.
 
 ## 8. Warm-up structural gate
 
-Warm-up is not selected by looking for desirable Agent outputs.
+Warm-up remains outcome-blind. The predeclared candidate set is `W2/W3/W4/W5/W6` calendar ticks. A candidate is sufficient only if it has at least two episode-local OPEN ticks and one CLOSED tick before entry, an OPEN participant entry date, and complete background-news coverage. The smallest sufficient candidate is selected.
 
-Predeclared candidate set:
-
-```text
-W2 / W3 / W4 / W5 / W6 calendar ticks
-```
-
-A candidate is sufficient only if:
-
-1. at least 2 episode-local OPEN ticks occur before participant entry;
-2. at least 1 CLOSED tick occurs before participant entry;
-3. `T_visible` is OPEN;
-4. background-news coverage is complete through participant entry;
-5. choose the smallest sufficient candidate.
-
-Zero-LLM structural result:
+The existing zero-LLM gate remains:
 
 | Candidate | T_visible candidate | Sufficient | OPEN before entry | CLOSED before entry | T_visible OPEN |
 |---|---|---:|---:|---:|---:|
@@ -277,117 +271,137 @@ warm-up   = 4 calendar world ticks
 T_visible = 2023-06-19
 ```
 
-## 9. Final exact timeline
+## 9. Final v1.1 exact timeline
 
-The authoritative inherited calendar/news audit confirms `2023-06-29` is OPEN and every date from `2023-06-15` through `2023-06-29` has exactly one daily background-news row.
+The inherited trading calendar gives 17 OPEN and 10 CLOSED ticks across the 27-tick canonical horizon. Participant decisions occur on every participant-visible OPEN state from `2023-06-19` through `2023-07-11`.
 
-| world_tick | date | market | experiment_step | participant event | formal judgements | shadow decision |
-|---:|---|---|---:|---|---|---:|
-| 0 | 2023-06-15 | OPEN | — | warm-up | — | no |
-| 1 | 2023-06-16 | OPEN | — | warm-up | — | no |
-| 2 | 2023-06-17 | CLOSED | — | warm-up | — | no |
-| 3 | 2023-06-18 | CLOSED | — | warm-up | — | no |
-| 4 | 2023-06-19 | OPEN | 0 | baseline → misinformation → immediate response | J0, J1 | yes |
-| 5 | 2023-06-20 | OPEN | 1 | misinformation-phase behaviour | — | yes |
-| 6 | 2023-06-21 | OPEN | 2 | misinformation-phase behaviour | — | yes |
-| 7 | 2023-06-22 | CLOSED | — | world-only closed interval | — | no |
-| 8 | 2023-06-23 | CLOSED | — | world-only closed interval | — | no |
-| 9 | 2023-06-24 | CLOSED | — | world-only closed interval | — | no |
-| 10 | 2023-06-25 | CLOSED | — | world-only closed interval | — | no |
-| 11 | 2023-06-26 | OPEN | 3 | persistence → correction → immediate response | J2, J3 | yes |
-| 12 | 2023-06-27 | OPEN | 4 | post-correction behaviour | — | yes |
-| 13 | 2023-06-28 | OPEN | 5 | post-correction behaviour | — | yes |
-| 14 | 2023-06-29 | OPEN | 6 | later post-correction | J4 | yes |
+| tick | date | market | step | participant event | formal judgements |
+|---:|---|---|---:|---|---|
+| 0 | 2023-06-15 | OPEN | — | warm-up | — |
+| 1 | 2023-06-16 | OPEN | — | warm-up | — |
+| 2 | 2023-06-17 | CLOSED | — | warm-up | — |
+| 3 | 2023-06-18 | CLOSED | — | warm-up | — |
+| 4 | 2023-06-19 | OPEN | 0 | baseline → misinformation → immediate response | J0, J1 |
+| 5 | 2023-06-20 | OPEN | 1 | misinformation-phase behaviour | — |
+| 6 | 2023-06-21 | OPEN | 2 | misinformation-phase behaviour | — |
+| 7–10 | 2023-06-22…25 | CLOSED | — | world-only progression | — |
+| 11 | 2023-06-26 | OPEN | 3 | misinformation-phase behaviour | — |
+| 12 | 2023-06-27 | OPEN | 4 | misinformation-phase behaviour | — |
+| 13 | 2023-06-28 | OPEN | 5 | misinformation-phase behaviour | — |
+| 14 | 2023-06-29 | OPEN | 6 | misinformation-phase behaviour | — |
+| 15 | 2023-06-30 | OPEN | 7 | persistence → correction → immediate response | J2, J3 |
+| 16–17 | 2023-07-01…02 | CLOSED | — | world-only progression | — |
+| 18 | 2023-07-03 | OPEN | 8 | post-correction behaviour | — |
+| 19 | 2023-07-04 | OPEN | 9 | post-correction behaviour | — |
+| 20 | 2023-07-05 | OPEN | 10 | post-correction behaviour | — |
+| 21 | 2023-07-06 | OPEN | 11 | post-correction behaviour | — |
+| 22 | 2023-07-07 | OPEN | 12 | post-correction behaviour | — |
+| 23–24 | 2023-07-08…09 | CLOSED | — | world-only progression | — |
+| 25 | 2023-07-10 | OPEN | 13 | post-correction behaviour | — |
+| 26 | 2023-07-11 | OPEN | 14 | later post-correction | J4 |
 
 Final participant-critical decision dates:
 
 ```text
-2023-06-19
-2023-06-20
-2023-06-21
-2023-06-26
-2023-06-27
-2023-06-28
-2023-06-29
+2023-06-19, 2023-06-20, 2023-06-21,
+2023-06-26, 2023-06-27, 2023-06-28, 2023-06-29, 2023-06-30,
+2023-07-03, 2023-07-04, 2023-07-05, 2023-07-06, 2023-07-07,
+2023-07-10, 2023-07-11
 ```
 
 Final world contract:
 
 ```text
-T_init    = 2023-06-15
+T_init = 2023-06-15
 T_visible = 2023-06-19
-T_end     = 2023-06-29
-formal world ticks = 15
-participant decision days = 7
+T_end = 2023-07-11
+formal world ticks = 27
+participant-visible simulated span = 23 calendar days inclusive
+participant decision days = 15
 formal judgement events = 5
 formal judgement dates = 3
 ```
 
-## 10. Amended exact-horizon N20/N30 gate
+## 10. Exact-horizon population adequacy and N30 real-backend gate
 
-The population adequacy rule remains unchanged and is now evaluated over the **actual amended 15-tick horizon and all 7 participant decision-critical dates**.
-
-Predeclared population gates:
-
-1. across 100 full-horizon trajectories, trajectories with at least one zero-active outcome on a participant-critical decision date must be `<= 5/100`;
-2. mean active Agents on every participant-critical decision date must be `>= 3.0`;
-3. all 100 predeclared seeds must be used with full-horizon activation-state carry-forward;
-4. N20 PASS → select N20 by parsimony;
-5. N20 FAIL + N30 PASS → one narrow N30 real-backend validation only;
-6. no seed fishing.
-
-Zero-LLM amended-horizon result:
+The population thresholds were **not** relaxed when the horizon was lengthened:
 
 ```text
-N20: PASS
-critical-date any-zero trajectories = 4/100
+critical-any-zero trajectories <= 5/100
+minimum mean active on every participant-critical date >= 3.0
+100 predeclared activation seeds
+full-horizon activation-state carry-forward
+no seed fishing
+```
+
+For the selected 27-tick / 15-decision horizon, the zero-LLM comparison gives:
+
+```text
+N20: FAIL
+critical-any-zero trajectories = 9/100
 minimum critical-date mean active = 3.88
-overall mean active = 4.0347
+overall mean active = 4.0737
 
 N30: PASS
-critical-date any-zero trajectories = 0/100
-minimum critical-date mean active = 6.64
-overall mean active = 6.6653
+critical-any-zero trajectories = 0/100
+minimum critical-date mean active = 6.26
+overall mean active = 6.6807
 ```
 
-Therefore:
+Because N20 failed and N30 passed, the predeclared rule required one bounded N30 real-backend validation before final freeze. That validation was executed once on clean commit `8b4704b` using the already-established seeds and fixed N30 membership:
 
 ```text
-FINAL N = 20
+population seed = marketlens-dev-population-01
+N30 membership SHA256 = 60d846b21c15e2213f6f897a17a7ea98039fbf461abe54ee89e1b6779d24b2d4
+activation seed = marketlens-phase09b-activation-01
+2023-06-15 OPEN   10 active
+2023-06-16 OPEN    7 active
+2023-06-17 CLOSED  3 active
 ```
 
-N30 real-backend validation remains unnecessary because N20 satisfies the unchanged predeclared adequacy gates.
+Real-backend result:
+
+```text
+PASS
+posts created = 20
+ForumDB belief Agents observed = 25
+later-day forum action calls = 10
+activation continuity = PASS
+graph bounded to N30 = PASS
+same working runtime/forum across days = PASS
+OPEN / OPEN / CLOSED inherited paths = PASS
+```
+
+No retry, seed substitution, forced activation, custom matching, custom pricing, or alternative forum/belief logic was used.
+
+Therefore the v1.1 formal population is:
+
+```text
+FINAL N = 30
+```
+
+The real-backend run remains non-formal engineering feasibility evidence; it is not participant or formal experiment evidence.
 
 ## 11. Evidence classification and limitations
 
-The structural/timing and N20/N30 gates are:
+The timing, long-horizon comparison, population adequacy gate, and N30 backend validation are engineering/design evidence. They do not establish which interval produces a stronger misinformation effect, estimate human fatigue, or prove real-time long-term retention.
 
-```text
-NON-FORMAL ENGINEERING PREFLIGHT
-NOT FORMAL EXPERIMENT EVIDENCE
-```
+J4 must be described as a later judgement **after intervening simulated market-world progression**, not as an 11-day real-world follow-up.
 
-They do not:
-- generate the canonical Agent world;
-- call an LLM;
-- select a desirable Agent trajectory;
-- mutate inherited market/forum state;
-- use participant outcomes;
-- prove a real-time long-term psychological persistence effect.
+The exact canonical 27-tick Agent world is still to be generated/frozen later under the formal experiment workflow. Its outputs must not be used to reselect the already-frozen population, dates, or interval merely because one trajectory looks more desirable.
 
-J4 should be interpreted as a later judgement **after intervening simulated market-world progression**, not as a multi-day real-world memory follow-up.
-
-## 12. Phase 10 amendment boundary
+## 12. Phase 10 v1.1 amendment boundary
 
 This amendment changes only:
-- timing semantics;
-- the machine-readable protocol timeline;
-- participant behavioural decision cadence;
-- warm-up structural validation;
-- exact-horizon N20/N30 validation/reporting;
-- associated tests and audit evidence.
 
-It does not change:
+- the frozen simulated horizon and participant decision cadence;
+- delayed OPEN-state intervals;
+- exact protocol timeline;
+- final population from N20 to N30 following unchanged adequacy gates and the completed real-backend gate;
+- exact-horizon zero-LLM validation/reporting and associated tests/evidence.
+
+It does **not** change:
+
 - Phase 4 activation algorithm;
 - Phase 6 graph/prominence algorithm;
 - Phase 7 market/news mechanics;
@@ -395,27 +409,29 @@ It does not change:
 - participant isolation;
 - canonical shadow-price source;
 - participant-only misinformation/correction boundary;
+- same-state J0/J1 and J2/J3 logic;
 - legacy architecture rejection;
 - Phase 11 implementation.
 
-## 13. Final Phase 10 freeze candidate
+## 13. Final Phase 10 v1.1 freeze
 
-After the amendment and a clean-tree rerun on the final commit, Phase 10 can be tagged with:
+After this bounded amendment passes tests, scope checks, the exact 27-tick zero-LLM gate, and a clean-HEAD reproducibility rerun, Phase 10 v1.1 freezes:
 
 ```text
 T_init = 2023-06-15
 W = 4 calendar ticks
 T_visible = 2023-06-19
-T_end = 2023-06-29
-formal world ticks = 15
-participant decision days = 7
+T_end = 2023-07-11
+formal world ticks = 27
+participant decision days = 15
 formal judgement events = 5 across 3 dates
-J0/J1 same state
-J2/J3 same state
-misinformation→persistence = 3 OPEN transitions
-correction→J4 = 3 OPEN transitions
-final Agent N = 20
+J0/J1 = 2023-06-19, same sealed state
+J2/J3 = 2023-06-30, same sealed state
+J4 = 2023-07-11
+misinformation→persistence = 7 OPEN transitions = 11 simulated calendar days
+correction→J4 = 7 OPEN transitions = 11 simulated calendar days
+final Agent N = 30
 shadow price = sealed canonical StockData.close_price, exact stock/date
 ```
 
-No Phase 11 code is included here.
+No Phase 11 stimulus-engine code is included in this amendment.

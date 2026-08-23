@@ -1,15 +1,15 @@
 {
-  "protocol_version": "1.0",
-  "status": "PHASE 10 PROTOCOL V1 / TIMING AMENDED AND ZERO-LLM EXACT-HORIZON VALIDATED",
+  "protocol_version": "1.1",
+  "status": "PHASE 10 PROTOCOL V1.1 / LONG-HORIZON + N30 REAL-BACKEND VALIDATED / EXACT-HORIZON ZERO-LLM READY",
   "world": {
     "initialization_date": "2023-06-15",
     "participant_visible_start_date": "2023-06-19",
-    "end_date": "2023-06-29",
+    "end_date": "2023-07-11",
     "pre_roll_calendar_days": 4,
-    "participant_visible_calendar_days": 11,
-    "formal_world_ticks": 15,
-    "open_days": 9,
-    "closed_days": 6
+    "participant_visible_calendar_days": 23,
+    "formal_world_ticks": 27,
+    "open_days": 17,
+    "closed_days": 10
   },
   "time": {
     "world_tick_is_calendar_day": true,
@@ -22,15 +22,15 @@
     "closed_days_advance_world_tick_but_not_open_transition_delay": true,
     "formal_judgement_events": 5,
     "formal_judgement_dates": 3,
-    "participant_decision_days": 7
+    "participant_decision_days": 15
   },
   "timing_design": {
     "baseline_to_misinformation_world_ticks": 0,
     "misinformation_to_immediate_j1_world_ticks": 0,
-    "misinformation_to_persistence_open_transitions": 3,
+    "misinformation_to_persistence_open_transitions": 7,
     "persistence_to_correction_world_ticks": 0,
     "correction_to_immediate_j3_world_ticks": 0,
-    "correction_to_later_j4_open_transitions": 3,
+    "correction_to_later_j4_open_transitions": 7,
     "same_state_pairs": [
       [
         "J0",
@@ -185,7 +185,7 @@
       20,
       30
     ],
-    "final_n": 20,
+    "final_n": 30,
     "selection_rule": {
       "activation_seed_count": 100,
       "activation_seed_prefix": "marketlens-phase10-formal-horizon-activation-",
@@ -198,28 +198,58 @@
       "parsimony": "choose_smallest_sufficient_population"
     },
     "selection_evidence": {
-      "gate": "phase10_amended_exact_horizon_zero_llm_n20_n30",
+      "gate": "phase10_v1_1_exact_27_tick_zero_llm_n20_n30",
       "formal_experiment_evidence": false,
       "status": "PASS",
       "n_seeds": 100,
-      "n_world_ticks": 15,
-      "participant_critical_date_count": 7,
+      "n_world_ticks": 27,
+      "participant_critical_date_count": 15,
       "n20": {
-        "sufficient": true,
-        "critical_any_zero_trajectories": 4,
-        "critical_any_zero_frequency": 0.04,
+        "sufficient": false,
+        "critical_any_zero_trajectories": 9,
+        "critical_any_zero_frequency": 0.09,
         "minimum_critical_date_mean_active_agents": 3.88,
-        "overall_mean_active": 4.034666666666666
+        "overall_mean_active": 4.073703703703703
       },
       "n30": {
         "sufficient": true,
         "critical_any_zero_trajectories": 0,
         "critical_any_zero_frequency": 0.0,
-        "minimum_critical_date_mean_active_agents": 6.64,
-        "overall_mean_active": 6.665333333333334
+        "minimum_critical_date_mean_active_agents": 6.26,
+        "overall_mean_active": 6.680740740740741
       },
-      "decision": "SELECT_N20_BY_PREDECLARED_ADEQUACY_AND_PARSIMONY",
-      "n30_real_validation_required": false
+      "decision": "SELECT_N30_AFTER_PREDECLARED_ADEQUACY_GATE_AND_REAL_BACKEND_PASS",
+      "n30_real_validation_required": true,
+      "n30_real_backend_validation": {
+        "status": "PASS",
+        "evidence_class": "NON-FORMAL ENGINEERING FEASIBILITY / NOT FORMAL EXPERIMENT EVIDENCE",
+        "git_commit": "8b4704b",
+        "run_id": "20260823T183753Z_8b4704b9_phase10_n30_real",
+        "population_size": 30,
+        "population_seed": "marketlens-dev-population-01",
+        "selected_agent_ids_sha256": "60d846b21c15e2213f6f897a17a7ea98039fbf461abe54ee89e1b6779d24b2d4",
+        "activation_seed": "marketlens-phase09b-activation-01",
+        "validation_dates": [
+          "2023-06-15",
+          "2023-06-16",
+          "2023-06-17"
+        ],
+        "market_states": [
+          "OPEN",
+          "OPEN",
+          "CLOSED"
+        ],
+        "active_agents": [
+          10,
+          7,
+          3
+        ],
+        "posts_created_total": 20,
+        "forum_belief_agents_observed": 25,
+        "later_day_forum_action_calls": 10,
+        "continuity_pass": true,
+        "duration_seconds": 2292.178
+      }
     }
   },
   "participant_critical_dates": [
@@ -229,7 +259,15 @@
     "2023-06-26",
     "2023-06-27",
     "2023-06-28",
-    "2023-06-29"
+    "2023-06-29",
+    "2023-06-30",
+    "2023-07-03",
+    "2023-07-04",
+    "2023-07-05",
+    "2023-07-06",
+    "2023-07-07",
+    "2023-07-10",
+    "2023-07-11"
   ],
   "timeline": [
     {
@@ -372,13 +410,10 @@
       "agent_world_date": "2023-06-26",
       "market_status": "OPEN",
       "experiment_step": 3,
-      "stage": "correction_manipulation",
+      "stage": "misinformation_persistence_behaviour",
       "participant_visible": true,
-      "formal_judgement_events": [
-        "J2",
-        "J3"
-      ],
-      "stimulus_release": "authoritative_correction",
+      "formal_judgement_events": [],
+      "stimulus_release": "none",
       "behaviour_decision_required": true,
       "shadow_trade_enabled": true
     },
@@ -387,7 +422,7 @@
       "agent_world_date": "2023-06-27",
       "market_status": "OPEN",
       "experiment_step": 4,
-      "stage": "post_correction_behaviour",
+      "stage": "misinformation_persistence_behaviour",
       "participant_visible": true,
       "formal_judgement_events": [],
       "stimulus_release": "none",
@@ -399,7 +434,7 @@
       "agent_world_date": "2023-06-28",
       "market_status": "OPEN",
       "experiment_step": 5,
-      "stage": "post_correction_behaviour",
+      "stage": "misinformation_persistence_behaviour",
       "participant_visible": true,
       "formal_judgement_events": [],
       "stimulus_release": "none",
@@ -411,6 +446,153 @@
       "agent_world_date": "2023-06-29",
       "market_status": "OPEN",
       "experiment_step": 6,
+      "stage": "misinformation_persistence_behaviour",
+      "participant_visible": true,
+      "formal_judgement_events": [],
+      "stimulus_release": "none",
+      "behaviour_decision_required": true,
+      "shadow_trade_enabled": true
+    },
+    {
+      "world_tick": 15,
+      "agent_world_date": "2023-06-30",
+      "market_status": "OPEN",
+      "experiment_step": 7,
+      "stage": "correction_manipulation",
+      "participant_visible": true,
+      "formal_judgement_events": [
+        "J2",
+        "J3"
+      ],
+      "stimulus_release": "authoritative_correction",
+      "behaviour_decision_required": true,
+      "shadow_trade_enabled": true
+    },
+    {
+      "world_tick": 16,
+      "agent_world_date": "2023-07-01",
+      "market_status": "CLOSED",
+      "experiment_step": null,
+      "stage": "world_only_closed_interval",
+      "participant_visible": false,
+      "formal_judgement_events": [],
+      "stimulus_release": "none",
+      "behaviour_decision_required": false,
+      "shadow_trade_enabled": false
+    },
+    {
+      "world_tick": 17,
+      "agent_world_date": "2023-07-02",
+      "market_status": "CLOSED",
+      "experiment_step": null,
+      "stage": "world_only_closed_interval",
+      "participant_visible": false,
+      "formal_judgement_events": [],
+      "stimulus_release": "none",
+      "behaviour_decision_required": false,
+      "shadow_trade_enabled": false
+    },
+    {
+      "world_tick": 18,
+      "agent_world_date": "2023-07-03",
+      "market_status": "OPEN",
+      "experiment_step": 8,
+      "stage": "post_correction_behaviour",
+      "participant_visible": true,
+      "formal_judgement_events": [],
+      "stimulus_release": "none",
+      "behaviour_decision_required": true,
+      "shadow_trade_enabled": true
+    },
+    {
+      "world_tick": 19,
+      "agent_world_date": "2023-07-04",
+      "market_status": "OPEN",
+      "experiment_step": 9,
+      "stage": "post_correction_behaviour",
+      "participant_visible": true,
+      "formal_judgement_events": [],
+      "stimulus_release": "none",
+      "behaviour_decision_required": true,
+      "shadow_trade_enabled": true
+    },
+    {
+      "world_tick": 20,
+      "agent_world_date": "2023-07-05",
+      "market_status": "OPEN",
+      "experiment_step": 10,
+      "stage": "post_correction_behaviour",
+      "participant_visible": true,
+      "formal_judgement_events": [],
+      "stimulus_release": "none",
+      "behaviour_decision_required": true,
+      "shadow_trade_enabled": true
+    },
+    {
+      "world_tick": 21,
+      "agent_world_date": "2023-07-06",
+      "market_status": "OPEN",
+      "experiment_step": 11,
+      "stage": "post_correction_behaviour",
+      "participant_visible": true,
+      "formal_judgement_events": [],
+      "stimulus_release": "none",
+      "behaviour_decision_required": true,
+      "shadow_trade_enabled": true
+    },
+    {
+      "world_tick": 22,
+      "agent_world_date": "2023-07-07",
+      "market_status": "OPEN",
+      "experiment_step": 12,
+      "stage": "post_correction_behaviour",
+      "participant_visible": true,
+      "formal_judgement_events": [],
+      "stimulus_release": "none",
+      "behaviour_decision_required": true,
+      "shadow_trade_enabled": true
+    },
+    {
+      "world_tick": 23,
+      "agent_world_date": "2023-07-08",
+      "market_status": "CLOSED",
+      "experiment_step": null,
+      "stage": "world_only_closed_interval",
+      "participant_visible": false,
+      "formal_judgement_events": [],
+      "stimulus_release": "none",
+      "behaviour_decision_required": false,
+      "shadow_trade_enabled": false
+    },
+    {
+      "world_tick": 24,
+      "agent_world_date": "2023-07-09",
+      "market_status": "CLOSED",
+      "experiment_step": null,
+      "stage": "world_only_closed_interval",
+      "participant_visible": false,
+      "formal_judgement_events": [],
+      "stimulus_release": "none",
+      "behaviour_decision_required": false,
+      "shadow_trade_enabled": false
+    },
+    {
+      "world_tick": 25,
+      "agent_world_date": "2023-07-10",
+      "market_status": "OPEN",
+      "experiment_step": 13,
+      "stage": "post_correction_behaviour",
+      "participant_visible": true,
+      "formal_judgement_events": [],
+      "stimulus_release": "none",
+      "behaviour_decision_required": true,
+      "shadow_trade_enabled": true
+    },
+    {
+      "world_tick": 26,
+      "agent_world_date": "2023-07-11",
+      "market_status": "OPEN",
+      "experiment_step": 14,
       "stage": "later_post_correction",
       "participant_visible": true,
       "formal_judgement_events": [

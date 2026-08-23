@@ -46,8 +46,8 @@ def validate_protocol(protocol: Mapping[str, Any]) -> dict[str, Any]:
     data = json.loads(json.dumps(protocol))
     _scan_unresolved(data)
 
-    if data.get("protocol_version") != "1.0":
-        raise ProtocolValidationError("protocol_version must be 1.0")
+    if data.get("protocol_version") != "1.1":
+        raise ProtocolValidationError("protocol_version must be 1.1")
 
     world = data.get("world")
     time = data.get("time")
@@ -88,10 +88,10 @@ def validate_protocol(protocol: Mapping[str, Any]) -> dict[str, Any]:
     expected_timing = {
         "baseline_to_misinformation_world_ticks": 0,
         "misinformation_to_immediate_j1_world_ticks": 0,
-        "misinformation_to_persistence_open_transitions": 3,
+        "misinformation_to_persistence_open_transitions": 7,
         "persistence_to_correction_world_ticks": 0,
         "correction_to_immediate_j3_world_ticks": 0,
-        "correction_to_later_j4_open_transitions": 3,
+        "correction_to_later_j4_open_transitions": 7,
     }
     for key, value in expected_timing.items():
         if timing.get(key) != value:
@@ -180,6 +180,20 @@ def validate_protocol(protocol: Mapping[str, Any]) -> dict[str, Any]:
     if judgement_locations["J2"] != judgement_locations["J3"]:
         raise ProtocolValidationError("J2/J3 must share one canonical state")
 
+    checkpoint_step_by_date = {current_date: step for step, current_date in zip(experiment_steps, checkpoint_dates)}
+    j01_date = judgement_locations["J0"][1]
+    j23_date = judgement_locations["J2"][1]
+    j4_date = judgement_locations["J4"][1]
+    try:
+        misinformation_to_persistence = checkpoint_step_by_date[j23_date] - checkpoint_step_by_date[j01_date]
+        correction_to_later = checkpoint_step_by_date[j4_date] - checkpoint_step_by_date[j23_date]
+    except KeyError as exc:
+        raise ProtocolValidationError("formal judgement dates must also be participant checkpoints") from exc
+    if misinformation_to_persistence != timing["misinformation_to_persistence_open_transitions"]:
+        raise ProtocolValidationError("timeline does not realize the frozen misinformation-to-persistence OPEN delay")
+    if correction_to_later != timing["correction_to_later_j4_open_transitions"]:
+        raise ProtocolValidationError("timeline does not realize the frozen correction-to-J4 OPEN delay")
+
     critical_dates = data.get("participant_critical_dates")
     if critical_dates != checkpoint_dates:
         raise ProtocolValidationError("participant_critical_dates must equal all participant decision dates")
@@ -254,8 +268,8 @@ def validate_protocol(protocol: Mapping[str, Any]) -> dict[str, Any]:
     population = data.get("population", {})
     if population.get("candidates") != [20, 30]:
         raise ProtocolValidationError("Phase 10 population candidates must be N20/N30")
-    if population.get("final_n") != 20:
-        raise ProtocolValidationError("Phase 10 Protocol v1 freezes final Agent population at N20")
+    if population.get("final_n") != 30:
+        raise ProtocolValidationError("Phase 10 Protocol v1.1 freezes final Agent population at N30")
     rule = population.get("selection_rule", {})
     if rule.get("activation_seed_count") != 100:
         raise ProtocolValidationError("formal-horizon comparison must use all 100 seeds")
@@ -263,6 +277,27 @@ def validate_protocol(protocol: Mapping[str, Any]) -> dict[str, Any]:
         raise ProtocolValidationError("critical zero-active threshold drifted")
     if float(rule.get("critical_date_min_mean_active_agents", -1)) != 3.0:
         raise ProtocolValidationError("critical-date minimum mean active threshold drifted")
+
+    evidence = population.get("selection_evidence", {})
+    if evidence.get("n_world_ticks") != 27 or evidence.get("participant_critical_date_count") != 15:
+        raise ProtocolValidationError("v1.1 population evidence must describe the exact 27-tick / 15-decision horizon")
+    if evidence.get("n20", {}).get("sufficient") is not False:
+        raise ProtocolValidationError("v1.1 must preserve the N20 exact-horizon FAIL result")
+    if evidence.get("n30", {}).get("sufficient") is not True:
+        raise ProtocolValidationError("v1.1 must preserve the N30 exact-horizon PASS result")
+    real = evidence.get("n30_real_backend_validation", {})
+    if real.get("status") != "PASS":
+        raise ProtocolValidationError("N30 final freeze requires the completed real-backend PASS")
+    if real.get("population_size") != 30:
+        raise ProtocolValidationError("N30 real-backend evidence population size drifted")
+    if real.get("selected_agent_ids_sha256") != "60d846b21c15e2213f6f897a17a7ea98039fbf461abe54ee89e1b6779d24b2d4":
+        raise ProtocolValidationError("N30 frozen membership digest drifted")
+    if real.get("activation_seed") != "marketlens-phase09b-activation-01":
+        raise ProtocolValidationError("N30 real-backend activation reference seed drifted")
+    if real.get("active_agents") != [10, 7, 3]:
+        raise ProtocolValidationError("N30 real-backend activation sequence drifted")
+    if real.get("continuity_pass") is not True:
+        raise ProtocolValidationError("N30 real-backend continuity PASS is required")
 
     return data
 

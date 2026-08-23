@@ -1,9 +1,9 @@
 # Phase 10 — Long-Horizon Methodological Selection Audit
 
 **Evidence class:** NON-FORMAL / ZERO-LLM DESIGN-SELECTION RECORD / NOT FORMAL EXPERIMENT EVIDENCE
-**Protocol status:** candidate amendment only; `protocol_v1.json` is intentionally unchanged here.
+**Protocol status:** methodological selection completed; incorporated by the subsequent Protocol v1.1 amendment after N30 real-backend PASS.
 
-## Frozen methodological selection before paid N30 validation
+## Frozen methodological selection made before paid N30 validation
 
 The long-horizon comparison was outcome-blind and compared `11/13/15/17`
 participant decision days. No participant behaviour and no LLM-generated market
@@ -80,12 +80,8 @@ permitted.
 A non-PASS result is evidence to diagnose, not permission to retry with a more
 convenient seed.
 
-## What remains pending
+## Completed N30 validation
 
-1. prepare and verify the deterministic N30 candidate fixture with zero LLM;
-2. dry-run the bounded N30 validation;
-3. commit/push the validation code and this selection record;
-4. execute exactly one clean-HEAD real-backend N30 validation;
-5. review PASS / FAIL / INCONCLUSIVE evidence;
-6. only after a valid PASS, amend the formal protocol to v1.1 and rerun the
-   exact 27-tick zero-LLM gate before tagging the new protocol.
+The single bounded N30 real-backend validation was subsequently executed once on clean commit `8b4704b` and returned `PASS`. The fixed activation sequence remained `10 / 7 / 3` across `OPEN / OPEN / CLOSED`; natural coverage included 20 posts, 25 Agents observed through ForumDB belief sourcing, and 10 later-day forum-action calls. Runtime/forum continuity and bounded N30 graph checks PASSed.
+
+The selection therefore proceeds to Protocol v1.1 with `15` decision days and formal `N30`; no further paid N30 feasibility run is required.
