@@ -1,0 +1,515 @@
+{
+  "plan_schema_version": "marketlens-canonical-episode-execution-plan/1.0",
+  "plan_version": "1.0",
+  "status": "formal_execution_plan_frozen",
+  "episode_id": "marketlens-canonical-episode-v1",
+  "protocol_version": "1.1",
+  "population": {
+    "size": 30,
+    "selection_seed": "marketlens-dev-population-01",
+    "selected_agent_ids_sha256": "60d846b21c15e2213f6f897a17a7ea98039fbf461abe54ee89e1b6779d24b2d4",
+    "source": "protected data/sys_1000.db via frozen Phase 3 selector/fixture builder",
+    "initial_fixture_semantic_guard": {
+      "row_counts": {
+        "Profiles": 30,
+        "Strategy": 30,
+        "TradingDetails": 1304,
+        "StockProfile": 10,
+        "StockData": 1080
+      },
+      "table_digests_sha256": {
+        "Profiles": "a9c59d685756ef8370d9bf7a9460bdbd593c4ffd96ac3061c59e83cb5385ff27",
+        "Strategy": "387ee4de16e9535160da835bb505947860e2589d7c551c31d3ae2173d467ed8c",
+        "TradingDetails": "35bd353c9de6e5c9aa7603e3c3608f7aed0e634eeecccff03d1139c588169ba5",
+        "StockProfile": "3991b7e2ce084c5a5df5a402f2eefe6e33cf58825e5674becbf210e8514683ac",
+        "StockData": "80d31d17c0e8fade532194e6e9afb465615b885495f31b398a69b8b9649bb542"
+      }
+    }
+  },
+  "activation": {
+    "seed": "marketlens-phase09b-activation-01",
+    "policy": "frozen Phase 4 sparse heterogeneous activation",
+    "state_carry_forward": true
+  },
+  "world": {
+    "initialization_date": "2023-06-15",
+    "participant_visible_start_date": "2023-06-19",
+    "end_date": "2023-07-11",
+    "formal_world_ticks": 27,
+    "open_days": 17,
+    "closed_days": 10
+  },
+  "generation_policy": {
+    "single_valid_canonical_episode": true,
+    "generated_before_participant_exposure": true,
+    "shared_across_participants": true,
+    "partial_resume_allowed": false,
+    "seed_substitution_allowed": false,
+    "outcome_based_rerun_allowed": false,
+    "technical_invalid_attempt_may_restart_from_frozen_initial_state": true,
+    "failed_attempt_evidence_must_be_retained": true,
+    "code_or_contract_change_requires_new_plan_version": true
+  },
+  "acceptance_policy": {
+    "all_27_calendar_ticks_complete": true,
+    "all_active_agent_pipelines_complete": true,
+    "activation_plan_must_match_exactly": true,
+    "authoritative_open_closed_actions_must_match": true,
+    "state_chain_must_be_continuous": true,
+    "protected_inputs_must_remain_unchanged": true,
+    "participant_data_must_be_absent": true,
+    "controlled_stimulus_must_be_absent_from_agent_world": true,
+    "custom_matching_price_forum_belief_logic_allowed": false,
+    "participant_exact_price_coverage_must_be_complete": true,
+    "forum_profile_source_cue_join_must_be_complete": true,
+    "minimum_post_count_gate": null,
+    "minimum_trade_count_gate": null,
+    "price_direction_gate": null,
+    "sentiment_gate": null,
+    "misinformation_effect_gate": null
+  },
+  "formal_asset_layout": {
+    "agent_world_db": "data/marketlens/canonical_episode/v1/agent_world.db",
+    "forum_db": "data/marketlens/canonical_episode/v1/forum.db",
+    "episode_manifest": "data/marketlens/canonical_episode/v1/episode_manifest.json",
+    "raw_execution_evidence_root": "artifacts/formal/canonical_episode/marketlens-canonical-episode-v1"
+  },
+  "days": [
+    {
+      "step": 0,
+      "agent_world_date": "2023-06-15",
+      "market_open": true,
+      "expected_market_action": "advance_trading_day",
+      "active_agent_ids": [
+        "19674822257",
+        "25823641850",
+        "35530389569",
+        "42710178889",
+        "46549065517",
+        "70690674622",
+        "75680675866",
+        "88166001054",
+        "88792353988",
+        "94588474629"
+      ],
+      "n_active": 10
+    },
+    {
+      "step": 1,
+      "agent_world_date": "2023-06-16",
+      "market_open": true,
+      "expected_market_action": "advance_trading_day",
+      "active_agent_ids": [
+        "15476317174",
+        "24570243197",
+        "25823641850",
+        "72429318063",
+        "75680675866",
+        "92879748105",
+        "93531157884"
+      ],
+      "n_active": 7
+    },
+    {
+      "step": 2,
+      "agent_world_date": "2023-06-17",
+      "market_open": false,
+      "expected_market_action": "advance_non_trading_day",
+      "active_agent_ids": [
+        "34238881864",
+        "48968490169",
+        "96496600304"
+      ],
+      "n_active": 3
+    },
+    {
+      "step": 3,
+      "agent_world_date": "2023-06-18",
+      "market_open": false,
+      "expected_market_action": "advance_non_trading_day",
+      "active_agent_ids": [
+        "34238881864",
+        "43022402800",
+        "46549065517",
+        "72429318063",
+        "95757403205"
+      ],
+      "n_active": 5
+    },
+    {
+      "step": 4,
+      "agent_world_date": "2023-06-19",
+      "market_open": true,
+      "expected_market_action": "advance_trading_day",
+      "active_agent_ids": [
+        "25823641850",
+        "35530389569",
+        "39789340360",
+        "67962836898",
+        "86769028143",
+        "93531157884",
+        "94588474629",
+        "96496600304"
+      ],
+      "n_active": 8
+    },
+    {
+      "step": 5,
+      "agent_world_date": "2023-06-20",
+      "market_open": true,
+      "expected_market_action": "advance_trading_day",
+      "active_agent_ids": [
+        "24570243197",
+        "39789340360",
+        "43022402800",
+        "93531157884",
+        "95757403205"
+      ],
+      "n_active": 5
+    },
+    {
+      "step": 6,
+      "agent_world_date": "2023-06-21",
+      "market_open": true,
+      "expected_market_action": "advance_trading_day",
+      "active_agent_ids": [
+        "22543333014",
+        "35530389569",
+        "39789340360",
+        "42710178889",
+        "46549065517",
+        "48968490169",
+        "70690674622",
+        "72429318063",
+        "88792353988"
+      ],
+      "n_active": 9
+    },
+    {
+      "step": 7,
+      "agent_world_date": "2023-06-22",
+      "market_open": false,
+      "expected_market_action": "advance_non_trading_day",
+      "active_agent_ids": [
+        "19674822257",
+        "25901251490",
+        "34238881864",
+        "35530389569",
+        "46549065517",
+        "70690674622",
+        "76272143667",
+        "92879748105",
+        "93531157884"
+      ],
+      "n_active": 9
+    },
+    {
+      "step": 8,
+      "agent_world_date": "2023-06-23",
+      "market_open": false,
+      "expected_market_action": "advance_non_trading_day",
+      "active_agent_ids": [
+        "25823641850",
+        "34238881864",
+        "35530389569",
+        "43022402800",
+        "46549065517",
+        "48968490169",
+        "67962836898",
+        "70690674622",
+        "72429318063",
+        "88792353988",
+        "93531157884",
+        "95757403205"
+      ],
+      "n_active": 12
+    },
+    {
+      "step": 9,
+      "agent_world_date": "2023-06-24",
+      "market_open": false,
+      "expected_market_action": "advance_non_trading_day",
+      "active_agent_ids": [
+        "24570243197",
+        "35530389569",
+        "70690674622",
+        "75680675866",
+        "76272143667",
+        "86769028143",
+        "88792353988",
+        "94588474629"
+      ],
+      "n_active": 8
+    },
+    {
+      "step": 10,
+      "agent_world_date": "2023-06-25",
+      "market_open": false,
+      "expected_market_action": "advance_non_trading_day",
+      "active_agent_ids": [
+        "25901251490",
+        "34238881864",
+        "35530389569",
+        "84223796359",
+        "96496600304"
+      ],
+      "n_active": 5
+    },
+    {
+      "step": 11,
+      "agent_world_date": "2023-06-26",
+      "market_open": true,
+      "expected_market_action": "advance_trading_day",
+      "active_agent_ids": [
+        "15476317174",
+        "22543333014",
+        "25823641850",
+        "34238881864",
+        "39789340360",
+        "70690674622",
+        "76272143667",
+        "92879748105",
+        "93531157884"
+      ],
+      "n_active": 9
+    },
+    {
+      "step": 12,
+      "agent_world_date": "2023-06-27",
+      "market_open": true,
+      "expected_market_action": "advance_trading_day",
+      "active_agent_ids": [
+        "34238881864",
+        "88792353988",
+        "93531157884",
+        "95757403205"
+      ],
+      "n_active": 4
+    },
+    {
+      "step": 13,
+      "agent_world_date": "2023-06-28",
+      "market_open": true,
+      "expected_market_action": "advance_trading_day",
+      "active_agent_ids": [
+        "25823641850",
+        "35530389569",
+        "88792353988"
+      ],
+      "n_active": 3
+    },
+    {
+      "step": 14,
+      "agent_world_date": "2023-06-29",
+      "market_open": true,
+      "expected_market_action": "advance_trading_day",
+      "active_agent_ids": [
+        "24570243197",
+        "25823641850",
+        "25901251490",
+        "46549065517",
+        "70690674622",
+        "72429318063",
+        "75680675866",
+        "84223796359",
+        "96496600304"
+      ],
+      "n_active": 9
+    },
+    {
+      "step": 15,
+      "agent_world_date": "2023-06-30",
+      "market_open": true,
+      "expected_market_action": "advance_trading_day",
+      "active_agent_ids": [
+        "15476317174",
+        "19674822257",
+        "35530389569",
+        "88792353988",
+        "92879748105",
+        "93531157884"
+      ],
+      "n_active": 6
+    },
+    {
+      "step": 16,
+      "agent_world_date": "2023-07-01",
+      "market_open": false,
+      "expected_market_action": "advance_non_trading_day",
+      "active_agent_ids": [
+        "19674822257",
+        "46549065517",
+        "67962836898",
+        "70690674622",
+        "86769028143",
+        "92879748105",
+        "93531157884",
+        "94588474629"
+      ],
+      "n_active": 8
+    },
+    {
+      "step": 17,
+      "agent_world_date": "2023-07-02",
+      "market_open": false,
+      "expected_market_action": "advance_non_trading_day",
+      "active_agent_ids": [
+        "22543333014",
+        "25901251490",
+        "34238881864",
+        "35530389569",
+        "42710178889",
+        "43022402800",
+        "67962836898",
+        "76272143667",
+        "88792353988",
+        "92879748105"
+      ],
+      "n_active": 10
+    },
+    {
+      "step": 18,
+      "agent_world_date": "2023-07-03",
+      "market_open": true,
+      "expected_market_action": "advance_trading_day",
+      "active_agent_ids": [
+        "46549065517",
+        "67962836898",
+        "88166001054"
+      ],
+      "n_active": 3
+    },
+    {
+      "step": 19,
+      "agent_world_date": "2023-07-04",
+      "market_open": true,
+      "expected_market_action": "advance_trading_day",
+      "active_agent_ids": [
+        "15476317174",
+        "46549065517",
+        "72429318063",
+        "86769028143",
+        "92879748105"
+      ],
+      "n_active": 5
+    },
+    {
+      "step": 20,
+      "agent_world_date": "2023-07-05",
+      "market_open": true,
+      "expected_market_action": "advance_trading_day",
+      "active_agent_ids": [
+        "25823641850",
+        "34238881864",
+        "39789340360",
+        "42710178889",
+        "46549065517",
+        "58971253481",
+        "67962836898",
+        "75680675866",
+        "92879748105",
+        "94588474629",
+        "96496600304"
+      ],
+      "n_active": 11
+    },
+    {
+      "step": 21,
+      "agent_world_date": "2023-07-06",
+      "market_open": true,
+      "expected_market_action": "advance_trading_day",
+      "active_agent_ids": [
+        "24570243197",
+        "35530389569",
+        "70690674622",
+        "76272143667",
+        "93531157884",
+        "96496600304"
+      ],
+      "n_active": 6
+    },
+    {
+      "step": 22,
+      "agent_world_date": "2023-07-07",
+      "market_open": true,
+      "expected_market_action": "advance_trading_day",
+      "active_agent_ids": [
+        "15476317174",
+        "24570243197",
+        "25823641850",
+        "34238881864",
+        "46549065517",
+        "72429318063",
+        "75680675866"
+      ],
+      "n_active": 7
+    },
+    {
+      "step": 23,
+      "agent_world_date": "2023-07-08",
+      "market_open": false,
+      "expected_market_action": "advance_non_trading_day",
+      "active_agent_ids": [
+        "46549065517",
+        "75680675866",
+        "88792353988",
+        "95757403205"
+      ],
+      "n_active": 4
+    },
+    {
+      "step": 24,
+      "agent_world_date": "2023-07-09",
+      "market_open": false,
+      "expected_market_action": "advance_non_trading_day",
+      "active_agent_ids": [
+        "24570243197",
+        "25823641850",
+        "25901251490",
+        "34238881864",
+        "43022402800",
+        "96496600304"
+      ],
+      "n_active": 6
+    },
+    {
+      "step": 25,
+      "agent_world_date": "2023-07-10",
+      "market_open": true,
+      "expected_market_action": "advance_trading_day",
+      "active_agent_ids": [
+        "24570243197",
+        "35530389569",
+        "42710178889",
+        "88792353988",
+        "92879748105",
+        "93531157884",
+        "96496600304"
+      ],
+      "n_active": 7
+    },
+    {
+      "step": 26,
+      "agent_world_date": "2023-07-11",
+      "market_open": true,
+      "expected_market_action": "advance_trading_day",
+      "active_agent_ids": [
+        "14330189077",
+        "25823641850",
+        "25901251490",
+        "34238881864",
+        "35530389569",
+        "39789340360",
+        "42710178889",
+        "43022402800",
+        "46549065517",
+        "70690674622",
+        "72429318063",
+        "84223796359",
+        "94588474629",
+        "96496600304"
+      ],
+      "n_active": 14
+    }
+  ]
+}
