@@ -11,6 +11,7 @@ from marketlens.human.routers.round import router as round_router
 from marketlens.human.routers.session import router as session_router
 from marketlens.market.asset_catalog import AssetCatalog
 from marketlens.market.price_provider import CsvClosePriceProvider
+from marketlens.market.status import TradingCalendar
 from marketlens.market.router import router as market_router
 from marketlens.persistence.config import (
     resolve_auto_create_schema,
@@ -38,6 +39,7 @@ def create_app(
     )
     app.state.asset_catalog = AssetCatalog()
     app.state.price_provider = CsvClosePriceProvider()
+    app.state.trading_calendar = TradingCalendar()
     app.state.portfolio_policy = portfolio_policy or PortfolioPolicy()
 
     @app.get("/health")

@@ -397,3 +397,94 @@ def test_source_market_csvs_are_not_modified_by_participant_order(client):
 
     assert hashlib.sha256(profile_path.read_bytes()).hexdigest() == before[profile_path]
     assert hashlib.sha256(data_path.read_bytes()).hexdigest() == before[data_path]
+
+
+def test_closed_day_state_exposes_authoritative_market_gate(client):
+    session = create_session(client, request_id="closed-state")
+    sid = session["session_id"]
+    set_session_date(client, sid, "2023-06-18")
+
+    response = client.get(f"/session/{sid}/state")
+    assert response.status_code == 200
+    state = response.json()
+    assert state["market_open"] is False
+    assert state["market_status_reason"] == "scheduled_non_trading_day"
+    assert state["current_market_date"] == "2023-06-18"
+    assert state["closure_start_date"] == "2023-06-17"
+    assert state["closure_end_date"] == "2023-06-18"
+    assert state["next_trading_date"] == "2023-06-19"
+    assert state["participant_trading_enabled"] is False
+    assert state["market_state_date"] == "2023-06-16"
+
+
+def test_closed_day_preview_and_order_fail_before_participant_mutation(client):
+    session = create_session(client, request_id="closed-gate")
+    sid = session["session_id"]
+    set_session_date(client, sid, "2023-06-18")
+    before = client.get(f"/session/{sid}/portfolio").json()
+
+    preview = client.post(
+        f"/session/{sid}/portfolio/preview",
+        json={"step": 0, "stock_id": "TLEI", "action": "BUY", "amount": 100.0},
+    )
+    assert preview.status_code == 409
+    assert "trading is unavailable" in preview.json()["detail"].lower()
+
+    order = client.post(
+        f"/session/{sid}/portfolio/order",
+        json={
+            "request_id": "closed-order",
+            "step": 0,
+            "stock_id": "TLEI",
+            "action": "BUY",
+            "amount": 100.0,
+        },
+    )
+    assert order.status_code == 409
+    assert "trading is unavailable" in order.json()["detail"].lower()
+    assert transaction_count(client, sid) == 0
+    assert client.get(f"/session/{sid}/portfolio").json() == before
+
+
+def test_closed_day_portfolio_review_uses_last_sealed_open_state_not_execution_fallback(client):
+    session = create_session(client, request_id="closed-portfolio-review")
+    sid = session["session_id"]
+    set_session_date(client, sid, "2023-06-18")
+    seed_holding(client, sid, "TLEI", 2)
+
+    response = client.get(f"/session/{sid}/portfolio")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["price_date"] == "2023-06-16"
+    assert body["holdings"][0]["quantity"] == 2
+
+    # Passive valuation does not authorize trading on the closed calendar date.
+    order = client.post(
+        f"/session/{sid}/portfolio/order",
+        json={
+            "request_id": "closed-review-order",
+            "step": 0,
+            "stock_id": "TLEI",
+            "action": "SELL",
+            "amount": 10.0,
+        },
+    )
+    assert order.status_code == 409
+    assert transaction_count(client, sid) == 0
+
+
+def test_open_day_trading_remains_enabled_independent_of_agent_activity(client):
+    session = create_session(client, request_id="open-gate")
+    sid = session["session_id"]
+    set_session_date(client, sid, "2023-06-19")
+
+    state = client.get(f"/session/{sid}/state").json()
+    assert state["market_open"] is True
+    assert state["participant_trading_enabled"] is True
+
+    preview = client.post(
+        f"/session/{sid}/portfolio/preview",
+        json={"step": 0, "stock_id": "TLEI", "action": "BUY", "amount": 100.0},
+    )
+    assert preview.status_code == 200
+    assert preview.json()["price_date"] == "2023-06-19"

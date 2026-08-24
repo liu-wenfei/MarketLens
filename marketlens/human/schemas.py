@@ -35,6 +35,14 @@ class SessionState(BaseModel):
     current_date: str | None
     experiment_status: str
     completed: bool
+    market_open: bool
+    market_status_reason: str
+    current_market_date: str | None
+    next_trading_date: str | None
+    closure_start_date: str | None
+    closure_end_date: str | None
+    participant_trading_enabled: bool
+    market_state_date: str | None
 
 
 class DecisionCreate(BaseModel):

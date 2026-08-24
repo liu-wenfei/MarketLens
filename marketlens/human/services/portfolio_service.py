@@ -30,7 +30,8 @@ from marketlens.human.stores.errors import (
 )
 from marketlens.human.stores.portfolio_store import PortfolioSnapshot, PortfolioStore
 from marketlens.market.asset_catalog import AssetCatalog, AssetNotFoundError
-from marketlens.market.price_provider import ClosePriceProvider, PriceNotFoundError
+from marketlens.market.price_provider import CsvClosePriceProvider, PriceNotFoundError
+from marketlens.market.status import TradingCalendar, TradingCalendarError
 
 
 class PortfolioNotFoundError(LookupError):
@@ -42,6 +43,10 @@ class WrongPortfolioStepError(ValueError):
 
 
 class MarketDateUnavailableError(ValueError):
+    pass
+
+
+class MarketClosedError(ValueError):
     pass
 
 
@@ -87,13 +92,15 @@ class PortfolioService:
         *,
         store: PortfolioStore,
         assets: AssetCatalog,
-        prices: ClosePriceProvider,
+        prices: CsvClosePriceProvider,
         policy: PortfolioPolicy,
+        calendar: TradingCalendar,
     ):
         self.store = store
         self.assets = assets
         self.prices = prices
         self.policy = policy
+        self.calendar = calendar
 
     def _snapshot(self, session_id: str, expected_step: int | None = None) -> PortfolioSnapshot:
         try:
@@ -108,20 +115,41 @@ class PortfolioService:
             )
         return snapshot
 
-    def _prices_for_snapshot(self, snapshot: PortfolioSnapshot, target_stock_id: str) -> dict[str, float]:
+    def _market_status(self, snapshot: PortfolioSnapshot):
         if snapshot.current_date is None:
             raise MarketDateUnavailableError(
                 "Session current_date is not set; experiment state must authorise a market date before trading"
             )
+        try:
+            return self.calendar.status(snapshot.current_date)
+        except TradingCalendarError as exc:
+            raise MarketDateUnavailableError(str(exc)) from exc
+
+    def _authorise_trading(self, snapshot: PortfolioSnapshot):
+        market = self._market_status(snapshot)
+        if not market.participant_trading_enabled:
+            raise MarketClosedError(
+                f"Participant trading is unavailable on {market.current_market_date} "
+                f"({market.market_status_reason}); next trading date is {market.next_trading_date}"
+            )
+        return market
+
+    def _prices_for_date(
+        self,
+        snapshot: PortfolioSnapshot,
+        target_stock_id: str,
+        *,
+        price_date: str,
+    ) -> dict[str, float]:
         stock_ids = set(snapshot.account.positions)
         stock_ids.add(target_stock_id)
         prices: dict[str, float] = {}
         try:
             for stock_id in stock_ids:
-                prices[stock_id] = self.prices.get_close(stock_id, snapshot.current_date).close
+                prices[stock_id] = self.prices.get_close(stock_id, price_date).close
         except PriceNotFoundError as exc:
             raise MarketDateUnavailableError(
-                f"No exact-date close price is available for the current session date: {snapshot.current_date}"
+                f"No exact-date close price is available for authorised market state date: {price_date}"
             ) from exc
         return prices
 
@@ -131,7 +159,10 @@ class PortfolioService:
         except AssetNotFoundError:
             raise
         snapshot = self._snapshot(session_id, payload.step)
-        price_map = self._prices_for_snapshot(snapshot, payload.stock_id)
+        market = self._authorise_trading(snapshot)
+        price_map = self._prices_for_date(
+            snapshot, payload.stock_id, price_date=market.current_market_date
+        )
         price = price_map[payload.stock_id]
         preview = preview_order(
             account=snapshot.account,
@@ -240,10 +271,13 @@ class PortfolioService:
             raise PortfolioNotFoundError(session_id)
 
         if not snapshot.account.positions:
+            price_date = None
+            if snapshot.current_date is not None:
+                price_date = self.calendar.status(snapshot.current_date).market_state_date
             return PortfolioRead(
                 session_id=session_id,
                 step=snapshot.current_step,
-                price_date=snapshot.current_date,
+                price_date=price_date,
                 initial_cash=float(row["initial_cash"]),
                 cash=snapshot.account.cash,
                 total_value=snapshot.account.cash,
@@ -255,7 +289,12 @@ class PortfolioService:
                 "Session current_date is required to value non-empty holdings"
             )
 
-        price_map = self._prices_for_snapshot(snapshot, next(iter(snapshot.account.positions)))
+        market = self.calendar.status(snapshot.current_date)
+        price_map = self._prices_for_date(
+            snapshot,
+            next(iter(snapshot.account.positions)),
+            price_date=market.market_state_date,
+        )
         total = snapshot.account.total_value(price_map)
         holdings: list[PortfolioHoldingRead] = []
         for stock_id, quantity in sorted(snapshot.account.positions.items()):
@@ -275,7 +314,7 @@ class PortfolioService:
         return PortfolioRead(
             session_id=session_id,
             step=snapshot.current_step,
-            price_date=snapshot.current_date,
+            price_date=market.market_state_date,
             initial_cash=float(row["initial_cash"]),
             cash=snapshot.account.cash,
             total_value=total,

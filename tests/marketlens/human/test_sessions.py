@@ -43,8 +43,19 @@ def test_state_exposes_only_current_human_session_state(client):
         "current_date",
         "experiment_status",
         "completed",
+        "market_open",
+        "market_status_reason",
+        "current_market_date",
+        "next_trading_date",
+        "closure_start_date",
+        "closure_end_date",
+        "participant_trading_enabled",
+        "market_state_date",
     }
     assert state["current_step"] == 0
+    assert state["market_open"] is False
+    assert state["market_status_reason"] == "market_date_unavailable"
+    assert state["participant_trading_enabled"] is False
 
     forbidden = {
         "future_prices",
@@ -90,3 +101,20 @@ def test_session_and_step_persist_across_app_restart(tmp_path):
         restored = second_client.get(f"/session/{session_id}")
         assert restored.status_code == 200
         assert restored.json()["current_step"] == 1
+
+
+def test_state_outside_calendar_coverage_fails_closed(client):
+    from sqlalchemy import update
+    from marketlens.persistence.schema import sessions
+
+    session = create_session(client, request_id="state-outside-calendar")
+    with client.app.state.db.connect() as connection:
+        connection.execute(
+            update(sessions)
+            .where(sessions.c.session_id == session["session_id"])
+            .values(current_date="1900-01-01")
+        )
+
+    response = client.get(f"/session/{session['session_id']}/state")
+    assert response.status_code == 409
+    assert "outside inherited calendar coverage" in response.json()["detail"]

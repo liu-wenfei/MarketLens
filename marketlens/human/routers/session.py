@@ -8,7 +8,7 @@ from marketlens.human.services.session_service import (
     SessionNotFoundError,
     SessionService,
 )
-from marketlens.human.services.state_service import StateService
+from marketlens.human.services.state_service import MarketStateUnavailableError, StateService
 from marketlens.human.stores.session_store import SessionStore
 
 router = APIRouter()
@@ -43,9 +43,12 @@ def get_session(
 @router.get("/session/{session_id}/state", response_model=SessionState)
 def get_session_state(
     session_id: str,
+    request: Request,
     service: SessionService = Depends(get_session_service),
 ) -> SessionState:
     try:
-        return StateService(service).get_current_state(session_id)
+        return StateService(service, request.app.state.trading_calendar).get_current_state(session_id)
     except SessionNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Unknown session") from exc
+    except MarketStateUnavailableError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc

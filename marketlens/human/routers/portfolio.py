@@ -11,6 +11,7 @@ from marketlens.human.schemas import (
 )
 from marketlens.human.services.portfolio_service import (
     InvalidPortfolioOrderError,
+    MarketClosedError,
     MarketDateUnavailableError,
     PortfolioService,
     PortfolioStateConflictError,
@@ -29,6 +30,7 @@ def get_portfolio_service(request: Request) -> PortfolioService:
         assets=request.app.state.asset_catalog,
         prices=request.app.state.price_provider,
         policy=request.app.state.portfolio_policy,
+        calendar=request.app.state.trading_calendar,
     )
 
 
@@ -60,7 +62,7 @@ def preview_portfolio_order(
         raise HTTPException(status_code=404, detail="Unknown session") from exc
     except AssetNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Unknown asset") from exc
-    except (WrongPortfolioStepError, MarketDateUnavailableError) as exc:
+    except (WrongPortfolioStepError, MarketDateUnavailableError, MarketClosedError) as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
@@ -84,6 +86,7 @@ def submit_portfolio_order(
         IdempotencyConflictError,
         WrongPortfolioStepError,
         MarketDateUnavailableError,
+        MarketClosedError,
         InvalidPortfolioOrderError,
         PortfolioStateConflictError,
     ) as exc:
