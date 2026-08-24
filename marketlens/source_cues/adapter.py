@@ -19,8 +19,9 @@ class SourceCueError(ValueError):
     """Raised when source identity cannot be resolved without guessing."""
 
 
-CUE_VERSION = "1.0-candidate"
-CUE_STATUS = "development"
+CUE_VERSION = "1.0"
+CUE_STATUS = "formal_frozen"
+SOURCE_CUE_MANIFEST_SHA256 = "67e567351eb77a1edf186239f6205dc43840fbf6e59076813f702fef55b7d5ef"
 
 # Direct display mapping of the inherited TwinMarket Profiles.user_type values.
 # These are source-status labels only; none encodes truth, expertise or reliability.
@@ -141,3 +142,37 @@ def decorate_controlled_stimulus_payload(
     if set(decorated) != _PHASE11_PARTICIPANT_KEYS | _PHASE12_ADDED_KEYS:
         raise SourceCueError("internal source-cue projection invariant failed")
     return decorated
+
+
+def source_cue_manifest_payload() -> dict[str, object]:
+    """Return the exact formal Phase 12 display mapping in canonical-hash form."""
+    return {
+        "cue_version": CUE_VERSION,
+        "cue_status": CUE_STATUS,
+        "agent_user_type_labels": dict(_USER_TYPE_LABELS),
+        "controlled_stimulus_cues": {
+            stimulus_id: dict(cue)
+            for stimulus_id, cue in _CONTROLLED_STIMULUS_CUES.items()
+        },
+    }
+
+
+def source_cue_manifest_sha256() -> str:
+    """Hash the formal mapping using the already-frozen Phase 11 canonical JSON helper."""
+    from marketlens.stimulus.manifest import sha256_json
+
+    return sha256_json(source_cue_manifest_payload())
+
+
+def assert_formal_source_cue_freeze() -> str:
+    """Fail closed unless the exact Phase 12 formal mapping is intact."""
+    if CUE_STATUS != "formal_frozen" or CUE_VERSION != "1.0":
+        raise SourceCueError(
+            f"formal source-cue use rejected: version/status are {CUE_VERSION!r}/{CUE_STATUS!r}"
+        )
+    actual = source_cue_manifest_sha256()
+    if actual != SOURCE_CUE_MANIFEST_SHA256:
+        raise SourceCueError(
+            "formal source-cue mapping hash mismatch; create a new cue version rather than silently changing frozen wording"
+        )
+    return actual

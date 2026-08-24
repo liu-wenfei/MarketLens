@@ -148,7 +148,7 @@ def main() -> int:
         "forum_write_performed": False,
         "market_write_performed": False,
         "protected_sources_unchanged": protected_unchanged,
-        "note": "Minimal adapter only. Candidate display wording is not yet Phase 12 formal-frozen material.",
+        "note": "Minimal adapter reuse/invariance preflight. Formal freeze integrity is validated separately by the Phase 12B formal source-cue preflight.",
     }
 
     out_dir = ROOT / "artifacts" / "preflight" / "phase12" / (
