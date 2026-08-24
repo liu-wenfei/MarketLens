@@ -1,0 +1,76 @@
+{
+  "record_schema_version": "marketlens-canonical-episode-freeze-record/1.0",
+  "record_status": "tracked_formal_freeze_record",
+  "episode_pool_id": "marketlens-canonical-episode-pool-v1",
+  "episode_id": "marketlens-canonical-episode-v1-e01",
+  "episode_slot": 1,
+  "acceptance": {
+    "status": "formal_frozen_technically_valid",
+    "accepted_attempt_number": 1,
+    "acceptance_basis": "predeclared_technical_gates_only",
+    "outcome_conditioned_acceptance": false,
+    "episode_similarity_review_used_for_acceptance": false,
+    "seed_substitution_used": false,
+    "partial_resume_used": false
+  },
+  "producer_identity": {
+    "git_commit": "96c2a0b33587293b76eee9ba01978ef75d902abb",
+    "git_branch": "dissertation",
+    "phase13c_execution_plan_sha256": "a907079281f7deca590bd7ec741b56fab614f05b0cdd869c5f2c345fb048a8bc",
+    "phase13d_producer_contract_sha256": "14db0ae7a525ef464975f7ba4da69d98eb8ffd4058d491555a32ee25f92a9126",
+    "backend_model_name": "gpt-5.4-mini",
+    "backend_base_url": "https://zhi-api.com/v1",
+    "api_key_recorded": false
+  },
+  "population": {
+    "size": 30,
+    "selection_seed": "marketlens-dev-population-01",
+    "selected_agent_ids_sha256": "60d846b21c15e2213f6f897a17a7ea98039fbf461abe54ee89e1b6779d24b2d4",
+    "activation_seed": "marketlens-phase09b-activation-01"
+  },
+  "execution": {
+    "initialization_date": "2023-06-15",
+    "end_date": "2023-07-11",
+    "formal_world_ticks": 27,
+    "active_agent_pipeline_executions_expected": 193,
+    "active_agent_pipeline_executions_completed": 193,
+    "failed_agent_pipeline_count": 0,
+    "participant_data_used": false,
+    "controlled_stimulus_injected_into_agent_world": false,
+    "custom_matching_price_forum_belief_logic_used": false
+  },
+  "technical_validation": {
+    "all_days_complete": true,
+    "activation_plan_exact": true,
+    "calendar_actions_exact": true,
+    "state_chain_complete": true,
+    "protected_sources_unchanged": true,
+    "participant_price_coverage_complete": true,
+    "participant_price_cells_expected": 150,
+    "participant_price_cells_missing": 0,
+    "participant_price_cells_invalid": 0,
+    "forum_profile_source_cue_join_complete": true,
+    "participant_visible_nonrepost_posts_checked": 193,
+    "missing_same_day_profile_snapshots": 0
+  },
+  "outputs": {
+    "agent_world_db": {
+      "path": "data/marketlens/canonical_episode/v1/episode_01/agent_world.db",
+      "sha256": "f9999c8e6774eb5dd2ffade5f5503ac0f863aae9e458636e92fb427198ce1741"
+    },
+    "forum_db": {
+      "path": "data/marketlens/canonical_episode/v1/episode_01/forum.db",
+      "sha256": "3be8a5682049e011b5f2c74d40e9bc42e265364f3bb30f82f85cb4d54d064dca"
+    }
+  },
+  "source_manifests": {
+    "episode_manifest": "data/marketlens/canonical_episode/v1/episode_01/episode_manifest.json",
+    "attempt_manifest": "artifacts/formal/canonical_episode/marketlens-canonical-episode-v1-e01/attempt_001/attempt_manifest.json"
+  },
+  "freeze_semantics": {
+    "episode_must_not_be_rerun_or_replaced_for_natural_outcomes": true,
+    "episode_must_not_be_rerun_or_replaced_for_cross_episode_similarity": true,
+    "tracked_record_does_not_replace_raw_formal_assets": true,
+    "raw_formal_assets_remain_gitignored": true
+  }
+}
