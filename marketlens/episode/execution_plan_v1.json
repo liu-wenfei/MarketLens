@@ -1,8 +1,42 @@
 {
   "plan_schema_version": "marketlens-canonical-episode-pool-execution-plan/1.0",
-  "plan_version": "1.1",
+  "plan_version": "1.2",
   "status": "formal_episode_pool_execution_plan_frozen",
   "protocol_version": "1.1",
+  "base_protocol_compatibility": {
+    "base_protocol_version": "1.1",
+    "base_protocol_role": "timing_population_participant_trade_and_stimulus_base",
+    "extension_status": "phase13c_episode_pool_supersedes_base_canonical_world_cardinality_only",
+    "superseded_base_canonical_world_fields": [
+      "generated_once",
+      "shared_across_participants"
+    ],
+    "effective_canonical_world_policy": {
+      "predeclared_episode_pool_size": 3,
+      "each_episode_slot_generated_once_if_technically_valid": true,
+      "all_episode_slots_generated_before_participant_exposure": true,
+      "each_frozen_episode_shared_across_multiple_assigned_participants": true,
+      "participant_assignment_mode": "balanced_random_across_episode_pool",
+      "episode_id_recorded_for_analysis": true,
+      "participant_specific_world_generation": false
+    },
+    "retained_base_canonical_world_invariants": {
+      "generated_before_participant_exposure": true,
+      "immutable_during_formal_collection": true,
+      "participant_observes_completed_state": true,
+      "snapshot_is_storage_not_market_generator": true
+    },
+    "unchanged_base_protocol_domains": [
+      "world_timing",
+      "participant_decision_dates",
+      "judgement_timing",
+      "participant_price_taker_trading",
+      "participant_only_misinformation_and_correction",
+      "warm_up",
+      "formal_N30_population",
+      "authoritative_open_closed_calendar"
+    ]
+  },
   "population": {
     "size": 30,
     "selection_seed": "marketlens-dev-population-01",

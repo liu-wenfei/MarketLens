@@ -198,6 +198,44 @@ freeze shared three-episode execution contract
 
 No live translation is introduced.
 
+## Phase 10 v1.1 compatibility amendment
+
+A Phase 13D producer audit identified one legacy single-world statement in the already-frozen Phase 10 v1.1 base protocol:
+
+```text
+canonical_world.generated_once = true
+canonical_world.shared_across_participants = true
+```
+
+Those fields described the earlier single-canonical-world design and conflict literally with the later three-episode pool decision. Phase 10 v1.1 and the Phase 11 formal stimulus material are **not rewritten**, because their timing, N30 population, participant price-taking role, judgement schedule, and participant-only misinformation/correction contracts remain unchanged.
+
+Instead, Phase 13C plan v1.2 explicitly records a narrow compatibility overlay:
+
+```text
+base protocol = Phase 10 v1.1
+superseded base fields only =
+  canonical_world.generated_once
+  canonical_world.shared_across_participants
+
+effective Phase 13C policy =
+  3 predeclared episode slots
+  each technically valid slot generated/frozen once
+  all three generated before participant exposure
+  each frozen episode may be shared by multiple assigned participants
+  balanced random assignment across the pool
+  episode_id recorded for analysis
+  no participant-specific world generation
+```
+
+The following Phase 10 v1.1 canonical-world invariants remain fully retained:
+
+- generated before participant exposure;
+- immutable during formal collection;
+- participant observes completed/sealed state;
+- snapshot is storage, not a market generator.
+
+This layered amendment avoids silently mutating the already-frozen Phase 10/11 assets while making the effective formal world-cardinality contract unambiguous.
+
 ## Current status
 
-Phase 13C remains a **zero-LLM contract only**. This patch does not execute any of the three paid canonical episodes. Formal assets and formal translation assets must therefore remain absent/fail-closed until the later producer executes the already-frozen plan.
+Phase 13C remains a **zero-LLM contract only**. Plan v1.2 is the active source of truth and supersedes plan v1.1. This patch does not execute any of the three paid canonical episodes. Formal assets and formal translation assets must therefore remain absent/fail-closed until the later producer executes the already-frozen plan.

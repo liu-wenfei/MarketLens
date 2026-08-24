@@ -29,7 +29,7 @@ EPISODE_IDS = (
     "marketlens-canonical-episode-v1-e03",
 )
 EPISODE_COUNT = 3
-PLAN_VERSION = "1.1"
+PLAN_VERSION = "1.2"
 PLAN_STATUS = "formal_episode_pool_execution_plan_frozen"
 PROTOCOL_VERSION = "1.1"
 POPULATION_SIZE = 30
@@ -41,7 +41,7 @@ ACTIVATION_SEED = "marketlens-phase09b-activation-01"
 EXPECTED_WORLD_TICKS = 27
 EXPECTED_AGENT_PIPELINE_EXECUTIONS = 193
 EXPECTED_POOL_AGENT_PIPELINE_EXECUTIONS = EXPECTED_AGENT_PIPELINE_EXECUTIONS * EPISODE_COUNT
-EXPECTED_EXECUTION_PLAN_SHA256 = "6728e918034dc520ad59104544b5168637256380c2ed638686b6b3c54a91d748"
+EXPECTED_EXECUTION_PLAN_SHA256 = "a907079281f7deca590bd7ec741b56fab614f05b0cdd869c5f2c345fb048a8bc"
 FORMAL_POOL_ROOT = "data/marketlens/canonical_episode/v1"
 FORMAL_POOL_MANIFEST = f"{FORMAL_POOL_ROOT}/pool_manifest.json"
 
@@ -104,6 +104,40 @@ def validate_execution_plan(plan: Mapping[str, Any]) -> None:
         raise CanonicalEpisodeContractError("canonical plan version/status drifted")
     if plan.get("protocol_version") != PROTOCOL_VERSION:
         raise CanonicalEpisodeContractError("canonical protocol identity drifted")
+
+    compatibility = plan.get("base_protocol_compatibility", {})
+    if compatibility.get("base_protocol_version") != PROTOCOL_VERSION:
+        raise CanonicalEpisodeContractError("base protocol compatibility version drifted")
+    if compatibility.get("base_protocol_role") != "timing_population_participant_trade_and_stimulus_base":
+        raise CanonicalEpisodeContractError("base protocol compatibility role drifted")
+    if compatibility.get("extension_status") != "phase13c_episode_pool_supersedes_base_canonical_world_cardinality_only":
+        raise CanonicalEpisodeContractError("Phase 13C protocol extension status drifted")
+    if compatibility.get("superseded_base_canonical_world_fields") != [
+        "generated_once",
+        "shared_across_participants",
+    ]:
+        raise CanonicalEpisodeContractError("Phase 13C superseded base fields drifted")
+    effective = compatibility.get("effective_canonical_world_policy", {})
+    expected_effective = {
+        "predeclared_episode_pool_size": EPISODE_COUNT,
+        "each_episode_slot_generated_once_if_technically_valid": True,
+        "all_episode_slots_generated_before_participant_exposure": True,
+        "each_frozen_episode_shared_across_multiple_assigned_participants": True,
+        "participant_assignment_mode": "balanced_random_across_episode_pool",
+        "episode_id_recorded_for_analysis": True,
+        "participant_specific_world_generation": False,
+    }
+    if effective != expected_effective:
+        raise CanonicalEpisodeContractError("effective Phase 13C canonical-world policy drifted")
+    retained = compatibility.get("retained_base_canonical_world_invariants", {})
+    expected_retained = {
+        "generated_before_participant_exposure": True,
+        "immutable_during_formal_collection": True,
+        "participant_observes_completed_state": True,
+        "snapshot_is_storage_not_market_generator": True,
+    }
+    if retained != expected_retained:
+        raise CanonicalEpisodeContractError("retained base canonical-world invariants drifted")
 
     pool = plan.get("episode_pool", {})
     if pool.get("pool_id") != EPISODE_POOL_ID:
@@ -254,6 +288,54 @@ def _trading_days(path: Path) -> set[str]:
         return {str(row["pretrade_date"])[:10] for row in rows if row.get("pretrade_date")}
 
 
+def validate_base_protocol_compatibility(
+    protocol: Mapping[str, Any], plan: Mapping[str, Any]
+) -> None:
+    """Validate the narrow Phase 13C override without mutating Phase 10 v1.1.
+
+    Phase 10 v1.1 remains the frozen base for timing, N30 selection, participant
+    trading, and stimulus timing. Phase 13C supersedes only the original single-
+    world cardinality/sharing semantics. This explicit overlay avoids silently
+    rewriting the already-frozen Phase 10 / Phase 11 assets.
+    """
+    if protocol.get("protocol_version") != PROTOCOL_VERSION:
+        raise CanonicalEpisodeContractError("Phase 10 base protocol version drifted")
+    canonical = protocol.get("canonical_world", {})
+    expected_base = {
+        "generated_once": True,
+        "generated_before_participant_exposure": True,
+        "shared_across_participants": True,
+        "immutable_during_formal_collection": True,
+        "participant_observes_completed_state": True,
+        "snapshot_is_storage_not_market_generator": True,
+    }
+    if canonical != expected_base:
+        raise CanonicalEpisodeContractError(
+            "Phase 10 v1.1 canonical_world base block drifted; Phase 13C only permits an explicit overlay"
+        )
+    compatibility = plan.get("base_protocol_compatibility", {})
+    if compatibility.get("superseded_base_canonical_world_fields") != [
+        "generated_once",
+        "shared_across_participants",
+    ]:
+        raise CanonicalEpisodeContractError(
+            "Phase 13C must supersede exactly the two single-world cardinality/sharing fields"
+        )
+    unchanged = set(compatibility.get("unchanged_base_protocol_domains", ()))
+    required = {
+        "world_timing",
+        "participant_decision_dates",
+        "judgement_timing",
+        "participant_price_taker_trading",
+        "participant_only_misinformation_and_correction",
+        "warm_up",
+        "formal_N30_population",
+        "authoritative_open_closed_calendar",
+    }
+    if unchanged != required:
+        raise CanonicalEpisodeContractError("Phase 13C unchanged base-protocol domain declaration drifted")
+
+
 def rebuild_execution_plan(repo_root: str | Path) -> dict[str, Any]:
     """Rebuild the shared 27-day plan from already-frozen Phase 3/4/10 inputs."""
     from marketlens.agents.activation.policy import ActivationPolicy
@@ -266,6 +348,7 @@ def rebuild_execution_plan(repo_root: str | Path) -> dict[str, Any]:
     protocol = load_protocol(root / "marketlens/experiment/protocol_v1.json")
     if protocol["protocol_version"] != PROTOCOL_VERSION:
         raise CanonicalEpisodeContractError("Phase 10 formal protocol version drifted")
+    validate_base_protocol_compatibility(protocol, load_execution_plan())
 
     with tempfile.TemporaryDirectory(prefix="marketlens_phase13c_plan_") as temp:
         output = Path(temp) / "n30"

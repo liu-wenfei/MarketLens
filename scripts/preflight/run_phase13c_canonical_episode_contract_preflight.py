@@ -25,6 +25,7 @@ from marketlens.episode.contract import (  # noqa: E402
     file_sha256,
     formal_assets_present,
     load_execution_plan,
+    validate_base_protocol_compatibility,
     rebuild_execution_plan,
 )
 
@@ -44,6 +45,9 @@ def main() -> int:
     ]
     before = {str(path.relative_to(REPO_ROOT)): file_sha256(path) for path in protected}
     frozen = load_execution_plan()
+    from marketlens.experiment.protocol import load_protocol
+    base_protocol = load_protocol(REPO_ROOT / "marketlens/experiment/protocol_v1.json")
+    validate_base_protocol_compatibility(base_protocol, frozen)
     rebuilt = rebuild_execution_plan(REPO_ROOT)
     after = {str(path.relative_to(REPO_ROOT)): file_sha256(path) for path in protected}
 
@@ -67,6 +71,14 @@ def main() -> int:
         "plan_version": frozen["plan_version"],
         "plan_status": frozen["status"],
         "protocol_version": frozen["protocol_version"],
+        "base_protocol_compatibility": {
+            "base_protocol_version": frozen["base_protocol_compatibility"]["base_protocol_version"],
+            "base_protocol_file_mutated": False,
+            "superseded_base_canonical_world_fields": frozen["base_protocol_compatibility"]["superseded_base_canonical_world_fields"],
+            "effective_episode_pool_size": frozen["base_protocol_compatibility"]["effective_canonical_world_policy"]["predeclared_episode_pool_size"],
+            "participant_assignment_mode": frozen["base_protocol_compatibility"]["effective_canonical_world_policy"]["participant_assignment_mode"],
+            "participant_specific_world_generation": frozen["base_protocol_compatibility"]["effective_canonical_world_policy"]["participant_specific_world_generation"],
+        },
         "execution_plan_sha256": execution_plan_sha256(frozen),
         "expected_execution_plan_sha256": EXPECTED_EXECUTION_PLAN_SHA256,
         "exact_plan_hash_frozen": execution_plan_sha256(frozen) == EXPECTED_EXECUTION_PLAN_SHA256,
@@ -127,7 +139,7 @@ def main() -> int:
         "note": (
             "Contract only. No paid canonical episode has been generated. The future formal producer must "
             "reuse inherited TwinMarket execution to generate exactly three technically valid episode slots "
-            "under the same frozen N30 population, activation plan, and Phase 10 protocol. Natural episode "
+            "under the same frozen N30 population, activation plan, and Phase 10 v1.1 base protocol plus the explicit Phase 13C episode-pool cardinality/assignment extension. Natural episode "
             "outcomes or cross-episode similarity cannot be used to rerun, exclude, or replace a technically "
             "valid episode. Participants are later assigned across the frozen pool in a balanced random manner."
         ),

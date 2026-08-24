@@ -23,6 +23,7 @@ from marketlens.episode.contract import (
     formal_episode_paths,
     load_execution_plan,
     rebuild_execution_plan,
+    validate_base_protocol_compatibility,
     validate_execution_plan,
     validate_formal_episode_manifest,
     validate_formal_episode_pool_manifest,
@@ -139,11 +140,31 @@ def test_frozen_execution_plan_has_exact_pool_identity_and_hash():
     assert plan["episode_pool"]["episode_count"] == 3
     assert tuple(plan["episode_pool"]["episode_ids"]) == EPISODE_IDS
     assert plan["protocol_version"] == "1.1"
+    assert plan["plan_version"] == "1.2"
     assert plan["population"]["size"] == 30
     assert plan["population"]["selection_seed"] == POPULATION_SEED
     assert plan["population"]["selected_agent_ids_sha256"] == SELECTED_AGENT_IDS_SHA256
     assert plan["activation"]["seed"] == ACTIVATION_SEED
     assert execution_plan_sha256(plan) == EXPECTED_EXECUTION_PLAN_SHA256
+
+
+def test_phase13c_explicitly_supersedes_only_phase10_single_world_cardinality_semantics():
+    from marketlens.experiment.protocol import load_protocol
+
+    plan = load_execution_plan()
+    protocol = load_protocol(REPO_ROOT / "marketlens/experiment/protocol_v1.json")
+    validate_base_protocol_compatibility(protocol, plan)
+    compat = plan["base_protocol_compatibility"]
+    assert compat["base_protocol_version"] == "1.1"
+    assert compat["superseded_base_canonical_world_fields"] == [
+        "generated_once",
+        "shared_across_participants",
+    ]
+    effective = compat["effective_canonical_world_policy"]
+    assert effective["predeclared_episode_pool_size"] == 3
+    assert effective["each_episode_slot_generated_once_if_technically_valid"] is True
+    assert effective["each_frozen_episode_shared_across_multiple_assigned_participants"] is True
+    assert effective["participant_specific_world_generation"] is False
 
 
 def test_each_episode_uses_exact_same_27_tick_plan_and_pool_total_is_predeclared():

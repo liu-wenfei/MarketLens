@@ -19,6 +19,7 @@ from .contract import (
     formal_episode_paths,
     load_execution_plan,
     rebuild_execution_plan,
+    validate_base_protocol_compatibility,
     validate_formal_episode_manifest,
     validate_formal_episode_pool_manifest,
 )
@@ -42,6 +43,7 @@ __all__ = [
     "formal_episode_paths",
     "load_execution_plan",
     "rebuild_execution_plan",
+    "validate_base_protocol_compatibility",
     "validate_formal_episode_manifest",
     "validate_formal_episode_pool_manifest",
 ]
