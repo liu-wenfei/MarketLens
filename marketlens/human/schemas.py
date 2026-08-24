@@ -45,6 +45,21 @@ class SessionState(BaseModel):
     market_state_date: str | None
 
 
+class ParticipantForumPostRead(BaseModel):
+    post_id: int
+    author_id: str
+    source_label: str
+    display_text: str
+    created_at: str
+
+
+class ParticipantBackgroundRead(BaseModel):
+    session_id: str
+    current_date: str
+    natural_news: list[str]
+    forum_posts: list[ParticipantForumPostRead]
+
+
 class DecisionCreate(BaseModel):
     request_id: str = Field(min_length=1, max_length=128)
     step: int = Field(ge=0)

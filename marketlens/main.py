@@ -5,6 +5,8 @@ from pathlib import Path
 from fastapi import FastAPI
 
 from marketlens.human.portfolio.policy import PortfolioPolicy
+from marketlens.information.projection import ParticipantBackgroundProjection
+from marketlens.human.routers.background import router as background_router
 from marketlens.human.routers.decision import router as decision_router
 from marketlens.human.routers.portfolio import router as portfolio_router
 from marketlens.human.routers.round import router as round_router
@@ -26,6 +28,7 @@ def create_app(
     database_url: str | None = None,
     initialize_database: bool | None = None,
     portfolio_policy: PortfolioPolicy | None = None,
+    background_projection: ParticipantBackgroundProjection | None = None,
 ) -> FastAPI:
     app = FastAPI(title="MarketLens Human Backend", version="0.2.1")
 
@@ -41,12 +44,16 @@ def create_app(
     app.state.price_provider = CsvClosePriceProvider()
     app.state.trading_calendar = TradingCalendar()
     app.state.portfolio_policy = portfolio_policy or PortfolioPolicy()
+    # No legacy/sample forum DB is auto-bound. Phase 13B fails closed until an
+    # explicit canonical episode projection is injected.
+    app.state.background_projection = background_projection
 
     @app.get("/health")
     def health() -> dict[str, str]:
         return {"status": "ok", "service": "marketlens-human-backend"}
 
     app.include_router(market_router)
+    app.include_router(background_router)
     app.include_router(session_router)
     app.include_router(decision_router)
     app.include_router(portfolio_router)
