@@ -1,0 +1,93 @@
+{
+  "contract_schema_version": "marketlens-canonical-episode-producer-contract/1.0",
+  "contract_version": "1.0",
+  "status": "formal_producer_contract_frozen",
+  "phase13c_execution_plan_sha256": "a907079281f7deca590bd7ec741b56fab614f05b0cdd869c5f2c345fb048a8bc",
+  "episode_pool_id": "marketlens-canonical-episode-pool-v1",
+  "episode_ids": [
+    "marketlens-canonical-episode-v1-e01",
+    "marketlens-canonical-episode-v1-e02",
+    "marketlens-canonical-episode-v1-e03"
+  ],
+  "backend_identity": {
+    "model_name": "gpt-5.4-mini",
+    "base_url": "https://zhi-api.com/v1",
+    "api_key_recorded_in_manifest": false,
+    "api_key_value_frozen_in_contract": false,
+    "backend_call_count_claimed": false,
+    "reason": "Phase 10 established Agent-pipeline feasibility with this public backend/model identity. Secret credentials are runtime-only and never written to evidence."
+  },
+  "protected_inputs": {
+    "data/sys_1000.db": "90b19c5cb9dac6708dff06fe4def5205cecef1a90da0f74eec449dab5a6769c3",
+    "data/trading_days.csv": "5bd8f6b6972b8433ed5a1ece27fa926df29a0f90517437fee41c6316f8cafaee",
+    "data/sorted_impact_news.pkl": "09ed6be6bacf8a1edeb90311d3c477d9ea83be8a8f156da06705f9dba68e5b1c",
+    "util/belief/belief_1000_0129.csv": "d28058f42a8c6fc733539d84edff4994fbd9036648a186c1ff7d5fc808f755de",
+    "data/stock_profile.csv": "18dfc6a8a00774f264f5a6aa740c62e080ec0401b7fce2d4b977f960bc421b5e",
+    "data/stock_data.csv": "166d2cd53037f0b27fc25b7653c013d144fc83e4f10ed0f718333d57cfd22124",
+    "marketlens/experiment/protocol_v1.json": "70814b9aa47e2ed258c3e6bd04ad9df743b6cd71587be8f6c95b3d0c69df62fc"
+  },
+  "candidate_fixture": {
+    "runtime_db": "artifacts/preflight/phase10/n30_candidate_fixture/population_runtime.db",
+    "population_manifest": "artifacts/preflight/phase10/n30_candidate_fixture/population_manifest.json",
+    "selection_seed": "marketlens-dev-population-01",
+    "population_size": 30,
+    "selected_agent_ids_sha256": "60d846b21c15e2213f6f897a17a7ea98039fbf461abe54ee89e1b6779d24b2d4",
+    "exact_file_hash_required": false,
+    "semantic_guard_required": true,
+    "reason": "Phase 10 freezes membership, row counts and semantic table digests; the producer must verify those guards and must not regenerate/select a different population inside a formal attempt."
+  },
+  "inherited_execution_boundary": {
+    "agent_reasoning": "simulation.process_user_input",
+    "social_graph": "marketlens.agents.social.graph.build_bounded_social_graph",
+    "prominence": "marketlens.agents.social.prominence.make_prominence_snapshot",
+    "trading_day": "marketlens.market.runtime.inherited_market.advance_trading_day",
+    "non_trading_day": "marketlens.market.runtime.inherited_market.advance_non_trading_day",
+    "forum_reader": "util.ForumDB.get_all_users_posts_db",
+    "forum_post_writer": "util.ForumDB.create_post_db",
+    "forum_actions": "util.ForumDB.execute_forum_actions",
+    "forum_score_update": "util.ForumDB.update_posts_score_by_date_range",
+    "custom_matching_price_forum_belief_logic_allowed": false
+  },
+  "execution_controls": {
+    "default_mode": "dry_run_zero_llm",
+    "full_pool_execute_command_allowed": false,
+    "one_explicit_episode_slot_per_execute_command": true,
+    "formal_execute_requires_clean_git": true,
+    "formal_execute_requires_explicit_acknowledgement": true,
+    "overwrite_formal_slot_allowed": false,
+    "partial_resume_allowed": false,
+    "seed_substitution_allowed": false,
+    "outcome_based_rerun_allowed": false,
+    "episode_similarity_based_rerun_allowed": false,
+    "failed_attempt_evidence_retained": true,
+    "technically_valid_completed_slot_immutable": true,
+    "pool_finalization_is_zero_llm": true,
+    "pool_finalization_requires_all_three_valid_slots": true
+  },
+  "attempt_layout": {
+    "raw_root_template": "artifacts/formal/canonical_episode/{episode_id}",
+    "attempt_dir_template": "attempt_{attempt_number:03d}",
+    "attempt_manifest": "attempt_manifest.json",
+    "working_agent_world_db": "workspace/agent_world.db",
+    "working_forum_db": "workspace/forum.db"
+  },
+  "technical_acceptance": {
+    "formal_world_ticks": 27,
+    "active_agent_pipeline_executions": 193,
+    "all_predeclared_active_agents_complete": true,
+    "exact_phase13c_activation_plan_required": true,
+    "exact_open_closed_actions_required": true,
+    "daily_agent_world_and_forum_hash_chain_required": true,
+    "protected_inputs_unchanged_required": true,
+    "participant_data_absent_required": true,
+    "controlled_stimulus_absent_from_agent_world_required": true,
+    "participant_exact_price_coverage_required": true,
+    "forum_profile_source_cue_join_required": true,
+    "minimum_post_count": null,
+    "minimum_trade_count": null,
+    "price_direction": null,
+    "sentiment": null,
+    "misinformation_effect": null,
+    "cross_episode_divergence": null
+  }
+}
