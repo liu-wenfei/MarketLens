@@ -1,8 +1,7 @@
 {
-  "plan_schema_version": "marketlens-canonical-episode-execution-plan/1.0",
-  "plan_version": "1.0",
-  "status": "formal_execution_plan_frozen",
-  "episode_id": "marketlens-canonical-episode-v1",
+  "plan_schema_version": "marketlens-canonical-episode-pool-execution-plan/1.0",
+  "plan_version": "1.1",
+  "status": "formal_episode_pool_execution_plan_frozen",
   "protocol_version": "1.1",
   "population": {
     "size": 30,
@@ -40,14 +39,22 @@
     "closed_days": 10
   },
   "generation_policy": {
-    "single_valid_canonical_episode": true,
-    "generated_before_participant_exposure": true,
-    "shared_across_participants": true,
+    "fixed_episode_pool_size": 3,
+    "all_episode_slots_generated_before_participant_exposure": true,
+    "participant_specific_world_generation": false,
+    "same_population_across_episodes": true,
+    "same_activation_plan_across_episodes": true,
+    "same_protocol_across_episodes": true,
+    "balanced_random_assignment_across_episode_pool": true,
+    "episode_id_must_be_recorded_for_analysis": true,
     "partial_resume_allowed": false,
     "seed_substitution_allowed": false,
     "outcome_based_rerun_allowed": false,
-    "technical_invalid_attempt_may_restart_from_frozen_initial_state": true,
+    "outcome_based_episode_exclusion_allowed": false,
+    "episode_similarity_based_rerun_allowed": false,
+    "technical_invalid_attempt_may_restart_same_episode_slot_from_frozen_initial_state": true,
     "failed_attempt_evidence_must_be_retained": true,
+    "technically_valid_completed_episode_must_be_retained": true,
     "code_or_contract_change_requires_new_plan_version": true
   },
   "acceptance_policy": {
@@ -66,13 +73,17 @@
     "minimum_trade_count_gate": null,
     "price_direction_gate": null,
     "sentiment_gate": null,
-    "misinformation_effect_gate": null
+    "misinformation_effect_gate": null,
+    "minimum_cross_episode_divergence_gate": null,
+    "episode_similarity_gate": null
   },
   "formal_asset_layout": {
-    "agent_world_db": "data/marketlens/canonical_episode/v1/agent_world.db",
-    "forum_db": "data/marketlens/canonical_episode/v1/forum.db",
-    "episode_manifest": "data/marketlens/canonical_episode/v1/episode_manifest.json",
-    "raw_execution_evidence_root": "artifacts/formal/canonical_episode/marketlens-canonical-episode-v1"
+    "pool_manifest": "data/marketlens/canonical_episode/v1/pool_manifest.json",
+    "episode_root_template": "data/marketlens/canonical_episode/v1/episode_{index:02d}",
+    "agent_world_db_name": "agent_world.db",
+    "forum_db_name": "forum.db",
+    "episode_manifest_name": "episode_manifest.json",
+    "raw_execution_evidence_root_template": "artifacts/formal/canonical_episode/{episode_id}"
   },
   "days": [
     {
@@ -511,5 +522,15 @@
       ],
       "n_active": 14
     }
-  ]
+  ],
+  "episode_pool": {
+    "pool_id": "marketlens-canonical-episode-pool-v1",
+    "episode_count": 3,
+    "episode_ids": [
+      "marketlens-canonical-episode-v1-e01",
+      "marketlens-canonical-episode-v1-e02",
+      "marketlens-canonical-episode-v1-e03"
+    ],
+    "replication_rule": "same frozen initial N30 world + same activation plan; independent stochastic TwinMarket/LLM execution per episode"
+  }
 }

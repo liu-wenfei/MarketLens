@@ -8,33 +8,39 @@ import pytest
 
 from marketlens.episode.contract import (
     ACTIVATION_SEED,
-    EPISODE_ID,
+    EPISODE_COUNT,
+    EPISODE_IDS,
+    EPISODE_POOL_ID,
     EXPECTED_AGENT_PIPELINE_EXECUTIONS,
     EXPECTED_EXECUTION_PLAN_SHA256,
+    EXPECTED_POOL_AGENT_PIPELINE_EXECUTIONS,
     POPULATION_SEED,
     SELECTED_AGENT_IDS_SHA256,
     CanonicalEpisodeContractError,
     execution_plan_sha256,
     file_sha256,
     formal_assets_present,
+    formal_episode_paths,
     load_execution_plan,
     rebuild_execution_plan,
     validate_execution_plan,
     validate_formal_episode_manifest,
+    validate_formal_episode_pool_manifest,
 )
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
-def _valid_manifest(tmp_path: Path) -> tuple[dict, Path]:
+def _valid_manifest(tmp_path: Path, episode_id: str = EPISODE_IDS[0]) -> tuple[dict, Path]:
     root = tmp_path
-    data_dir = root / "data/marketlens/canonical_episode/v1"
-    data_dir.mkdir(parents=True)
-    agent = data_dir / "agent_world.db"
-    forum = data_dir / "forum.db"
-    agent.write_bytes(b"canonical-agent-world")
-    forum.write_bytes(b"canonical-forum")
+    paths = formal_episode_paths(episode_id)
+    data_dir = root / paths["root"]
+    data_dir.mkdir(parents=True, exist_ok=True)
+    agent = root / paths["agent_world_db"]
+    forum = root / paths["forum_db"]
+    agent.write_bytes(f"canonical-agent-world-{episode_id}".encode())
+    forum.write_bytes(f"canonical-forum-{episode_id}".encode())
 
     plan = load_execution_plan()
     daily = [
@@ -47,8 +53,10 @@ def _valid_manifest(tmp_path: Path) -> tuple[dict, Path]:
         for row in plan["days"]
     ]
     manifest = {
-        "manifest_schema_version": "marketlens-canonical-episode-manifest/1.0",
-        "episode_id": EPISODE_ID,
+        "manifest_schema_version": "marketlens-canonical-episode-manifest/1.1",
+        "episode_pool_id": EPISODE_POOL_ID,
+        "episode_id": episode_id,
+        "episode_slot": EPISODE_IDS.index(episode_id) + 1,
         "status": "formal_frozen",
         "protocol_version": "1.1",
         "execution_plan_sha256": EXPECTED_EXECUTION_PLAN_SHA256,
@@ -67,6 +75,7 @@ def _valid_manifest(tmp_path: Path) -> tuple[dict, Path]:
             "seed_substitution_used": False,
             "partial_resume_used": False,
             "outcome_review_used_for_acceptance": False,
+            "episode_similarity_review_used_for_acceptance": False,
         },
         "execution": {
             "active_agent_pipeline_executions_expected": EXPECTED_AGENT_PIPELINE_EXECUTIONS,
@@ -87,22 +96,48 @@ def _valid_manifest(tmp_path: Path) -> tuple[dict, Path]:
         },
         "daily_state_chain": daily,
         "outputs": {
-            "agent_world_db": {
-                "path": "data/marketlens/canonical_episode/v1/agent_world.db",
-                "sha256": file_sha256(agent),
-            },
-            "forum_db": {
-                "path": "data/marketlens/canonical_episode/v1/forum.db",
-                "sha256": file_sha256(forum),
-            },
+            "agent_world_db": {"path": paths["agent_world_db"], "sha256": file_sha256(agent)},
+            "forum_db": {"path": paths["forum_db"], "sha256": file_sha256(forum)},
         },
     }
+    (root / paths["episode_manifest"]).write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     return manifest, root
 
 
-def test_frozen_execution_plan_has_exact_identity_and_hash():
+def _valid_pool_manifest(tmp_path: Path) -> tuple[dict, Path]:
+    for episode_id in EPISODE_IDS:
+        _valid_manifest(tmp_path, episode_id)
+    manifest = {
+        "manifest_schema_version": "marketlens-canonical-episode-pool-manifest/1.0",
+        "episode_pool_id": EPISODE_POOL_ID,
+        "status": "formal_frozen",
+        "execution_plan_sha256": EXPECTED_EXECUTION_PLAN_SHA256,
+        "episode_count": EPISODE_COUNT,
+        "episode_ids": list(EPISODE_IDS),
+        "participant_assignment": {
+            "mode": "balanced_random_across_episode_pool",
+            "episode_id_recorded_for_analysis": True,
+            "assignment_uses_episode_outcomes": False,
+        },
+        "episodes": [
+            {
+                "episode_id": episode_id,
+                "episode_manifest_path": formal_episode_paths(episode_id)["episode_manifest"],
+            }
+            for episode_id in EPISODE_IDS
+        ],
+    }
+    pool_path = tmp_path / "data/marketlens/canonical_episode/v1/pool_manifest.json"
+    pool_path.parent.mkdir(parents=True, exist_ok=True)
+    pool_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    return manifest, tmp_path
+
+
+def test_frozen_execution_plan_has_exact_pool_identity_and_hash():
     plan = load_execution_plan()
-    assert plan["episode_id"] == EPISODE_ID
+    assert plan["episode_pool"]["pool_id"] == EPISODE_POOL_ID
+    assert plan["episode_pool"]["episode_count"] == 3
+    assert tuple(plan["episode_pool"]["episode_ids"]) == EPISODE_IDS
     assert plan["protocol_version"] == "1.1"
     assert plan["population"]["size"] == 30
     assert plan["population"]["selection_seed"] == POPULATION_SEED
@@ -111,12 +146,13 @@ def test_frozen_execution_plan_has_exact_identity_and_hash():
     assert execution_plan_sha256(plan) == EXPECTED_EXECUTION_PLAN_SHA256
 
 
-def test_frozen_plan_is_exact_27_calendar_ticks_and_193_agent_pipelines():
+def test_each_episode_uses_exact_same_27_tick_plan_and_pool_total_is_predeclared():
     plan = load_execution_plan()
     assert len(plan["days"]) == 27
     assert plan["days"][0]["agent_world_date"] == "2023-06-15"
     assert plan["days"][-1]["agent_world_date"] == "2023-07-11"
     assert sum(row["n_active"] for row in plan["days"]) == 193
+    assert EXPECTED_POOL_AGENT_PIPELINE_EXECUTIONS == 579
     assert sum(row["market_open"] for row in plan["days"]) == 17
     assert sum(not row["market_open"] for row in plan["days"]) == 10
 
@@ -127,22 +163,32 @@ def test_first_three_days_match_the_once_only_n30_real_backend_reference():
     assert [row["market_open"] for row in plan["days"][:3]] == [True, True, False]
 
 
-def test_generation_policy_forbids_seed_fishing_partial_resume_and_outcome_rerun():
-    plan = load_execution_plan()
-    policy = plan["generation_policy"]
+def test_generation_policy_is_fixed_three_episode_balanced_and_outcome_blind():
+    policy = load_execution_plan()["generation_policy"]
+    assert policy["fixed_episode_pool_size"] == 3
+    assert policy["same_population_across_episodes"] is True
+    assert policy["same_activation_plan_across_episodes"] is True
+    assert policy["balanced_random_assignment_across_episode_pool"] is True
+    assert policy["episode_id_must_be_recorded_for_analysis"] is True
+    assert policy["participant_specific_world_generation"] is False
     assert policy["partial_resume_allowed"] is False
     assert policy["seed_substitution_allowed"] is False
     assert policy["outcome_based_rerun_allowed"] is False
+    assert policy["outcome_based_episode_exclusion_allowed"] is False
+    assert policy["episode_similarity_based_rerun_allowed"] is False
     assert policy["failed_attempt_evidence_must_be_retained"] is True
+    assert policy["technically_valid_completed_episode_must_be_retained"] is True
 
 
-def test_acceptance_policy_has_no_post_trade_price_sentiment_or_effect_gate():
+def test_acceptance_policy_has_no_outcome_or_cross_episode_diversity_gate():
     policy = load_execution_plan()["acceptance_policy"]
     assert policy["minimum_post_count_gate"] is None
     assert policy["minimum_trade_count_gate"] is None
     assert policy["price_direction_gate"] is None
     assert policy["sentiment_gate"] is None
     assert policy["misinformation_effect_gate"] is None
+    assert policy["minimum_cross_episode_divergence_gate"] is None
+    assert policy["episode_similarity_gate"] is None
 
 
 def test_rebuilt_plan_from_frozen_phase3_phase4_phase10_inputs_matches_exactly():
@@ -154,23 +200,22 @@ def test_rebuilt_plan_from_frozen_phase3_phase4_phase10_inputs_matches_exactly()
 
 def test_plan_hash_drift_is_fail_closed():
     plan = copy.deepcopy(load_execution_plan())
-    plan["days"][4]["active_agent_ids"] = []
-    plan["days"][4]["n_active"] = 0
+    plan["episode_pool"]["episode_count"] = 4
     with pytest.raises(CanonicalEpisodeContractError, match="SHA-256 drifted"):
         validate_execution_plan(plan)
 
 
-def test_formal_manifest_contract_accepts_only_hash_pinned_db_pair(tmp_path: Path):
-    manifest, root = _valid_manifest(tmp_path)
+def test_formal_episode_manifest_accepts_only_allowed_slot_and_hash_pinned_db_pair(tmp_path: Path):
+    manifest, root = _valid_manifest(tmp_path, EPISODE_IDS[1])
     validate_formal_episode_manifest(manifest, repo_root=root, verify_files=True)
 
-    agent = root / "data/marketlens/canonical_episode/v1/agent_world.db"
+    agent = root / formal_episode_paths(EPISODE_IDS[1])["agent_world_db"]
     agent.write_bytes(b"tampered")
     with pytest.raises(CanonicalEpisodeContractError, match="Agent-world DB|output SHA-256 mismatch"):
         validate_formal_episode_manifest(manifest, repo_root=root, verify_files=True)
 
 
-def test_formal_manifest_rejects_outcome_conditioning_and_partial_resume(tmp_path: Path):
+def test_formal_episode_manifest_rejects_outcome_similarity_conditioning_and_partial_resume(tmp_path: Path):
     manifest, root = _valid_manifest(tmp_path)
     bad = copy.deepcopy(manifest)
     bad["attempt"]["outcome_review_used_for_acceptance"] = True
@@ -178,9 +223,31 @@ def test_formal_manifest_rejects_outcome_conditioning_and_partial_resume(tmp_pat
         validate_formal_episode_manifest(bad, repo_root=root, verify_files=False)
 
     bad = copy.deepcopy(manifest)
+    bad["attempt"]["episode_similarity_review_used_for_acceptance"] = True
+    with pytest.raises(CanonicalEpisodeContractError, match="similarity-conditioned"):
+        validate_formal_episode_manifest(bad, repo_root=root, verify_files=False)
+
+    bad = copy.deepcopy(manifest)
     bad["attempt"]["partial_resume_used"] = True
     with pytest.raises(CanonicalEpisodeContractError, match="partial resume"):
         validate_formal_episode_manifest(bad, repo_root=root, verify_files=False)
+
+
+def test_formal_episode_manifest_rejects_unregistered_episode_id(tmp_path: Path):
+    manifest, root = _valid_manifest(tmp_path)
+    manifest["episode_id"] = "marketlens-canonical-episode-v1-e99"
+    with pytest.raises(CanonicalEpisodeContractError, match="identity/status"):
+        validate_formal_episode_manifest(manifest, repo_root=root, verify_files=False)
+
+
+def test_formal_pool_manifest_requires_exact_three_episode_pool_and_balanced_outcome_blind_assignment(tmp_path: Path):
+    manifest, root = _valid_pool_manifest(tmp_path)
+    validate_formal_episode_pool_manifest(manifest, repo_root=root, verify_files=True)
+
+    bad = copy.deepcopy(manifest)
+    bad["participant_assignment"]["assignment_uses_episode_outcomes"] = True
+    with pytest.raises(CanonicalEpisodeContractError, match="outcome-blind"):
+        validate_formal_episode_pool_manifest(bad, repo_root=root, verify_files=False)
 
 
 def test_formal_asset_presence_probe_is_boolean_and_does_not_bind_assets():

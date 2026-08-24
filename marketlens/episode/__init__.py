@@ -1,10 +1,13 @@
-"""Canonical Agent-world episode contracts for MarketLens."""
+"""Canonical Agent-world episode-pool contracts for MarketLens."""
 
 from .contract import (
     ACTIVATION_SEED,
-    EPISODE_ID,
+    EPISODE_COUNT,
+    EPISODE_IDS,
+    EPISODE_POOL_ID,
     EXPECTED_AGENT_PIPELINE_EXECUTIONS,
     EXPECTED_EXECUTION_PLAN_SHA256,
+    EXPECTED_POOL_AGENT_PIPELINE_EXECUTIONS,
     PLAN_STATUS,
     PLAN_VERSION,
     POPULATION_SEED,
@@ -13,16 +16,21 @@ from .contract import (
     CanonicalEpisodeContractError,
     execution_plan_sha256,
     formal_assets_present,
+    formal_episode_paths,
     load_execution_plan,
     rebuild_execution_plan,
     validate_formal_episode_manifest,
+    validate_formal_episode_pool_manifest,
 )
 
 __all__ = [
     "ACTIVATION_SEED",
-    "EPISODE_ID",
+    "EPISODE_COUNT",
+    "EPISODE_IDS",
+    "EPISODE_POOL_ID",
     "EXPECTED_AGENT_PIPELINE_EXECUTIONS",
     "EXPECTED_EXECUTION_PLAN_SHA256",
+    "EXPECTED_POOL_AGENT_PIPELINE_EXECUTIONS",
     "PLAN_STATUS",
     "PLAN_VERSION",
     "POPULATION_SEED",
@@ -31,7 +39,9 @@ __all__ = [
     "CanonicalEpisodeContractError",
     "execution_plan_sha256",
     "formal_assets_present",
+    "formal_episode_paths",
     "load_execution_plan",
     "rebuild_execution_plan",
     "validate_formal_episode_manifest",
+    "validate_formal_episode_pool_manifest",
 ]

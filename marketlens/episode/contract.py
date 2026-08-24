@@ -1,8 +1,9 @@
-"""Phase 13C canonical Agent-world episode freeze contract.
+"""Phase 13C canonical Agent-world episode-pool freeze contract.
 
-This module does not execute an LLM or generate a canonical world.  It freezes
-and validates the zero-LLM execution plan and the minimum manifest contract that
-an eventual one-off formal producer must satisfy.
+This module does not execute an LLM or generate formal worlds. It freezes and
+validates the zero-LLM execution plan shared by a fixed pool of pre-generated
+canonical episodes and the minimum manifests that a later formal producer must
+satisfy.
 """
 from __future__ import annotations
 
@@ -18,12 +19,18 @@ from marketlens.stimulus.manifest import sha256_json
 
 
 class CanonicalEpisodeContractError(ValueError):
-    """Raised when the predeclared canonical-episode identity drifts."""
+    """Raised when the predeclared canonical-episode-pool identity drifts."""
 
 
-EPISODE_ID = "marketlens-canonical-episode-v1"
-PLAN_VERSION = "1.0"
-PLAN_STATUS = "formal_execution_plan_frozen"
+EPISODE_POOL_ID = "marketlens-canonical-episode-pool-v1"
+EPISODE_IDS = (
+    "marketlens-canonical-episode-v1-e01",
+    "marketlens-canonical-episode-v1-e02",
+    "marketlens-canonical-episode-v1-e03",
+)
+EPISODE_COUNT = 3
+PLAN_VERSION = "1.1"
+PLAN_STATUS = "formal_episode_pool_execution_plan_frozen"
 PROTOCOL_VERSION = "1.1"
 POPULATION_SIZE = 30
 POPULATION_SEED = "marketlens-dev-population-01"
@@ -33,10 +40,10 @@ SELECTED_AGENT_IDS_SHA256 = (
 ACTIVATION_SEED = "marketlens-phase09b-activation-01"
 EXPECTED_WORLD_TICKS = 27
 EXPECTED_AGENT_PIPELINE_EXECUTIONS = 193
-EXPECTED_EXECUTION_PLAN_SHA256 = "58e347d4d7b6400555c0533db88b387d5f16f5f991020f758a5cd6477b08ac96"
-FORMAL_AGENT_WORLD_DB = "data/marketlens/canonical_episode/v1/agent_world.db"
-FORMAL_FORUM_DB = "data/marketlens/canonical_episode/v1/forum.db"
-FORMAL_EPISODE_MANIFEST = "data/marketlens/canonical_episode/v1/episode_manifest.json"
+EXPECTED_POOL_AGENT_PIPELINE_EXECUTIONS = EXPECTED_AGENT_PIPELINE_EXECUTIONS * EPISODE_COUNT
+EXPECTED_EXECUTION_PLAN_SHA256 = "6728e918034dc520ad59104544b5168637256380c2ed638686b6b3c54a91d748"
+FORMAL_POOL_ROOT = "data/marketlens/canonical_episode/v1"
+FORMAL_POOL_MANIFEST = f"{FORMAL_POOL_ROOT}/pool_manifest.json"
 
 _HEX64 = re.compile(r"^[0-9a-f]{64}$")
 
@@ -57,6 +64,25 @@ def execution_plan_sha256(plan: Mapping[str, Any]) -> str:
     return sha256_json(dict(plan))
 
 
+def episode_index(episode_id: str) -> int:
+    try:
+        return EPISODE_IDS.index(str(episode_id)) + 1
+    except ValueError as exc:
+        raise CanonicalEpisodeContractError(f"unknown canonical episode id: {episode_id}") from exc
+
+
+def formal_episode_paths(episode_id: str) -> dict[str, str]:
+    index = episode_index(episode_id)
+    root = f"{FORMAL_POOL_ROOT}/episode_{index:02d}"
+    return {
+        "root": root,
+        "agent_world_db": f"{root}/agent_world.db",
+        "forum_db": f"{root}/forum.db",
+        "episode_manifest": f"{root}/episode_manifest.json",
+        "raw_execution_evidence_root": f"artifacts/formal/canonical_episode/{episode_id}",
+    }
+
+
 def load_execution_plan(path: str | Path | None = None) -> dict[str, Any]:
     source = Path(path) if path is not None else default_plan_path()
     try:
@@ -72,12 +98,18 @@ def load_execution_plan(path: str | Path | None = None) -> dict[str, Any]:
 def validate_execution_plan(plan: Mapping[str, Any]) -> None:
     if execution_plan_sha256(plan) != EXPECTED_EXECUTION_PLAN_SHA256:
         raise CanonicalEpisodeContractError("canonical execution-plan SHA-256 drifted")
-    if plan.get("plan_schema_version") != "marketlens-canonical-episode-execution-plan/1.0":
+    if plan.get("plan_schema_version") != "marketlens-canonical-episode-pool-execution-plan/1.0":
         raise CanonicalEpisodeContractError("canonical plan schema version drifted")
     if plan.get("plan_version") != PLAN_VERSION or plan.get("status") != PLAN_STATUS:
         raise CanonicalEpisodeContractError("canonical plan version/status drifted")
-    if plan.get("episode_id") != EPISODE_ID or plan.get("protocol_version") != PROTOCOL_VERSION:
-        raise CanonicalEpisodeContractError("canonical episode/protocol identity drifted")
+    if plan.get("protocol_version") != PROTOCOL_VERSION:
+        raise CanonicalEpisodeContractError("canonical protocol identity drifted")
+
+    pool = plan.get("episode_pool", {})
+    if pool.get("pool_id") != EPISODE_POOL_ID:
+        raise CanonicalEpisodeContractError("canonical episode-pool identity drifted")
+    if pool.get("episode_count") != EPISODE_COUNT or tuple(pool.get("episode_ids", ())) != EPISODE_IDS:
+        raise CanonicalEpisodeContractError("canonical episode-pool membership drifted")
 
     population = plan.get("population", {})
     if population.get("size") != POPULATION_SIZE:
@@ -115,23 +147,32 @@ def validate_execution_plan(plan: Mapping[str, Any]) -> None:
         raise CanonicalEpisodeContractError("formal 27-tick world horizon drifted")
 
     generation = plan.get("generation_policy", {})
+    if generation.get("fixed_episode_pool_size") != EPISODE_COUNT:
+        raise CanonicalEpisodeContractError("formal episode-pool size drifted")
     required_true = (
-        "single_valid_canonical_episode",
-        "generated_before_participant_exposure",
-        "shared_across_participants",
-        "technical_invalid_attempt_may_restart_from_frozen_initial_state",
+        "all_episode_slots_generated_before_participant_exposure",
+        "same_population_across_episodes",
+        "same_activation_plan_across_episodes",
+        "same_protocol_across_episodes",
+        "balanced_random_assignment_across_episode_pool",
+        "episode_id_must_be_recorded_for_analysis",
+        "technical_invalid_attempt_may_restart_same_episode_slot_from_frozen_initial_state",
         "failed_attempt_evidence_must_be_retained",
+        "technically_valid_completed_episode_must_be_retained",
         "code_or_contract_change_requires_new_plan_version",
     )
     if any(generation.get(key) is not True for key in required_true):
         raise CanonicalEpisodeContractError("canonical generation policy lost a required invariant")
-    forbidden_true = (
+    required_false = (
+        "participant_specific_world_generation",
         "partial_resume_allowed",
         "seed_substitution_allowed",
         "outcome_based_rerun_allowed",
+        "outcome_based_episode_exclusion_allowed",
+        "episode_similarity_based_rerun_allowed",
     )
-    if any(generation.get(key) is not False for key in forbidden_true):
-        raise CanonicalEpisodeContractError("canonical generation policy permits a forbidden rerun path")
+    if any(generation.get(key) is not False for key in required_false):
+        raise CanonicalEpisodeContractError("canonical generation policy permits a forbidden selection/rerun path")
 
     acceptance = plan.get("acceptance_policy", {})
     required_acceptance_true = (
@@ -156,17 +197,23 @@ def validate_execution_plan(plan: Mapping[str, Any]) -> None:
         "price_direction_gate",
         "sentiment_gate",
         "misinformation_effect_gate",
+        "minimum_cross_episode_divergence_gate",
+        "episode_similarity_gate",
     ):
         if acceptance.get(key) is not None:
             raise CanonicalEpisodeContractError(f"outcome-conditioned formal gate is forbidden: {key}")
 
     layout = plan.get("formal_asset_layout", {})
-    if layout.get("agent_world_db") != FORMAL_AGENT_WORLD_DB:
-        raise CanonicalEpisodeContractError("formal Agent-world DB path drifted")
-    if layout.get("forum_db") != FORMAL_FORUM_DB:
-        raise CanonicalEpisodeContractError("formal ForumDB path drifted")
-    if layout.get("episode_manifest") != FORMAL_EPISODE_MANIFEST:
-        raise CanonicalEpisodeContractError("formal episode manifest path drifted")
+    expected_layout = {
+        "pool_manifest": FORMAL_POOL_MANIFEST,
+        "episode_root_template": f"{FORMAL_POOL_ROOT}/episode_{{index:02d}}",
+        "agent_world_db_name": "agent_world.db",
+        "forum_db_name": "forum.db",
+        "episode_manifest_name": "episode_manifest.json",
+        "raw_execution_evidence_root_template": "artifacts/formal/canonical_episode/{episode_id}",
+    }
+    if layout != expected_layout:
+        raise CanonicalEpisodeContractError("formal episode-pool asset layout drifted")
 
     days = plan.get("days")
     if not isinstance(days, list) or len(days) != EXPECTED_WORLD_TICKS:
@@ -195,7 +242,7 @@ def validate_execution_plan(plan: Mapping[str, Any]) -> None:
         raise CanonicalEpisodeContractError("canonical plan endpoints drifted")
     if active_total != EXPECTED_AGENT_PIPELINE_EXECUTIONS:
         raise CanonicalEpisodeContractError(
-            f"canonical plan expected {EXPECTED_AGENT_PIPELINE_EXECUTIONS} Agent pipeline executions, got {active_total}"
+            f"canonical plan expected {EXPECTED_AGENT_PIPELINE_EXECUTIONS} Agent pipeline executions per episode, got {active_total}"
         )
 
 
@@ -208,7 +255,7 @@ def _trading_days(path: Path) -> set[str]:
 
 
 def rebuild_execution_plan(repo_root: str | Path) -> dict[str, Any]:
-    """Rebuild the predeclared 27-day plan from already-frozen Phase 3/4/10 inputs."""
+    """Rebuild the shared 27-day plan from already-frozen Phase 3/4/10 inputs."""
     from marketlens.agents.activation.policy import ActivationPolicy
     from marketlens.agents.activation.profiles import load_activation_profiles
     from marketlens.agents.population.fixture import build_population_bundle
@@ -269,16 +316,17 @@ def rebuild_execution_plan(repo_root: str | Path) -> dict[str, Any]:
 def validate_formal_episode_manifest(
     manifest: Mapping[str, Any], *, repo_root: str | Path, verify_files: bool = True
 ) -> None:
-    """Validate the minimum final manifest a future paid producer must freeze.
-
-    This validation is intentionally outcome-blind: it verifies execution integrity,
-    not post/trade counts, market direction, sentiment, or participant effects.
-    """
+    """Validate one formal episode slot without conditioning on natural outcomes."""
     root = Path(repo_root).resolve()
-    if manifest.get("manifest_schema_version") != "marketlens-canonical-episode-manifest/1.0":
+    if manifest.get("manifest_schema_version") != "marketlens-canonical-episode-manifest/1.1":
         raise CanonicalEpisodeContractError("canonical episode manifest schema drifted")
-    if manifest.get("episode_id") != EPISODE_ID or manifest.get("status") != "formal_frozen":
+    episode_id = str(manifest.get("episode_id", ""))
+    if episode_id not in EPISODE_IDS or manifest.get("status") != "formal_frozen":
         raise CanonicalEpisodeContractError("formal episode identity/status invalid")
+    if manifest.get("episode_pool_id") != EPISODE_POOL_ID:
+        raise CanonicalEpisodeContractError("formal episode pool identity drifted")
+    if manifest.get("episode_slot") != episode_index(episode_id):
+        raise CanonicalEpisodeContractError("formal episode slot identity drifted")
     if manifest.get("protocol_version") != PROTOCOL_VERSION:
         raise CanonicalEpisodeContractError("formal episode protocol version drifted")
     if manifest.get("execution_plan_sha256") != execution_plan_sha256(load_execution_plan()):
@@ -305,6 +353,8 @@ def validate_formal_episode_manifest(
         raise CanonicalEpisodeContractError("formal episode used forbidden partial resume")
     if attempt.get("outcome_review_used_for_acceptance") is not False:
         raise CanonicalEpisodeContractError("formal episode acceptance was outcome-conditioned")
+    if attempt.get("episode_similarity_review_used_for_acceptance") is not False:
+        raise CanonicalEpisodeContractError("formal episode acceptance was similarity-conditioned")
 
     execution = manifest.get("execution", {})
     if execution.get("active_agent_pipeline_executions_expected") != EXPECTED_AGENT_PIPELINE_EXECUTIONS:
@@ -345,9 +395,10 @@ def validate_formal_episode_manifest(
                 raise CanonicalEpisodeContractError(f"invalid daily state hash: {key}")
 
     outputs = manifest.get("outputs", {})
+    paths = formal_episode_paths(episode_id)
     expected_paths = {
-        "agent_world_db": FORMAL_AGENT_WORLD_DB,
-        "forum_db": FORMAL_FORUM_DB,
+        "agent_world_db": paths["agent_world_db"],
+        "forum_db": paths["forum_db"],
     }
     for key, relative in expected_paths.items():
         record = outputs.get(key, {})
@@ -364,6 +415,47 @@ def validate_formal_episode_manifest(
                 raise CanonicalEpisodeContractError(f"formal output SHA-256 mismatch: {key}")
 
 
+def validate_formal_episode_pool_manifest(
+    manifest: Mapping[str, Any], *, repo_root: str | Path, verify_files: bool = True
+) -> None:
+    """Validate the frozen three-episode pool and its participant assignment contract."""
+    root = Path(repo_root).resolve()
+    if manifest.get("manifest_schema_version") != "marketlens-canonical-episode-pool-manifest/1.0":
+        raise CanonicalEpisodeContractError("canonical episode-pool manifest schema drifted")
+    if manifest.get("episode_pool_id") != EPISODE_POOL_ID or manifest.get("status") != "formal_frozen":
+        raise CanonicalEpisodeContractError("formal episode-pool identity/status invalid")
+    if manifest.get("execution_plan_sha256") != execution_plan_sha256(load_execution_plan()):
+        raise CanonicalEpisodeContractError("formal episode-pool execution-plan hash mismatch")
+    if manifest.get("episode_count") != EPISODE_COUNT or tuple(manifest.get("episode_ids", ())) != EPISODE_IDS:
+        raise CanonicalEpisodeContractError("formal episode-pool membership invalid")
+    assignment = manifest.get("participant_assignment", {})
+    if assignment.get("mode") != "balanced_random_across_episode_pool":
+        raise CanonicalEpisodeContractError("formal participant episode assignment policy drifted")
+    if assignment.get("episode_id_recorded_for_analysis") is not True:
+        raise CanonicalEpisodeContractError("participant records must retain episode_id")
+    if assignment.get("assignment_uses_episode_outcomes") is not False:
+        raise CanonicalEpisodeContractError("participant episode assignment must be outcome-blind")
+
+    records = manifest.get("episodes")
+    if not isinstance(records, list) or [row.get("episode_id") for row in records] != list(EPISODE_IDS):
+        raise CanonicalEpisodeContractError("formal episode-pool records drifted")
+    for row in records:
+        episode_id = row["episode_id"]
+        expected_manifest = formal_episode_paths(episode_id)["episode_manifest"]
+        if row.get("episode_manifest_path") != expected_manifest:
+            raise CanonicalEpisodeContractError("formal per-episode manifest path drifted")
+        if verify_files:
+            target = root / expected_manifest
+            if not target.is_file():
+                raise CanonicalEpisodeContractError(f"formal episode manifest not found: {target}")
+            payload = json.loads(target.read_text(encoding="utf-8"))
+            validate_formal_episode_manifest(payload, repo_root=root, verify_files=True)
+
+
 def formal_assets_present(repo_root: str | Path) -> bool:
     root = Path(repo_root).resolve()
-    return all((root / rel).is_file() for rel in (FORMAL_AGENT_WORLD_DB, FORMAL_FORUM_DB, FORMAL_EPISODE_MANIFEST))
+    required = [FORMAL_POOL_MANIFEST]
+    for episode_id in EPISODE_IDS:
+        paths = formal_episode_paths(episode_id)
+        required.extend((paths["agent_world_db"], paths["forum_db"], paths["episode_manifest"]))
+    return all((root / rel).is_file() for rel in required)
