@@ -218,6 +218,21 @@ class ParticipantEventStore:
                 select(participant_events).where(participant_events.c.event_id == event_id)
             ).mappings().first()
 
+    def get_by_request_event(
+        self,
+        session_id: str,
+        request_id: str,
+        event_type: ParticipantEventType,
+    ) -> RowMapping | None:
+        with self.db.connect() as connection:
+            return connection.execute(
+                select(participant_events).where(
+                    participant_events.c.session_id == session_id,
+                    participant_events.c.request_id == request_id,
+                    participant_events.c.event_type == event_type.value,
+                )
+            ).mappings().first()
+
     def list_for_session(self, session_id: str) -> tuple[RowMapping, ...]:
         with self.db.connect() as connection:
             rows = connection.execute(
