@@ -31,6 +31,27 @@ sessions = Table(
     CheckConstraint("current_step >= 0", name="ck_sessions_current_step_nonnegative"),
 )
 
+participant_episode_assignments = Table(
+    "participant_episode_assignments",
+    metadata,
+    Column("assignment_id", String, primary_key=True),
+    Column(
+        "session_id",
+        String,
+        ForeignKey("sessions.session_id", ondelete="CASCADE"),
+        nullable=False,
+    ),
+    Column("participant_id", String, nullable=False),
+    Column("episode_pool_id", String, nullable=False),
+    Column("episode_id", String, nullable=False),
+    Column("assignment_method", String, nullable=False),
+    Column("assignment_version", String, nullable=False),
+    Column("assigned_at", String, nullable=False),
+    UniqueConstraint(
+        "session_id", name="uq_participant_episode_assignments_session"
+    ),
+)
+
 decisions = Table(
     "decisions",
     metadata,
