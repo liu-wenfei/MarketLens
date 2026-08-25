@@ -1,7 +1,7 @@
 # MarketLens Phase 14B3B — Participant-visible exposure delivery
 
-**Status:** BOUNDED IMPLEMENTATION PATCH  
-**Evidence class:** NON-FORMAL / ZERO-LLM  
+**Status:** BOUNDED IMPLEMENTATION PATCH
+**Evidence class:** NON-FORMAL / ZERO-LLM
 **Base:** Phase 14B3B0 server-owned participant experiment orchestration
 
 ## Purpose
