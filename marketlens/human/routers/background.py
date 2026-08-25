@@ -19,6 +19,11 @@ def get_participant_background(
     request: Request,
     sessions: SessionService = Depends(get_session_service),
 ) -> ParticipantBackgroundRead:
+    if getattr(request.app.state, "participant_runtime", None) is not None:
+        raise HTTPException(
+            status_code=409,
+            detail="Participant runtime requires POST /session/{session_id}/exposure/background so served background is provenance-logged",
+        )
     try:
         return ParticipantBackgroundService(
             sessions,

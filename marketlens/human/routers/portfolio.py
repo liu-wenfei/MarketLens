@@ -2,6 +2,12 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
+from marketlens.human.measurement.event_store import (
+    ParticipantEventIdempotencyConflict,
+    ParticipantEventStoreError,
+)
+from marketlens.human.measurement.runtime_recorder import ParticipantRuntimeEventInvariantError
+from marketlens.human.orchestration import ParticipantStage
 from marketlens.human.schemas import (
     PortfolioOrderCreate,
     PortfolioOrderPreviewCreate,
@@ -18,6 +24,10 @@ from marketlens.human.services.portfolio_service import (
     WrongPortfolioStepError,
 )
 from marketlens.human.services.session_service import IdempotencyConflictError, SessionNotFoundError
+from marketlens.human.services.trusted_context_service import (
+    TrustedParticipantContextInvariantError,
+    TrustedParticipantContextUnavailableError,
+)
 from marketlens.human.stores.portfolio_store import PortfolioStore
 from marketlens.market.asset_catalog import AssetNotFoundError
 
@@ -32,6 +42,30 @@ def get_portfolio_service(request: Request) -> PortfolioService:
         policy=request.app.state.portfolio_policy,
         calendar=request.app.state.trading_calendar,
     )
+
+
+def _participant_runtime_for_trade(request: Request, session_id: str):
+    runtime = getattr(request.app.state, "participant_runtime", None)
+    if runtime is None:
+        return None
+
+    try:
+        runtime.context.resolve(session_id)
+        state = runtime.orchestration.get(session_id)
+    except SessionNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Unknown session") from exc
+    except (
+        TrustedParticipantContextUnavailableError,
+        TrustedParticipantContextInvariantError,
+    ) as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    if state.current_stage != ParticipantStage.ROUND_ACTIVE.value:
+        raise HTTPException(
+            status_code=409,
+            detail="Participant trading is not authorised before the current protocol checkpoint reaches ROUND_ACTIVE",
+        )
+    return runtime
 
 
 @router.get("/session/{session_id}/portfolio", response_model=PortfolioRead)
@@ -54,9 +88,11 @@ def get_portfolio(
 def preview_portfolio_order(
     session_id: str,
     payload: PortfolioOrderPreviewCreate,
+    request: Request,
     service: PortfolioService = Depends(get_portfolio_service),
 ) -> PortfolioOrderPreviewRead:
     try:
+        _participant_runtime_for_trade(request, session_id)
         return service.preview(session_id, payload)
     except SessionNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Unknown session") from exc
@@ -74,15 +110,27 @@ def preview_portfolio_order(
 def submit_portfolio_order(
     session_id: str,
     payload: PortfolioOrderCreate,
+    request: Request,
     service: PortfolioService = Depends(get_portfolio_service),
 ) -> PortfolioTransactionRead:
     try:
-        return service.submit(session_id, payload)
+        runtime = _participant_runtime_for_trade(request, session_id)
+        transaction = service.submit(session_id, payload)
+        if runtime is not None:
+            runtime.recorder.record_transaction(transaction)
+        return transaction
     except SessionNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Unknown session") from exc
     except AssetNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Unknown asset") from exc
+    except ParticipantEventIdempotencyConflict as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except ParticipantEventStoreError as exc:
+        raise HTTPException(status_code=503, detail="Participant event ledger unavailable") from exc
     except (
+        ParticipantRuntimeEventInvariantError,
+        TrustedParticipantContextUnavailableError,
+        TrustedParticipantContextInvariantError,
         IdempotencyConflictError,
         WrongPortfolioStepError,
         MarketDateUnavailableError,

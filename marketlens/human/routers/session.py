@@ -3,6 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from marketlens.human.schemas import SessionCreate, SessionRead, SessionState
+from marketlens.human.services.orchestration_service import ExperimentStateConflictError
 from marketlens.human.services.session_service import (
     IdempotencyConflictError,
     SessionNotFoundError,
@@ -21,11 +22,19 @@ def get_session_service(request: Request) -> SessionService:
 @router.post("/session", response_model=SessionRead, status_code=status.HTTP_201_CREATED)
 def create_session(
     payload: SessionCreate,
+    request: Request,
     service: SessionService = Depends(get_session_service),
 ) -> SessionRead:
     try:
-        return service.create(payload)
+        created = service.create(payload)
+        runtime = getattr(request.app.state, "participant_runtime", None)
+        if runtime is not None:
+            runtime.orchestration.initialize(created.session_id)
+            return service.get(created.session_id)
+        return created
     except IdempotencyConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except ExperimentStateConflictError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 

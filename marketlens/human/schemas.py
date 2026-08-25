@@ -60,6 +60,24 @@ class ParticipantBackgroundRead(BaseModel):
     forum_posts: list[ParticipantForumPostRead]
 
 
+class ExposureRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    request_id: str = Field(min_length=1, max_length=128)
+
+
+class ParticipantControlledStimulusRead(BaseModel):
+    session_id: str
+    current_date: str
+    stimulus_id: str
+    kind: str
+    headline: str
+    body: str
+    corrects_stimulus_id: str | None
+    source_label: str
+    source_descriptor: str
+
+
 class DecisionCreate(BaseModel):
     request_id: str = Field(min_length=1, max_length=128)
     step: int = Field(ge=0)
@@ -85,6 +103,8 @@ class DecisionRead(BaseModel):
 
 class JudgementCreate(BaseModel):
     """Participant response payload; event/step/date/stage are server-derived."""
+
+    model_config = ConfigDict(extra="forbid")
 
     request_id: str = Field(min_length=1, max_length=128)
     stock_id: str = Field(min_length=1, max_length=64)

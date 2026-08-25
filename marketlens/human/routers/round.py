@@ -29,8 +29,14 @@ def get_round_service(request: Request) -> RoundService:
 def complete_round(
     session_id: str,
     payload: RoundComplete,
+    request: Request,
     service: RoundService = Depends(get_round_service),
 ) -> RoundCompletionRead:
+    if getattr(request.app.state, "participant_runtime", None) is not None:
+        raise HTTPException(
+            status_code=409,
+            detail="Legacy round completion is disabled in participant runtime until protocol-driven B3C2 checkpoint advancement is wired",
+        )
     try:
         return service.complete(session_id, payload)
     except SessionNotFoundError as exc:

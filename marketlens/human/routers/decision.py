@@ -29,8 +29,14 @@ def get_decision_service(request: Request) -> DecisionService:
 def submit_decision(
     session_id: str,
     payload: DecisionCreate,
+    request: Request,
     service: DecisionService = Depends(get_decision_service),
 ) -> DecisionRead:
+    if getattr(request.app.state, "participant_runtime", None) is not None:
+        raise HTTPException(
+            status_code=409,
+            detail="Legacy decision submission is disabled in participant runtime; use /session/{session_id}/judgement",
+        )
     try:
         return service.submit(session_id, payload)
     except SessionNotFoundError as exc:

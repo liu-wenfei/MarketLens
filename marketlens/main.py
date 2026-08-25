@@ -1,16 +1,21 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Mapping
 
 from fastapi import FastAPI
 
+from marketlens.human.measurement.event_store import ParticipantEventStore
 from marketlens.human.portfolio.policy import PortfolioPolicy
-from marketlens.information.projection import ParticipantBackgroundProjection
 from marketlens.human.routers.background import router as background_router
 from marketlens.human.routers.decision import router as decision_router
+from marketlens.human.routers.exposure import router as exposure_router
+from marketlens.human.routers.judgement import router as judgement_router
 from marketlens.human.routers.portfolio import router as portfolio_router
 from marketlens.human.routers.round import router as round_router
 from marketlens.human.routers.session import router as session_router
+from marketlens.human.runtime import build_participant_runtime
+from marketlens.information.projection import ParticipantBackgroundProjection
 from marketlens.market.asset_catalog import AssetCatalog
 from marketlens.market.price_provider import CsvClosePriceProvider
 from marketlens.market.status import TradingCalendar
@@ -20,6 +25,7 @@ from marketlens.persistence.config import (
     resolve_database_url,
 )
 from marketlens.persistence.database import Database
+from marketlens.stimulus.engine import StimulusEngine
 
 
 def create_app(
@@ -29,6 +35,10 @@ def create_app(
     initialize_database: bool | None = None,
     portfolio_policy: PortfolioPolicy | None = None,
     background_projection: ParticipantBackgroundProjection | None = None,
+    participant_runtime_enabled: bool = False,
+    participant_event_store: ParticipantEventStore | None = None,
+    background_projections: Mapping[str, ParticipantBackgroundProjection] | None = None,
+    stimulus_engine: StimulusEngine | None = None,
 ) -> FastAPI:
     app = FastAPI(title="MarketLens Human Backend", version="0.2.1")
 
@@ -44,9 +54,32 @@ def create_app(
     app.state.price_provider = CsvClosePriceProvider()
     app.state.trading_calendar = TradingCalendar()
     app.state.portfolio_policy = portfolio_policy or PortfolioPolicy()
-    # No legacy/sample forum DB is auto-bound. Phase 13B fails closed until an
-    # explicit canonical episode projection is injected.
+
+    # Legacy/non-formal projection injection is preserved for the existing
+    # read-only GET endpoint when participant runtime wiring is disabled.
     app.state.background_projection = background_projection
+
+    app.state.participant_runtime = None
+    if participant_runtime_enabled:
+        if participant_event_store is None:
+            raise ValueError(
+                "participant_runtime_enabled requires an explicit ParticipantEventStore"
+            )
+        if background_projections is None:
+            raise ValueError(
+                "participant_runtime_enabled requires episode-keyed background_projections"
+            )
+        if stimulus_engine is None:
+            raise ValueError(
+                "participant_runtime_enabled requires an explicit formal StimulusEngine"
+            )
+        app.state.participant_runtime = build_participant_runtime(
+            db=app.state.db,
+            calendar=app.state.trading_calendar,
+            events=participant_event_store,
+            background_projections=background_projections,
+            stimulus_engine=stimulus_engine,
+        )
 
     @app.get("/health")
     def health() -> dict[str, str]:
@@ -54,8 +87,10 @@ def create_app(
 
     app.include_router(market_router)
     app.include_router(background_router)
+    app.include_router(exposure_router)
     app.include_router(session_router)
     app.include_router(decision_router)
+    app.include_router(judgement_router)
     app.include_router(portfolio_router)
     app.include_router(round_router)
     return app
