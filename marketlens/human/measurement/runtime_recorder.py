@@ -5,7 +5,7 @@ from uuid import NAMESPACE_URL, uuid5
 
 from marketlens.human.measurement.event_store import ParticipantEventStore
 from marketlens.human.measurement.models import ParticipantEvent, ParticipantEventType
-from marketlens.human.schemas import DecisionRead, PortfolioTransactionRead
+from marketlens.human.schemas import JudgementRead, PortfolioTransactionRead
 from marketlens.human.services.trusted_context_service import (
     TrustedParticipantContext,
     TrustedParticipantContextResolver,
@@ -100,30 +100,30 @@ class ParticipantRuntimeEventRecorder:
         )
         return self.store.append_idempotent(event)
 
-    def record_decision(self, decision: DecisionRead) -> tuple[object, object]:
-        """Reference one authoritative decision from judgement + confidence events."""
+    def record_judgement(self, judgement: JudgementRead) -> tuple[object, object]:
+        """Reference one authoritative formal J0..J4 measurement from two ledger events."""
 
-        trusted = self.context.resolve(decision.session_id)
+        trusted = self.context.resolve(judgement.session_id)
         self._validate_domain_context(
             trusted,
-            session_id=decision.session_id,
-            experiment_step=decision.step,
+            session_id=judgement.session_id,
+            experiment_step=judgement.experiment_step,
         )
-        judgement = self._append_domain_event(
+        submitted = self._append_domain_event(
             trusted=trusted,
-            request_id=decision.request_id,
+            request_id=judgement.request_id,
             event_type=ParticipantEventType.JUDGEMENT_SUBMITTED,
-            domain_record_id=decision.decision_id,
-            occurred_at=decision.submitted_at,
+            domain_record_id=judgement.judgement_id,
+            occurred_at=judgement.submitted_at,
         )
         confidence = self._append_domain_event(
             trusted=trusted,
-            request_id=decision.request_id,
+            request_id=judgement.request_id,
             event_type=ParticipantEventType.CONFIDENCE_RECORDED,
-            domain_record_id=decision.decision_id,
-            occurred_at=decision.submitted_at,
+            domain_record_id=judgement.judgement_id,
+            occurred_at=judgement.submitted_at,
         )
-        return judgement, confidence
+        return submitted, confidence
 
     def record_transaction(
         self,

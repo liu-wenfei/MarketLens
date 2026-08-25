@@ -83,6 +83,33 @@ class DecisionRead(BaseModel):
     submitted_at: datetime
 
 
+class JudgementCreate(BaseModel):
+    """Participant response payload; event/step/date/stage are server-derived."""
+
+    request_id: str = Field(min_length=1, max_length=128)
+    stock_id: str = Field(min_length=1, max_length=64)
+    action: DecisionAction
+    confidence: float = Field(ge=0.0, le=100.0)
+    evidence_sources: list[str] = Field(default_factory=list)
+    rationale: str | None = Field(default=None, max_length=5000)
+
+
+class JudgementRead(BaseModel):
+    judgement_id: str
+    session_id: str
+    participant_id: str
+    request_id: str
+    judgement_event: str
+    experiment_step: int
+    agent_world_date: str
+    stock_id: str
+    action: DecisionAction
+    confidence: float
+    evidence_sources: list[str]
+    rationale: str | None
+    submitted_at: datetime
+
+
 class RoundComplete(BaseModel):
     request_id: str = Field(min_length=1, max_length=128)
     step: int = Field(ge=0)

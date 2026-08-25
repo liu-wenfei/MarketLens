@@ -12,7 +12,7 @@ from marketlens.human.measurement.runtime_recorder import (
 )
 from marketlens.human.schemas import (
     DecisionAction,
-    DecisionRead,
+    JudgementRead,
     PortfolioAction,
     PortfolioTransactionRead,
 )
@@ -50,12 +50,15 @@ def _context(**overrides) -> TrustedParticipantContext:
     return TrustedParticipantContext(**values)
 
 
-def _decision(**overrides) -> DecisionRead:
+def _judgement(**overrides) -> JudgementRead:
     values = {
-        "decision_id": "DEC-001",
+        "judgement_id": "JDG-001",
         "session_id": "S001",
         "request_id": "REQ-DEC-001",
-        "step": 0,
+        "participant_id": "P001",
+        "judgement_event": "J0",
+        "experiment_step": 0,
+        "agent_world_date": "2023-06-19",
         "stock_id": "MEI",
         "action": DecisionAction.HOLD,
         "confidence": 72.0,
@@ -64,7 +67,7 @@ def _decision(**overrides) -> DecisionRead:
         "submitted_at": datetime(2026, 8, 25, 15, 0, tzinfo=timezone.utc),
     }
     values.update(overrides)
-    return DecisionRead(**values)
+    return JudgementRead(**values)
 
 
 def _transaction(**overrides) -> PortfolioTransactionRead:
@@ -106,31 +109,31 @@ def _recorder(tmp_path: Path, *, context: TrustedParticipantContext | None = Non
     return store, recorder
 
 
-def test_decision_records_judgement_and_confidence_by_reference(tmp_path: Path) -> None:
+def test_formal_judgement_records_judgement_and_confidence_by_reference(tmp_path: Path) -> None:
     store, recorder = _recorder(tmp_path)
-    recorder.record_decision(_decision())
+    recorder.record_judgement(_judgement())
     rows = store.list_for_session("S001")
     assert {row["event_type"] for row in rows} == {
         "JUDGEMENT_SUBMITTED",
         "CONFIDENCE_RECORDED",
     }
-    assert {row["domain_record_id"] for row in rows} == {"DEC-001"}
+    assert {row["domain_record_id"] for row in rows} == {"JDG-001"}
     assert {row["request_id"] for row in rows} == {"REQ-DEC-001"}
     store.dispose()
 
 
-def test_decision_retry_is_idempotent_with_deterministic_event_identity(tmp_path: Path) -> None:
+def test_formal_judgement_retry_is_idempotent_with_deterministic_event_identity(tmp_path: Path) -> None:
     store, recorder = _recorder(tmp_path)
-    first = recorder.record_decision(_decision())
-    second = recorder.record_decision(_decision())
+    first = recorder.record_judgement(_judgement())
+    second = recorder.record_judgement(_judgement())
     assert [row["event_id"] for row in first] == [row["event_id"] for row in second]
     assert len(store.list_for_session("S001")) == 2
     store.dispose()
 
 
-def test_decision_values_are_not_duplicated_into_ledger(tmp_path: Path) -> None:
+def test_formal_judgement_values_are_not_duplicated_into_ledger(tmp_path: Path) -> None:
     store, recorder = _recorder(tmp_path)
-    recorder.record_decision(_decision(confidence=91.0, rationale="domain source only"))
+    recorder.record_judgement(_judgement(confidence=91.0, rationale="domain source only"))
     row = store.list_for_session("S001")[0]
     assert "confidence" not in row
     assert "rationale" not in row
@@ -163,7 +166,7 @@ def test_transaction_retry_is_idempotent(tmp_path: Path) -> None:
 def test_recorder_rejects_domain_step_drift(tmp_path: Path) -> None:
     store, recorder = _recorder(tmp_path)
     with pytest.raises(ParticipantRuntimeEventInvariantError, match="experiment step"):
-        recorder.record_decision(_decision(step=1))
+        recorder.record_judgement(_judgement(experiment_step=1))
     assert store.list_for_session("S001") == ()
     store.dispose()
 
@@ -176,7 +179,7 @@ def test_recorder_uses_server_derived_participant_episode_and_market_context(tmp
         participant_trading_enabled=False,
     )
     store, recorder = _recorder(tmp_path, context=trusted)
-    recorder.record_decision(_decision())
+    recorder.record_judgement(_judgement())
     rows = store.list_for_session("S001")
     assert {row["participant_id"] for row in rows} == {"SERVER-P"}
     assert {row["episode_id"] for row in rows} == {"marketlens-canonical-episode-v1-e03"}
@@ -188,8 +191,8 @@ def test_recorder_uses_server_derived_participant_episode_and_market_context(tmp
 def test_naive_domain_timestamp_fails_closed(tmp_path: Path) -> None:
     store, recorder = _recorder(tmp_path)
     with pytest.raises(ParticipantRuntimeEventInvariantError, match="timezone-aware"):
-        recorder.record_decision(
-            _decision(submitted_at=datetime(2026, 8, 25, 15, 0))
+        recorder.record_judgement(
+            _judgement(submitted_at=datetime(2026, 8, 25, 15, 0))
         )
     assert store.list_for_session("S001") == ()
     store.dispose()

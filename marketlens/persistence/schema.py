@@ -26,6 +26,7 @@ sessions = Table(
     Column("created_at", String, nullable=False),
     Column("current_step", Integer, nullable=False, default=0),
     Column("current_date", String, nullable=True),
+    Column("current_stage", String, nullable=True),
     Column("experiment_status", String, nullable=False, default="active"),
     Column("completed", Boolean, nullable=False, default=False),
     CheckConstraint("current_step >= 0", name="ck_sessions_current_step_nonnegative"),
@@ -81,6 +82,51 @@ decisions = Table(
     ),
     UniqueConstraint("session_id", "request_id", name="uq_decisions_session_request"),
     UniqueConstraint("session_id", "step", name="uq_decisions_session_step"),
+)
+
+participant_judgements = Table(
+    "participant_judgements",
+    metadata,
+    Column("judgement_id", String, primary_key=True),
+    Column(
+        "session_id",
+        String,
+        ForeignKey("sessions.session_id", ondelete="CASCADE"),
+        nullable=False,
+    ),
+    Column("participant_id", String, nullable=False),
+    Column("request_id", String, nullable=False),
+    Column("judgement_event", String, nullable=False),
+    Column("experiment_step", Integer, nullable=False),
+    Column("agent_world_date", String, nullable=False),
+    Column("stock_id", String, nullable=False),
+    Column("action", String, nullable=False),
+    Column("confidence", Float, nullable=False),
+    Column("evidence_sources", Text, nullable=False),
+    Column("rationale", Text, nullable=True),
+    Column("submitted_at", String, nullable=False),
+    CheckConstraint(
+        "judgement_event IN ('J0', 'J1', 'J2', 'J3', 'J4')",
+        name="ck_participant_judgements_event",
+    ),
+    CheckConstraint(
+        "experiment_step >= 0",
+        name="ck_participant_judgements_step_nonnegative",
+    ),
+    CheckConstraint(
+        "action IN ('BUY', 'HOLD', 'SELL')",
+        name="ck_participant_judgements_action",
+    ),
+    CheckConstraint(
+        "confidence >= 0 AND confidence <= 100",
+        name="ck_participant_judgements_confidence_range",
+    ),
+    UniqueConstraint(
+        "session_id", "request_id", name="uq_participant_judgements_session_request"
+    ),
+    UniqueConstraint(
+        "session_id", "judgement_event", name="uq_participant_judgements_session_event"
+    ),
 )
 
 round_completions = Table(

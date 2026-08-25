@@ -5,7 +5,7 @@
 
 ## Audit conclusion
 
-The Phase 14B3 runtime-boundary audit found that the current backend has reliable authoritative completion records for participant decisions and participant portfolio transactions, but two prerequisites for full automatic runtime exposure wiring are still absent:
+The Phase 14B3 runtime-boundary audit found that the current backend has reliable authoritative completion records for formal participant judgements and participant portfolio transactions, but two prerequisites for full automatic runtime exposure wiring are still absent:
 
 1. ordinary participant sessions are not yet automatically allocated to a canonical episode; Phase 14B1 only persists an already-chosen binding;
 2. controlled stimuli have a frozen `StimulusEngine` and source-cue adapter, but there is no participant-facing controlled-stimulus delivery service/router to which an exposure event can be attached.
@@ -14,12 +14,12 @@ Therefore this patch does **not** modify routers or create a stimulus endpoint. 
 
 ## Recorded semantics
 
-One authoritative `DecisionRead` produces two provenance events referencing the same `decision_id`:
+One authoritative `JudgementRead` produces two provenance events referencing the same `judgement_id`:
 
 - `JUDGEMENT_SUBMITTED`
 - `CONFIDENCE_RECORDED`
 
-The ledger does not duplicate action, confidence, rationale, or evidence values.
+The ledger does not duplicate action, confidence, rationale, or evidence values. Ordinary per-step `DecisionRead` records are not formal J0..J4 measurements and are not the source for these two event types.
 
 One authoritative settled `PortfolioTransactionRead` produces three provenance events referencing the same `transaction_id`:
 

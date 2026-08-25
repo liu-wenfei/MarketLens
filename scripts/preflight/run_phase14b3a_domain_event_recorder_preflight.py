@@ -19,7 +19,7 @@ from marketlens.human.measurement.event_store import ParticipantEventStore
 from marketlens.human.measurement.runtime_recorder import ParticipantRuntimeEventRecorder
 from marketlens.human.schemas import (
     DecisionAction,
-    DecisionRead,
+    JudgementRead,
     PortfolioAction,
     PortfolioTransactionRead,
     SessionCreate,
@@ -79,11 +79,14 @@ def main() -> None:
         recorder = ParticipantRuntimeEventRecorder(store=event_store, context=context)
 
         submitted_at = datetime(2026, 8, 25, 15, 30, tzinfo=timezone.utc)
-        decision = DecisionRead(
-            decision_id="DEC-PREFLIGHT-001",
+        judgement = JudgementRead(
+            judgement_id="JDG-PREFLIGHT-001",
             session_id=session.session_id,
-            request_id="decision-request-001",
-            step=int(checkpoint["experiment_step"]),
+            participant_id="PREFLIGHT-P001",
+            request_id="judgement-request-001",
+            judgement_event="J0",
+            experiment_step=int(checkpoint["experiment_step"]),
+            agent_world_date=str(checkpoint["agent_world_date"]),
             stock_id="MEI",
             action=DecisionAction.HOLD,
             confidence=75.0,
@@ -117,9 +120,9 @@ def main() -> None:
             submitted_at=submitted_at,
         )
 
-        recorder.record_decision(decision)
+        recorder.record_judgement(judgement)
         recorder.record_transaction(transaction)
-        recorder.record_decision(decision)
+        recorder.record_judgement(judgement)
         recorder.record_transaction(transaction)
         rows = event_store.list_for_session(session.session_id)
 
@@ -148,12 +151,12 @@ def main() -> None:
         checks = {
             "five_domain_event_types_recorded": event_types == expected_types,
             "retry_idempotent": len(rows) == 5,
-            "decision_domain_reference_only": {
+            "judgement_domain_reference_only": {
                 row["domain_record_id"]
                 for row in rows
                 if row["event_type"] in {"JUDGEMENT_SUBMITTED", "CONFIDENCE_RECORDED"}
             }
-            == {"DEC-PREFLIGHT-001"},
+            == {"JDG-PREFLIGHT-001"},
             "transaction_domain_reference_only": {
                 row["domain_record_id"]
                 for row in rows
