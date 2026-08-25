@@ -12,11 +12,13 @@ from marketlens.human.services.episode_background_service import (
 from marketlens.human.services.exposure_service import ParticipantExposureService
 from marketlens.human.services.judgement_service import JudgementService
 from marketlens.human.services.orchestration_service import ExperimentOrchestrationService
+from marketlens.human.services.round_service import ParticipantProtocolRoundService
 from marketlens.human.services.session_service import SessionService
 from marketlens.human.services.trusted_context_service import TrustedParticipantContextResolver
 from marketlens.human.stores.episode_assignment_store import EpisodeAssignmentStore
 from marketlens.human.stores.judgement_store import JudgementStore
 from marketlens.human.stores.orchestration_store import ExperimentOrchestrationStore
+from marketlens.human.stores.round_store import RoundStore
 from marketlens.human.stores.session_store import SessionStore
 from marketlens.information.projection import ParticipantBackgroundProjection
 from marketlens.market.status import TradingCalendar
@@ -38,6 +40,7 @@ class ParticipantRuntime:
     recorder: ParticipantRuntimeEventRecorder
     exposure: ParticipantExposureService
     judgements: JudgementService
+    rounds: ParticipantProtocolRoundService
 
 
 def build_participant_runtime(
@@ -93,6 +96,10 @@ def build_participant_runtime(
         JudgementStore(db),
         ExperimentOrchestrationStore(db),
     )
+    rounds = ParticipantProtocolRoundService(
+        rounds=RoundStore(db),
+        orchestration=orchestration,
+    )
 
     return ParticipantRuntime(
         sessions=sessions,
@@ -102,4 +109,5 @@ def build_participant_runtime(
         recorder=recorder,
         exposure=exposure,
         judgements=judgements,
+        rounds=rounds,
     )

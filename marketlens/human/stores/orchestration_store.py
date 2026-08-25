@@ -118,6 +118,64 @@ class ExperimentOrchestrationStore:
                 )
             return self._locked_session(connection, session_id)
 
+    @classmethod
+    def advance_checkpoint_on_connection(
+        cls,
+        connection,
+        *,
+        session_id: str,
+        experiment_step: int,
+        agent_world_date: str,
+        expected_stage: str,
+        next_step: int | None,
+        next_date: str | None,
+        next_stage: str,
+    ) -> RowMapping:
+        """Advance one checkpoint inside an already-open human DB transaction."""
+
+        session = cls._locked_session(connection, session_id)
+        if (
+            int(session["current_step"]) != int(experiment_step)
+            or session["current_date"] != agent_world_date
+            or session["current_stage"] != expected_stage
+            or bool(session["completed"])
+        ):
+            raise StoreExperimentStateConflictError(
+                "session is not at the required completed-round state"
+            )
+        if next_step is None:
+            values = {
+                "current_stage": next_stage,
+                "experiment_status": "completed",
+                "completed": True,
+            }
+        else:
+            if next_date is None:
+                raise StoreExperimentStateConflictError(
+                    "next_date is required for a non-final checkpoint advance"
+                )
+            values = {
+                "current_step": int(next_step),
+                "current_date": next_date,
+                "current_stage": next_stage,
+            }
+        result = connection.execute(
+            update(sessions)
+            .where(
+                sessions.c.session_id == session_id,
+                sessions.c.current_step == experiment_step,
+                sessions.c.current_date == agent_world_date,
+                sessions.c.current_stage == expected_stage,
+                sessions.c.completed.is_(False),
+            )
+            .values(**values)
+        )
+        if result.rowcount != 1:
+            raise StoreExperimentStateConflictError(
+                "session changed during checkpoint advance"
+            )
+        return cls._locked_session(connection, session_id)
+
     def advance_checkpoint(
         self,
         *,
@@ -130,45 +188,13 @@ class ExperimentOrchestrationStore:
         next_stage: str,
     ) -> RowMapping:
         with self.db.connect() as connection:
-            session = self._locked_session(connection, session_id)
-            if (
-                int(session["current_step"]) != int(experiment_step)
-                or session["current_date"] != agent_world_date
-                or session["current_stage"] != expected_stage
-                or bool(session["completed"])
-            ):
-                raise StoreExperimentStateConflictError(
-                    "session is not at the required completed-round state"
-                )
-            if next_step is None:
-                values = {
-                    "current_stage": next_stage,
-                    "experiment_status": "completed",
-                    "completed": True,
-                }
-            else:
-                if next_date is None:
-                    raise StoreExperimentStateConflictError(
-                        "next_date is required for a non-final checkpoint advance"
-                    )
-                values = {
-                    "current_step": int(next_step),
-                    "current_date": next_date,
-                    "current_stage": next_stage,
-                }
-            result = connection.execute(
-                update(sessions)
-                .where(
-                    sessions.c.session_id == session_id,
-                    sessions.c.current_step == experiment_step,
-                    sessions.c.current_date == agent_world_date,
-                    sessions.c.current_stage == expected_stage,
-                    sessions.c.completed.is_(False),
-                )
-                .values(**values)
+            return self.advance_checkpoint_on_connection(
+                connection,
+                session_id=session_id,
+                experiment_step=experiment_step,
+                agent_world_date=agent_world_date,
+                expected_stage=expected_stage,
+                next_step=next_step,
+                next_date=next_date,
+                next_stage=next_stage,
             )
-            if result.rowcount != 1:
-                raise StoreExperimentStateConflictError(
-                    "session changed during checkpoint advance"
-                )
-            return self._locked_session(connection, session_id)

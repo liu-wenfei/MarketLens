@@ -6,6 +6,7 @@ from marketlens.human.schemas import RoundComplete, RoundCompletionRead
 from marketlens.human.services.round_service import (
     RoundAlreadyCompletedError,
     RoundService,
+    RoundStateConflictError,
     WrongExperimentStepError,
 )
 from marketlens.human.services.session_service import (
@@ -32,18 +33,17 @@ def complete_round(
     request: Request,
     service: RoundService = Depends(get_round_service),
 ) -> RoundCompletionRead:
-    if getattr(request.app.state, "participant_runtime", None) is not None:
-        raise HTTPException(
-            status_code=409,
-            detail="Legacy round completion is disabled in participant runtime until protocol-driven B3C2 checkpoint advancement is wired",
-        )
+    runtime = getattr(request.app.state, "participant_runtime", None)
     try:
+        if runtime is not None:
+            return runtime.rounds.complete(session_id, payload)
         return service.complete(session_id, payload)
     except SessionNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Unknown session") from exc
     except (
         IdempotencyConflictError,
         RoundAlreadyCompletedError,
+        RoundStateConflictError,
         WrongExperimentStepError,
     ) as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc

@@ -141,10 +141,13 @@ round_completions = Table(
     ),
     Column("request_id", String, nullable=False),
     Column("step", Integer, nullable=False),
-    Column("next_step", Integer, nullable=False),
+    Column("next_step", Integer, nullable=True),
     Column("completed_at", String, nullable=False),
     CheckConstraint("step >= 0", name="ck_round_completions_step_nonnegative"),
-    CheckConstraint("next_step > step", name="ck_round_completions_next_step"),
+    CheckConstraint(
+        "next_step IS NULL OR next_step > step",
+        name="ck_round_completions_next_step",
+    ),
     UniqueConstraint(
         "session_id", "request_id", name="uq_round_completions_session_request"
     ),
