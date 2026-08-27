@@ -47,9 +47,9 @@ class CanonicalEpisodeProducerError(RuntimeError):
     """Raised when a formal episode producer safety/technical gate fails."""
 
 
-PRODUCER_CONTRACT_SHA256 = "7ea0697cd13a5c8ce1c54a781797325b6edebcdc2c2b3c232386150317b67d22"
+PRODUCER_CONTRACT_SHA256 = "43adf89370e9aa6d3e0d4ff736856ef887e6efe8170b024ee3300648904a30a3"
 PRODUCER_CONTRACT_STATUS = "formal_v2_producer_contract_frozen"
-PRODUCER_CONTRACT_VERSION = "2.2"
+PRODUCER_CONTRACT_VERSION = "2.3"
 FORMAL_EXECUTION_BANNER = (
     "FORMAL / MARKETLENS V2 CANONICAL EPISODE SLOT EXECUTION / "
     "PAID REAL BACKEND / PREDECLARED TECHNICAL GATES"
@@ -129,7 +129,31 @@ def validate_producer_contract(contract: Mapping[str, Any]) -> None:
     if backend.get("api_key_recorded_in_manifest") is not False:
         raise CanonicalEpisodeProducerError("API key must never enter formal evidence")
 
-    plan_output = load_execution_plan().get("v2_forum_output", {})
+    runtime_policy = contract.get("runtime_reliability_policy", {})
+    expected_runtime_policy = {
+        "scope": "backend_retry_timing_and_attempt_interruption_capture_only",
+        "outer_tenacity_retry_wait_seconds": 1,
+        "outer_tenacity_stop_after_attempt": 10,
+        "openai_client_internal_retry_changed": False,
+        "http_timeout_override_added": False,
+        "keyboard_interrupt_attempt_status": "INTERRUPTED",
+        "keyboard_interrupt_exit_code": 130,
+        "interrupted_workspace_preserved": True,
+        "partial_resume_after_interrupt_allowed": False,
+        "restart_after_interrupt": "new attempt from frozen initial N30 state only",
+        "historical_attempt_manifest_rewrite_allowed": False,
+        "agent_reasoning_semantics_changed": False,
+    }
+    if runtime_policy != expected_runtime_policy:
+        raise CanonicalEpisodeProducerError(
+            "MarketLens v2.3 runtime-reliability policy drifted"
+        )
+    active_plan = load_execution_plan()
+    if active_plan.get("runtime_reliability_policy") != runtime_policy:
+        raise CanonicalEpisodeProducerError(
+            "MarketLens v2.3 runtime policy no longer matches the execution plan"
+        )
+    plan_output = active_plan.get("v2_forum_output", {})
     if contract.get("forum_output_contract") != plan_output:
         raise CanonicalEpisodeProducerError("MarketLens v2 forum-output contract drifted")
     registry_contract = plan_output.get("entity_name_registry", {})
@@ -332,6 +356,7 @@ def dry_run_summary(
         "execution_plan_v2_sha256": deps["execution_plan_sha256"],
         "producer_contract_sha256": deps["producer_contract_sha256"],
         "entity_name_registry": deps["entity_name_registry"],
+        "runtime_reliability_policy": contract["runtime_reliability_policy"],
         "world_ticks_per_episode": len(plan["days"]),
         "agent_pipeline_executions_per_episode": sum(row["n_active"] for row in plan["days"]),
         "expected_pool_agent_pipeline_executions": sum(row["n_active"] for row in plan["days"]) * len(EPISODE_IDS),
@@ -991,8 +1016,8 @@ def execute_formal_episode_slot(
             "active_agent_pipeline_executions_completed": pipeline_completed,
             "duration_seconds": finished,
         }
-    except Exception as exc:
-        # A failed attempt must never leave a path that looks formally frozen.
+    except (Exception, KeyboardInterrupt) as exc:
+        # A failed/interrupted attempt must never leave a path that looks formally frozen.
         if not sealed_success and final_root_for_recovery is not None and final_root_for_recovery.exists():
             recovery = attempt_dir / "failed_seal_staging"
             try:
@@ -1006,11 +1031,17 @@ def execute_formal_episode_slot(
             protected_unchanged = deps_now["protected_input_sha256"] == deps_before["protected_input_sha256"]
         except Exception:
             protected_unchanged = False
+        interrupted = isinstance(exc, KeyboardInterrupt)
+        error_message = (
+            "operator interrupt (SIGINT/KeyboardInterrupt)"
+            if interrupted
+            else str(exc)
+        )
         failure = {
             **attempt_base,
-            "status": "TECHNICAL_INVALID",
+            "status": "INTERRUPTED" if interrupted else "TECHNICAL_INVALID",
             "error_type": type(exc).__name__,
-            "error": str(exc),
+            "error": error_message,
             "days_completed": len(day_evidence),
             "active_agent_pipeline_executions_completed": pipeline_completed,
             "protected_sources_unchanged_at_failure_capture": protected_unchanged,
@@ -1019,6 +1050,9 @@ def execute_formal_episode_slot(
             "restart_policy": "new attempt from frozen initial N30 state only",
             "duration_seconds": round(time.perf_counter() - started, 3),
         }
+        if interrupted:
+            failure["operator_interrupted"] = True
+            failure["process_exit_code"] = 130
         if working_db.exists():
             failure["latest_agent_world_db_sha256"] = file_sha256(working_db)
         if forum_db.exists():

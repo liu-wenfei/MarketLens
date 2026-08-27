@@ -1,7 +1,7 @@
 """MarketLens canonical episode pool v2 contract.
 
 v2 preserves the frozen v1 timing/population/activation/world contract and
-changes only the formal namespace plus the final Agent forum ``post`` language.
+changes only the formal namespace, final Agent forum ``post`` language, and versioned formal runtime-reliability controls.
 The v1 contract and evidence remain untouched and independently validatable.
 """
 from __future__ import annotations
@@ -27,7 +27,7 @@ EPISODE_IDS = (
     "marketlens-canonical-episode-v2-e03",
 )
 EPISODE_COUNT = 3
-PLAN_VERSION = "2.2"
+PLAN_VERSION = "2.3"
 PLAN_STATUS = "formal_episode_pool_v2_execution_plan_frozen"
 PROTOCOL_VERSION = v1.PROTOCOL_VERSION
 POPULATION_SIZE = v1.POPULATION_SIZE
@@ -38,8 +38,8 @@ EXPECTED_WORLD_TICKS = v1.EXPECTED_WORLD_TICKS
 EXPECTED_AGENT_PIPELINE_EXECUTIONS = v1.EXPECTED_AGENT_PIPELINE_EXECUTIONS
 EXPECTED_POOL_AGENT_PIPELINE_EXECUTIONS = EXPECTED_AGENT_PIPELINE_EXECUTIONS * EPISODE_COUNT
 EXPECTED_V1_EXECUTION_PLAN_SHA256 = v1.EXPECTED_EXECUTION_PLAN_SHA256
-EXPECTED_EXECUTION_PLAN_SHA256 = "dfd0b2f2cca6dd61639425ac19dedd9f508d730359d9834da507cf3823698565"
-EXPECTED_PRODUCER_CONTRACT_SHA256 = "7ea0697cd13a5c8ce1c54a781797325b6edebcdc2c2b3c232386150317b67d22"
+EXPECTED_EXECUTION_PLAN_SHA256 = "14baf4ea091c27288bc18a627d9d02642099ad59c1c66f4506a458bdb270957c"
+EXPECTED_PRODUCER_CONTRACT_SHA256 = "43adf89370e9aa6d3e0d4ff736856ef887e6efe8170b024ee3300648904a30a3"
 FORMAL_POOL_ROOT = "data/marketlens/canonical_episode/v2"
 FORMAL_POOL_MANIFEST = f"{FORMAL_POOL_ROOT}/pool_manifest.json"
 RAW_EVIDENCE_ROOT_TEMPLATE = "artifacts/formal/canonical_episode_v2/{episode_id}"
@@ -87,6 +87,20 @@ def _expected_plan_from_v1() -> dict[str, Any]:
     base["plan_schema_version"] = "marketlens-canonical-episode-pool-execution-plan/2.0"
     base["plan_version"] = PLAN_VERSION
     base["status"] = PLAN_STATUS
+    base["runtime_reliability_policy"] = {
+        "scope": "backend_retry_timing_and_attempt_interruption_capture_only",
+        "outer_tenacity_retry_wait_seconds": 1,
+        "outer_tenacity_stop_after_attempt": 10,
+        "openai_client_internal_retry_changed": False,
+        "http_timeout_override_added": False,
+        "keyboard_interrupt_attempt_status": "INTERRUPTED",
+        "keyboard_interrupt_exit_code": 130,
+        "interrupted_workspace_preserved": True,
+        "partial_resume_after_interrupt_allowed": False,
+        "restart_after_interrupt": "new attempt from frozen initial N30 state only",
+        "historical_attempt_manifest_rewrite_allowed": False,
+        "agent_reasoning_semantics_changed": False,
+    }
     base["v2_forum_output"] = {
         "intervention_scope": "final_agent_forum_post_field_only",
         "participant_visible_agent_forum_language": "English",
@@ -152,7 +166,7 @@ def validate_execution_plan(plan: Mapping[str, Any]) -> None:
     expected = _expected_plan_from_v1()
     if dict(plan) != expected:
         raise CanonicalEpisodeV2ContractError(
-            "v2 execution plan changed something outside the predeclared English-forum namespace overlay"
+            "v2 execution plan changed outside the predeclared forum/runtime overlays"
         )
 
 

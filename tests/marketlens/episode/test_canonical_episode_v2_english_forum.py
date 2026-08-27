@@ -192,17 +192,17 @@ def test_v2_plan_preserves_v1_world_population_activation_and_days_exactly():
     assert v2["world"] == v1["world"]
     assert v2["days"] == v1["days"]
     assert v2["protocol_version"] == v1["protocol_version"] == "1.1"
-    assert v2["plan_version"] == "2.2"
+    assert v2["plan_version"] == "2.3"
     assert v2["v2_forum_output"]["intervention_scope"] == "final_agent_forum_post_field_only"
     assert v2["v2_forum_output"]["live_translation_used"] is False
-    assert EXPECTED_EXECUTION_PLAN_SHA256 == "dfd0b2f2cca6dd61639425ac19dedd9f508d730359d9834da507cf3823698565"
+    assert EXPECTED_EXECUTION_PLAN_SHA256 == "14baf4ea091c27288bc18a627d9d02642099ad59c1c66f4506a458bdb270957c"
 
 
 def test_v2_producer_contract_is_zero_llm_by_default_and_language_gate_is_predeclared():
     contract = load_producer_contract()
-    assert PRODUCER_CONTRACT_SHA256 == "7ea0697cd13a5c8ce1c54a781797325b6edebcdc2c2b3c232386150317b67d22"
+    assert PRODUCER_CONTRACT_SHA256 == "43adf89370e9aa6d3e0d4ff736856ef887e6efe8170b024ee3300648904a30a3"
     assert contract["episode_pool_id"] == EPISODE_POOL_ID
-    assert contract["contract_version"] == "2.2"
+    assert contract["contract_version"] == "2.3"
     assert contract["episode_ids"] == list(EPISODE_IDS)
     assert contract["execution_controls"]["default_mode"] == "dry_run_zero_llm"
     assert contract["execution_controls"]["full_pool_execute_command_allowed"] is False
@@ -221,6 +221,45 @@ def test_v2_producer_contract_is_zero_llm_by_default_and_language_gate_is_predec
     assert registry_contract["free_model_translation_or_transliteration"] is False
     assert registry_contract["post_generation_entity_rewriting"] is False
 
+
+
+
+def test_v23_backend_retry_and_interruption_policy_is_frozen():
+    expected = {
+        "scope": "backend_retry_timing_and_attempt_interruption_capture_only",
+        "outer_tenacity_retry_wait_seconds": 1,
+        "outer_tenacity_stop_after_attempt": 10,
+        "openai_client_internal_retry_changed": False,
+        "http_timeout_override_added": False,
+        "keyboard_interrupt_attempt_status": "INTERRUPTED",
+        "keyboard_interrupt_exit_code": 130,
+        "interrupted_workspace_preserved": True,
+        "partial_resume_after_interrupt_allowed": False,
+        "restart_after_interrupt": "new attempt from frozen initial N30 state only",
+        "historical_attempt_manifest_rewrite_allowed": False,
+        "agent_reasoning_semantics_changed": False,
+    }
+    plan = load_execution_plan()
+    contract = load_producer_contract()
+    assert plan["runtime_reliability_policy"] == expected
+    assert contract["runtime_reliability_policy"] == expected
+
+    agent_source = (REPO_ROOT / "Agent.py").read_text(encoding="utf-8")
+    assert "@retry(wait=wait_fixed(1), stop=stop_after_attempt(10))" in agent_source
+    assert "wait_fixed(1000)" not in agent_source
+
+    producer_source = (
+        REPO_ROOT / "marketlens/episode/producer_v2.py"
+    ).read_text(encoding="utf-8")
+    assert "except (Exception, KeyboardInterrupt) as exc:" in producer_source
+    assert '"status": "INTERRUPTED" if interrupted else "TECHNICAL_INVALID"' in producer_source
+    assert 'failure["process_exit_code"] = 130' in producer_source
+
+    cli_source = (
+        REPO_ROOT / "scripts/formal/run_canonical_episode_producer_v2.py"
+    ).read_text(encoding="utf-8")
+    assert "except KeyboardInterrupt:" in cli_source
+    assert "return 130" in cli_source
 
 
 def test_v21_frozen_entity_registry_is_complete_unique_and_time_anchored():
@@ -283,6 +322,7 @@ def test_v2_dry_run_is_zero_llm_and_does_not_write_v2_formal_assets(tmp_path: Pa
     assert summary["forum_output_contract"]["participant_visible_agent_forum_language"] == "English"
     assert summary["entity_name_registry"]["sha256"] == EXPECTED_ENTITY_REGISTRY_SHA256
     assert summary["entity_name_registry"]["counts"]["companies"] == 50
+    assert summary["runtime_reliability_policy"] == load_execution_plan()["runtime_reliability_policy"]
     assert not (root / "data/marketlens/canonical_episode/v2").exists()
 
 

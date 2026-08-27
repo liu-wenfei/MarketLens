@@ -93,6 +93,12 @@ def main() -> int:
                 runtime_db=args.runtime_db,
                 population_manifest=args.population_manifest,
             )
+    except KeyboardInterrupt:
+        print(
+            "MARKETLENS V2 PRODUCER INTERRUPTED: KeyboardInterrupt",
+            file=sys.stderr,
+        )
+        return 130
     except Exception as exc:
         print(f"MARKETLENS V2 PRODUCER ERROR: {type(exc).__name__}: {exc}", file=sys.stderr)
         return 2

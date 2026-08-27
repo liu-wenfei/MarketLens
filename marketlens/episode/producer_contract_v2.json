@@ -1,6 +1,6 @@
 {
   "contract_schema_version": "marketlens-canonical-episode-producer-contract/2.0",
-  "contract_version": "2.2",
+  "contract_version": "2.3",
   "status": "formal_v2_producer_contract_frozen",
   "episode_pool_id": "marketlens-canonical-episode-pool-v2",
   "episode_ids": [
@@ -91,7 +91,7 @@
     "forum_post_language_complete": true
   },
   "base_v1_execution_plan_sha256": "a907079281f7deca590bd7ec741b56fab614f05b0cdd869c5f2c345fb048a8bc",
-  "execution_plan_v2_sha256": "dfd0b2f2cca6dd61639425ac19dedd9f508d730359d9834da507cf3823698565",
+  "execution_plan_v2_sha256": "14baf4ea091c27288bc18a627d9d02642099ad59c1c66f4506a458bdb270957c",
   "forum_output_contract": {
     "intervention_scope": "final_agent_forum_post_field_only",
     "participant_visible_agent_forum_language": "English",
@@ -131,5 +131,19 @@
     },
     "post_type_declaration_policy": "yaml_type_field_only",
     "inherited_type_instruction_clarified_in_v2_prompt": true
+  },
+  "runtime_reliability_policy": {
+    "scope": "backend_retry_timing_and_attempt_interruption_capture_only",
+    "outer_tenacity_retry_wait_seconds": 1,
+    "outer_tenacity_stop_after_attempt": 10,
+    "openai_client_internal_retry_changed": false,
+    "http_timeout_override_added": false,
+    "keyboard_interrupt_attempt_status": "INTERRUPTED",
+    "keyboard_interrupt_exit_code": 130,
+    "interrupted_workspace_preserved": true,
+    "partial_resume_after_interrupt_allowed": false,
+    "restart_after_interrupt": "new attempt from frozen initial N30 state only",
+    "historical_attempt_manifest_rewrite_allowed": false,
+    "agent_reasoning_semantics_changed": false
   }
 }

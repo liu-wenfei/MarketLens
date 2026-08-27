@@ -1,6 +1,6 @@
 {
   "plan_schema_version": "marketlens-canonical-episode-pool-execution-plan/2.0",
-  "plan_version": "2.2",
+  "plan_version": "2.3",
   "status": "formal_episode_pool_v2_execution_plan_frozen",
   "protocol_version": "1.1",
   "base_protocol_compatibility": {
@@ -607,5 +607,19 @@
     },
     "post_type_declaration_policy": "yaml_type_field_only",
     "inherited_type_instruction_clarified_in_v2_prompt": true
+  },
+  "runtime_reliability_policy": {
+    "scope": "backend_retry_timing_and_attempt_interruption_capture_only",
+    "outer_tenacity_retry_wait_seconds": 1,
+    "outer_tenacity_stop_after_attempt": 10,
+    "openai_client_internal_retry_changed": false,
+    "http_timeout_override_added": false,
+    "keyboard_interrupt_attempt_status": "INTERRUPTED",
+    "keyboard_interrupt_exit_code": 130,
+    "interrupted_workspace_preserved": true,
+    "partial_resume_after_interrupt_allowed": false,
+    "restart_after_interrupt": "new attempt from frozen initial N30 state only",
+    "historical_attempt_manifest_rewrite_allowed": false,
+    "agent_reasoning_semantics_changed": false
   }
 }

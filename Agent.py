@@ -83,7 +83,7 @@ class BaseAgent:
             "total_tokens": response.usage.total_tokens,  # 提取总的token使用数量
         }
 
-    @retry(wait=wait_fixed(1000), stop=stop_after_attempt(10))
+    @retry(wait=wait_fixed(1), stop=stop_after_attempt(10))
     def __call_api(
         self,
         messages,
