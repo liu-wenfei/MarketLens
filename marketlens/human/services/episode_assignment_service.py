@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from random import SystemRandom
+from typing import Callable, Sequence
 from uuid import uuid4
 
 from marketlens.episode.contract import EPISODE_POOL_ID
@@ -16,6 +18,7 @@ from marketlens.human.stores.errors import StoreSessionNotFoundError
 
 FORMAL_ASSIGNMENT_METHOD = "balanced_random_across_episode_pool"
 ASSIGNMENT_BINDING_VERSION = "phase14b1-v1"
+FORMAL_ALLOCATOR_VERSION = "phase15a2-balanced-random-v1"
 
 
 class EpisodeAssignmentConflictError(ValueError):
@@ -51,11 +54,20 @@ def _to_assignment(row) -> ParticipantEpisodeAssignment:
     )
 
 
-class EpisodeAssignmentService:
-    """Persist an already-chosen episode binding; never perform random allocation."""
+_SYSTEM_RANDOM = SystemRandom()
 
-    def __init__(self, store: EpisodeAssignmentStore):
+
+class EpisodeAssignmentService:
+    """Persist explicit bindings and perform formal server-owned allocation."""
+
+    def __init__(
+        self,
+        store: EpisodeAssignmentStore,
+        *,
+        formal_chooser: Callable[[Sequence[str]], str] | None = None,
+    ):
         self.store = store
+        self.formal_chooser = formal_chooser or _SYSTEM_RANDOM.choice
 
     def get(self, session_id: str) -> ParticipantEpisodeAssignment | None:
         row = self.store.get(session_id)
@@ -79,6 +91,31 @@ class EpisodeAssignmentService:
                 assignment_method=assignment_method,
                 assignment_version=assignment_version,
                 assigned_at=now,
+            )
+        except StoreSessionNotFoundError as exc:
+            raise SessionNotFoundError(session_id) from exc
+        except StoreEpisodeAssignmentConflictError as exc:
+            raise EpisodeAssignmentConflictError(str(exc)) from exc
+        except StoreEpisodeAssignmentValidationError as exc:
+            raise EpisodeAssignmentValidationError(str(exc)) from exc
+        return _to_assignment(row)
+
+    def allocate_balanced_random(
+        self,
+        session_id: str,
+    ) -> ParticipantEpisodeAssignment:
+        """Allocate one frozen episode without accepting any client episode input."""
+
+        now = datetime.now(timezone.utc).isoformat()
+        try:
+            row = self.store.allocate_balanced_idempotent(
+                assignment_id=str(uuid4()),
+                session_id=session_id,
+                episode_pool_id=EPISODE_POOL_ID,
+                assignment_method=FORMAL_ASSIGNMENT_METHOD,
+                assignment_version=FORMAL_ALLOCATOR_VERSION,
+                assigned_at=now,
+                chooser=self.formal_chooser,
             )
         except StoreSessionNotFoundError as exc:
             raise SessionNotFoundError(session_id) from exc

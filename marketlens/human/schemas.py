@@ -17,6 +17,15 @@ class SessionCreate(BaseModel):
     request_id: str = Field(min_length=1, max_length=128)
 
 
+class ParticipantSessionCreate(BaseModel):
+    """Formal participant bootstrap payload; episode allocation is server-owned."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    participant_id: str = Field(min_length=1, max_length=128)
+    request_id: str = Field(min_length=1, max_length=128)
+
+
 class SessionRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

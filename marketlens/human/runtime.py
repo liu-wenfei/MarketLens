@@ -44,6 +44,7 @@ class ParticipantRuntime:
     rounds: ParticipantProtocolRoundService
     view_state: ParticipantViewStateService
     target_stock_id: str
+    episode_ids: tuple[str, ...]
 
 
 def build_participant_runtime(
@@ -123,4 +124,5 @@ def build_participant_runtime(
         rounds=rounds,
         view_state=view_state,
         target_stock_id=target_stock_id,
+        episode_ids=tuple(projections),
     )

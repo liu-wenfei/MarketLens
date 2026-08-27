@@ -2,7 +2,18 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
-from marketlens.human.schemas import ParticipantViewState, SessionCreate, SessionRead, SessionState
+from marketlens.episode.contract import EPISODE_IDS
+from marketlens.human.schemas import (
+    ParticipantSessionCreate,
+    ParticipantViewState,
+    SessionCreate,
+    SessionRead,
+    SessionState,
+)
+from marketlens.human.services.episode_assignment_service import (
+    EpisodeAssignmentConflictError,
+    EpisodeAssignmentValidationError,
+)
 from marketlens.human.services.orchestration_service import ExperimentStateConflictError
 from marketlens.human.services.session_service import (
     IdempotencyConflictError,
@@ -27,12 +38,19 @@ def get_session_service(request: Request) -> SessionService:
     return SessionService(SessionStore(request.app.state.db))
 
 
-@router.post("/session", response_model=SessionRead, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/session",
+    response_model=SessionRead,
+    status_code=status.HTTP_201_CREATED,
+    include_in_schema=False,
+)
 def create_session(
     payload: SessionCreate,
     request: Request,
     service: SessionService = Depends(get_session_service),
 ) -> SessionRead:
+    """Legacy/dev-compatible session creation retained for frozen tests."""
+
     try:
         created = service.create(payload)
         runtime = getattr(request.app.state, "participant_runtime", None)
@@ -43,6 +61,53 @@ def create_session(
     except IdempotencyConflictError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except ExperimentStateConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@router.post(
+    "/participant-session",
+    response_model=SessionRead,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_participant_session(
+    payload: ParticipantSessionCreate,
+    request: Request,
+) -> SessionRead:
+    """Create, allocate and initialize one formal participant session.
+
+    The client supplies participant identity plus an idempotency key only.
+    Episode pool/member/method/version and protocol stage/date are server-owned.
+    """
+
+    runtime = getattr(request.app.state, "participant_runtime", None)
+    if runtime is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Participant runtime is not configured",
+        )
+    if set(runtime.episode_ids) != set(EPISODE_IDS):
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Formal participant bootstrap requires the complete frozen canonical episode pool",
+        )
+
+    try:
+        created = runtime.sessions.create(
+            SessionCreate(
+                participant_id=payload.participant_id,
+                request_id=payload.request_id,
+            )
+        )
+        runtime.assignments.allocate_balanced_random(created.session_id)
+        runtime.orchestration.initialize(created.session_id)
+        return runtime.sessions.get(created.session_id)
+    except IdempotencyConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except (
+        EpisodeAssignmentConflictError,
+        EpisodeAssignmentValidationError,
+        ExperimentStateConflictError,
+    ) as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
