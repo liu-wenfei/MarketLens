@@ -1,0 +1,136 @@
+{
+  "record_schema_version": "marketlens-canonical-episode-freeze-record/1.0",
+  "record_status": "tracked_formal_freeze_record",
+  "episode_pool_id": "marketlens-canonical-episode-pool-v1",
+  "episode_id": "marketlens-canonical-episode-v1-e03",
+  "episode_slot": 3,
+  "acceptance": {
+    "status": "formal_frozen_technically_valid",
+    "accepted_attempt_number": 3,
+    "acceptance_basis": "predeclared_technical_gates_only",
+    "outcome_conditioned_acceptance": false,
+    "episode_similarity_review_used_for_acceptance": false,
+    "seed_substitution_used": false,
+    "partial_resume_used": false
+  },
+  "producer_identity": {
+    "git_commit": "f3035ecd334074c52f3c48bd41afdf55bf10d964",
+    "git_branch": "dissertation",
+    "phase13c_execution_plan_sha256": "a907079281f7deca590bd7ec741b56fab614f05b0cdd869c5f2c345fb048a8bc",
+    "phase13d_producer_contract_sha256": "14db0ae7a525ef464975f7ba4da69d98eb8ffd4058d491555a32ee25f92a9126",
+    "backend_model_name": "gpt-5.4-mini",
+    "backend_base_url": "https://zhi-api.com/v1",
+    "api_key_recorded": false
+  },
+  "population": {
+    "size": 30,
+    "selection_seed": "marketlens-dev-population-01",
+    "selected_agent_ids_sha256": "60d846b21c15e2213f6f897a17a7ea98039fbf461abe54ee89e1b6779d24b2d4",
+    "activation_seed": "marketlens-phase09b-activation-01"
+  },
+  "execution": {
+    "initialization_date": "2023-06-15",
+    "end_date": "2023-07-11",
+    "formal_world_ticks": 27,
+    "active_agent_pipeline_executions_expected": 193,
+    "active_agent_pipeline_executions_completed": 193,
+    "failed_agent_pipeline_count": 0,
+    "participant_data_used": false,
+    "controlled_stimulus_injected_into_agent_world": false,
+    "custom_matching_price_forum_belief_logic_used": false
+  },
+  "technical_validation": {
+    "all_days_complete": true,
+    "activation_plan_exact": true,
+    "calendar_actions_exact": true,
+    "state_chain_complete": true,
+    "protected_sources_unchanged": true,
+    "participant_price_coverage_complete": true,
+    "participant_price_cells_expected": 150,
+    "participant_price_cells_missing": 0,
+    "participant_price_cells_invalid": 0,
+    "forum_profile_source_cue_join_complete": true,
+    "participant_visible_nonrepost_posts_checked": 193,
+    "missing_same_day_profile_snapshots": 0
+  },
+  "outputs": {
+    "agent_world_db": {
+      "path": "data/marketlens/canonical_episode/v1/episode_03/agent_world.db",
+      "sha256": "da8a077875d0011239f0c713e5b2e3556901bc9a828793f05f08c69f1584cb31"
+    },
+    "forum_db": {
+      "path": "data/marketlens/canonical_episode/v1/episode_03/forum.db",
+      "sha256": "42ab83af3aa2da27b4c29f9f9a8097f98f47e87e03bc3fd4f1a606c1dc248f0f"
+    }
+  },
+  "source_manifests": {
+    "episode_manifest": "data/marketlens/canonical_episode/v1/episode_03/episode_manifest.json",
+    "attempt_manifest": "artifacts/formal/canonical_episode/marketlens-canonical-episode-v1-e03/attempt_003/attempt_manifest.json"
+  },
+  "attempt_history": {
+    "frozen_initial_runtime_sha256": "98a95b5ee631ac4a57648867103c25828bfa1b8af640871640cdf071e2f01a26",
+    "policy": {
+      "failed_attempt_evidence_retained": true,
+      "partial_resume_allowed": false,
+      "restart_from_frozen_initial_state_only": true,
+      "acceptance_not_outcome_conditioned": true
+    },
+    "attempts": [
+      {
+        "attempt_number": 1,
+        "acceptance_role": "not_accepted",
+        "classification": "external_process_interruption",
+        "raw_manifest_status": "running",
+        "days_completed": 12,
+        "active_agent_pipeline_executions_completed": 90,
+        "partial_resume_used": false,
+        "seed_substitution_used": false,
+        "outcome_review_used_for_acceptance": false,
+        "episode_similarity_review_used_for_acceptance": false,
+        "manifest_sha256": "1ff97c0a9b03120e92ac9742ba34524a5115ba480dbf9f69b64f1b8ac4ed3bb8",
+        "workspace_agent_world_db_sha256": "dfdff33203d3c7abc9955171d9a0d1beb74d32ce5de81d0941f84cf1c3f509f3",
+        "workspace_forum_db_sha256": "f2e27b3a701a3969b5fc5d7f6cb74210e5d1748bb9314a43e24c807fd769d715",
+        "note": "External termination prevented the producer failure handler from rewriting the raw manifest status; the raw attempt is intentionally preserved unchanged and was never resumed or accepted."
+      },
+      {
+        "attempt_number": 2,
+        "acceptance_role": "not_accepted",
+        "classification": "producer_captured_technical_invalid",
+        "raw_manifest_status": "TECHNICAL_INVALID",
+        "error_type": "Phase09CError",
+        "error": "inherited Agent reasoning failed for 95757403205: expected string or bytes-like object, got 'NoneType'",
+        "days_completed": 12,
+        "active_agent_pipeline_executions_completed": 90,
+        "partial_resume_used": false,
+        "seed_substitution_used": false,
+        "outcome_review_used_for_acceptance": false,
+        "episode_similarity_review_used_for_acceptance": false,
+        "protected_sources_unchanged_at_failure_capture": true,
+        "workspace_preserved": true,
+        "partial_resume_allowed": false,
+        "restart_policy": "new attempt from frozen initial N30 state only",
+        "manifest_sha256": "dfe5718e85ff8ebebecfa2beedd786016daa1c3918ec91c00d15da479d29b502",
+        "workspace_agent_world_db_sha256": "0fbeac8e4438dc6ebd5f3f0951977c5c7bcaf5bd25a7823dae2ebada5f61cc33",
+        "workspace_forum_db_sha256": "3a9d5d24a1c797bd53f99cf942420150a8e8012e9b12f2b1ae92e85f1ec08906"
+      },
+      {
+        "attempt_number": 3,
+        "acceptance_role": "accepted",
+        "classification": "formal_frozen_technical_pass",
+        "raw_manifest_status": "FORMAL_FROZEN",
+        "days_completed": 27,
+        "active_agent_pipeline_executions_completed": 193,
+        "partial_resume_used": false,
+        "seed_substitution_used": false,
+        "outcome_review_used_for_acceptance": false,
+        "episode_similarity_review_used_for_acceptance": false
+      }
+    ]
+  },
+  "freeze_semantics": {
+    "episode_must_not_be_rerun_or_replaced_for_natural_outcomes": true,
+    "episode_must_not_be_rerun_or_replaced_for_cross_episode_similarity": true,
+    "tracked_record_does_not_replace_raw_formal_assets": true,
+    "raw_formal_assets_remain_gitignored": true
+  }
+}
