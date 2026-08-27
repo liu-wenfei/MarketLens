@@ -35,6 +35,11 @@ from marketlens.episode.contract_v2 import (
     validate_formal_episode_manifest,
     validate_formal_episode_pool_manifest,
 )
+from marketlens.episode.entity_names import (
+    EXPECTED_ENTITY_REGISTRY_SHA256,
+    load_entity_registry,
+    registry_summary,
+)
 from marketlens.stimulus.manifest import sha256_json
 
 
@@ -42,9 +47,9 @@ class CanonicalEpisodeProducerError(RuntimeError):
     """Raised when a formal episode producer safety/technical gate fails."""
 
 
-PRODUCER_CONTRACT_SHA256 = "2ed65346f28e0b065e819c2d2457eb1bf5bfd666e5a69b93d8280f8b88fe2f6d"
+PRODUCER_CONTRACT_SHA256 = "21dec9f02052b60190c2ea5c750857a9d0eb516783f66a590b94332b228517da"
 PRODUCER_CONTRACT_STATUS = "formal_v2_producer_contract_frozen"
-PRODUCER_CONTRACT_VERSION = "2.0"
+PRODUCER_CONTRACT_VERSION = "2.1"
 FORMAL_EXECUTION_BANNER = (
     "FORMAL / MARKETLENS V2 CANONICAL EPISODE SLOT EXECUTION / "
     "PAID REAL BACKEND / PREDECLARED TECHNICAL GATES"
@@ -127,6 +132,17 @@ def validate_producer_contract(contract: Mapping[str, Any]) -> None:
     plan_output = load_execution_plan().get("v2_forum_output", {})
     if contract.get("forum_output_contract") != plan_output:
         raise CanonicalEpisodeProducerError("MarketLens v2 forum-output contract drifted")
+    registry_contract = plan_output.get("entity_name_registry", {})
+    if registry_contract.get("sha256") != EXPECTED_ENTITY_REGISTRY_SHA256:
+        raise CanonicalEpisodeProducerError("MarketLens v2.1 entity-registry hash binding drifted")
+    if registry_contract.get("known_entity_policy") != "exact_canonical_english_display_or_stable_code":
+        raise CanonicalEpisodeProducerError("MarketLens v2.1 known-entity policy drifted")
+    if registry_contract.get("unknown_entity_fallback") != "ticker_or_index_code":
+        raise CanonicalEpisodeProducerError("MarketLens v2.1 unknown-entity fallback drifted")
+    if registry_contract.get("free_model_translation_or_transliteration") is not False:
+        raise CanonicalEpisodeProducerError("free entity translation/transliteration must remain disabled")
+    if registry_contract.get("post_generation_entity_rewriting") is not False:
+        raise CanonicalEpisodeProducerError("post-generation entity rewriting must remain disabled")
 
     acceptance = contract.get("technical_acceptance", {})
     if acceptance.get("formal_world_ticks") != EXPECTED_WORLD_TICKS:
@@ -223,9 +239,19 @@ def validate_runtime_dependencies(
     if require_api_key and not api["api_key_configured"]:
         raise CanonicalEpisodeProducerError("formal episode execution requires configured API key")
 
+    # Zero-LLM control-asset integrity gate. Loading this registry never rewrites
+    # Agent output; it only proves the frozen prompt glossary is the declared one.
+    registry_contract = contract["forum_output_contract"]["entity_name_registry"]
+    registry_path = root / registry_contract["path"]
+    load_entity_registry(registry_path)
+    entity_registry = registry_summary(registry_path)
+    if entity_registry["sha256"] != registry_contract["sha256"]:
+        raise CanonicalEpisodeProducerError("active v2.1 entity-name registry does not match producer contract")
+
     return {
         "execution_plan_sha256": execution_plan_sha256(plan),
         "producer_contract_sha256": PRODUCER_CONTRACT_SHA256,
+        "entity_name_registry": entity_registry,
         "protected_input_sha256": observed_hashes,
         "backend": api,
     }
@@ -300,6 +326,7 @@ def dry_run_summary(
         "full_pool_execute_command_allowed": False,
         "execution_plan_v2_sha256": deps["execution_plan_sha256"],
         "producer_contract_sha256": deps["producer_contract_sha256"],
+        "entity_name_registry": deps["entity_name_registry"],
         "world_ticks_per_episode": len(plan["days"]),
         "agent_pipeline_executions_per_episode": sum(row["n_active"] for row in plan["days"]),
         "expected_pool_agent_pipeline_executions": sum(row["n_active"] for row in plan["days"]) * len(EPISODE_IDS),
@@ -572,6 +599,7 @@ def execute_formal_episode_slot(
         "git": git,
         "execution_plan_v2_sha256": execution_plan_sha256(plan),
         "producer_v2_contract_sha256": PRODUCER_CONTRACT_SHA256,
+        "entity_name_registry": deps_before["entity_name_registry"],
         "backend": {
             "model_name": deps_before["backend"]["model_name"],
             "base_url": deps_before["backend"]["base_url"],

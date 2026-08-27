@@ -14,6 +14,7 @@ _CJK_RE = re.compile(
     r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]"
 )
 _LATIN_RE = re.compile(r"[A-Za-z]")
+_TYPE_PREFIX_RE = re.compile(r"^\s*type[123]\s*:\s*", re.IGNORECASE)
 
 
 def english_forum_post_violations(text: str) -> tuple[str, ...]:
@@ -26,6 +27,8 @@ def english_forum_post_violations(text: str) -> tuple[str, ...]:
         violations.append("contains_cjk_character")
     if not _LATIN_RE.search(value):
         violations.append("missing_latin_letter")
+    if _TYPE_PREFIX_RE.search(value):
+        violations.append("type_prefix_in_post")
     return tuple(violations)
 
 
@@ -36,6 +39,7 @@ def validate_english_forum_post(text: str) -> dict[str, Any]:
         "violations": list(violations),
         "contains_cjk": "contains_cjk_character" in violations,
         "contains_latin_letter": "missing_latin_letter" not in violations,
+        "type_prefix_in_post": "type_prefix_in_post" in violations,
     }
 
 

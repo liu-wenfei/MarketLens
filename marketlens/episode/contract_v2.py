@@ -27,7 +27,7 @@ EPISODE_IDS = (
     "marketlens-canonical-episode-v2-e03",
 )
 EPISODE_COUNT = 3
-PLAN_VERSION = "2.0"
+PLAN_VERSION = "2.1"
 PLAN_STATUS = "formal_episode_pool_v2_execution_plan_frozen"
 PROTOCOL_VERSION = v1.PROTOCOL_VERSION
 POPULATION_SIZE = v1.POPULATION_SIZE
@@ -38,8 +38,8 @@ EXPECTED_WORLD_TICKS = v1.EXPECTED_WORLD_TICKS
 EXPECTED_AGENT_PIPELINE_EXECUTIONS = v1.EXPECTED_AGENT_PIPELINE_EXECUTIONS
 EXPECTED_POOL_AGENT_PIPELINE_EXECUTIONS = EXPECTED_AGENT_PIPELINE_EXECUTIONS * EPISODE_COUNT
 EXPECTED_V1_EXECUTION_PLAN_SHA256 = v1.EXPECTED_EXECUTION_PLAN_SHA256
-EXPECTED_EXECUTION_PLAN_SHA256 = "44c9ca5fe713ef18c3b40c3a72998baceea52341dc1482878936085ee4e84a6a"
-EXPECTED_PRODUCER_CONTRACT_SHA256 = "2ed65346f28e0b065e819c2d2457eb1bf5bfd666e5a69b93d8280f8b88fe2f6d"
+EXPECTED_EXECUTION_PLAN_SHA256 = "86a3b754a81114a599e74c7de071297075ce2ac4107f28499c4d55893dcf1e9c"
+EXPECTED_PRODUCER_CONTRACT_SHA256 = "21dec9f02052b60190c2ea5c750857a9d0eb516783f66a590b94332b228517da"
 FORMAL_POOL_ROOT = "data/marketlens/canonical_episode/v2"
 FORMAL_POOL_MANIFEST = f"{FORMAL_POOL_ROOT}/pool_manifest.json"
 RAW_EVIDENCE_ROOT_TEMPLATE = "artifacts/formal/canonical_episode_v2/{episode_id}"
@@ -101,6 +101,23 @@ def _expected_plan_from_v1() -> dict[str, Any]:
             "cjk_characters_allowed_in_post": False,
             "latin_letter_required": True,
             "content_quality_or_sentiment_gate": False,
+            "type_prefix_allowed_in_post": False,
+        },
+        "chinese_source_terms_may_be_copied_into_post": False,
+        "same_call_self_check_required": True,
+        "entity_name_registry": {
+            "path": "marketlens/episode/entity_name_registry_v2_1.json",
+            "registry_id": "marketlens-entity-name-registry-v2.1",
+            "registry_version": "2.1",
+            "status": "formal_v2_entity_name_registry_frozen",
+            "sha256": "0bdf5dfc9851e21440496dfdf220de512965efeed33f6ee67ef68ec91a65ad5b",
+            "simulation_reference_date": "2023-06-15",
+            "counts": {"sectors": 10, "indices": 10, "companies": 50, "total_entities": 70},
+            "known_entity_policy": "exact_canonical_english_display_or_stable_code",
+            "unknown_entity_fallback": "ticker_or_index_code",
+            "free_model_translation_or_transliteration": False,
+            "post_generation_entity_rewriting": False,
+            "glossary_scope": "final_agent_forum_post_prompt_only",
         },
     }
     base["acceptance_policy"][

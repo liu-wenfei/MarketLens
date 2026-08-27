@@ -4,6 +4,8 @@ from contextvars import ContextVar
 
 import pandas as pd
 
+from marketlens.episode.entity_names import forum_entity_glossary
+
 _FORUM_POST_LANGUAGE: ContextVar[str] = ContextVar(
     "marketlens_forum_post_language", default="zh"
 )
@@ -812,16 +814,29 @@ reason:
     def get_intention_prompt(old_belief: str):
         language_rule = ""
         if current_forum_post_language() == "en":
-            language_rule = """
+            entity_glossary = forum_entity_glossary()
+            language_rule = f"""
 
-        2A. **MarketLens v2 forum-post language constraint**：
+        2A. **MarketLens v2.1 forum-post language constraint**：
             - 该语言约束只适用于 YAML 的 `post` 字段。
-            - `post` 必须直接使用自然、完整的英文撰写，不得包含中文字符。
+            - `post` 必须直接使用自然、完整的英文撰写，不得包含任何中文/CJK字符；即使上文中的公司名、行业名、术语或短语是中文，也不得原样复制到 `post`。
             - 保持原有投资人设、观点、证据和发帖类型，不要因为改成英文而增加新的事实或分析。
             - `belief` 不受此英文约束影响，继续按照下面原有要求使用中文总结，以保持既有 belief 传播语义。
             - 不得先生成中文帖子再附加翻译；`post` 本身就是最终英文论坛文本。
             - 为避免自然英文中的冒号破坏 inherited YAML 解析，`post` 必须使用 YAML block scalar：`post: |-`，正文从下一行开始并缩进；不得写成 `post: <正文>` 的单行形式。
-            - `post` 正文不要再以 `type1:` / `type2:` / `type3:` 开头；帖子类型只写入独立的 `type` 字段。
+            - `post` 正文不得以 `type1:` / `type2:` / `type3:` 开头，也不要在正文其他位置重复帖子类型；帖子类型只写入独立的 `type` 字段。
+
+        2B. **MarketLens v2.1 frozen entity-name glossary**：
+            - 下面的映射是 2023-06-15 模拟世界中公司、指数和行业的唯一冻结英文显示映射。
+            - 如果 `post` 提及其中任何已知实体，只能使用其 `=>` 右侧的 canonical English display，或直接使用左侧稳定代码；不得自行翻译、缩写、音译或创造另一种英文名称。
+            - 如果需要提及一个不在映射中的实体，而上下文中有股票代码/指数代码，则只使用该代码作为 fallback；不得自由翻译或音译中文实体名。
+            - 这份 glossary 只用于生成最终英文 `post`，不要在帖子中复述或解释 glossary。
+
+{entity_glossary}
+
+        2C. **同次输出自检**：
+            - 在输出最终 YAML 前，请在同一次回答中检查 `post`：必须没有任何中文/CJK字符，不能以 `type1:` / `type2:` / `type3:` 开头，并且已知实体名称只能使用上面的冻结 canonical English display 或稳定代码。
+            - 如发现违反，请在同一次生成中先改写 `post`，只输出修正后的最终 YAML。
             """
 
         post_prompt = f"""

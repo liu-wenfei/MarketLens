@@ -1,6 +1,6 @@
 {
   "contract_schema_version": "marketlens-canonical-episode-producer-contract/2.0",
-  "contract_version": "2.0",
+  "contract_version": "2.1",
   "status": "formal_v2_producer_contract_frozen",
   "episode_pool_id": "marketlens-canonical-episode-pool-v2",
   "episode_ids": [
@@ -91,7 +91,7 @@
     "forum_post_language_complete": true
   },
   "base_v1_execution_plan_sha256": "a907079281f7deca590bd7ec741b56fab614f05b0cdd869c5f2c345fb048a8bc",
-  "execution_plan_v2_sha256": "44c9ca5fe713ef18c3b40c3a72998baceea52341dc1482878936085ee4e84a6a",
+  "execution_plan_v2_sha256": "86a3b754a81114a599e74c7de071297075ce2ac4107f28499c4d55893dcf1e9c",
   "forum_output_contract": {
     "intervention_scope": "final_agent_forum_post_field_only",
     "participant_visible_agent_forum_language": "English",
@@ -105,7 +105,29 @@
       "all_stored_posts_checked": true,
       "cjk_characters_allowed_in_post": false,
       "latin_letter_required": true,
-      "content_quality_or_sentiment_gate": false
+      "content_quality_or_sentiment_gate": false,
+      "type_prefix_allowed_in_post": false
+    },
+    "chinese_source_terms_may_be_copied_into_post": false,
+    "same_call_self_check_required": true,
+    "entity_name_registry": {
+      "path": "marketlens/episode/entity_name_registry_v2_1.json",
+      "registry_id": "marketlens-entity-name-registry-v2.1",
+      "registry_version": "2.1",
+      "status": "formal_v2_entity_name_registry_frozen",
+      "sha256": "0bdf5dfc9851e21440496dfdf220de512965efeed33f6ee67ef68ec91a65ad5b",
+      "simulation_reference_date": "2023-06-15",
+      "counts": {
+        "sectors": 10,
+        "indices": 10,
+        "companies": 50,
+        "total_entities": 70
+      },
+      "known_entity_policy": "exact_canonical_english_display_or_stable_code",
+      "unknown_entity_fallback": "ticker_or_index_code",
+      "free_model_translation_or_transliteration": false,
+      "post_generation_entity_rewriting": false,
+      "glossary_scope": "final_agent_forum_post_prompt_only"
     }
   }
 }
