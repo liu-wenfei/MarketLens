@@ -1,9 +1,9 @@
 # MarketLens Canonical Episode Pool — Formal Freeze Audit
 
-**Status:** TRACKED FORMAL POOL FREEZE RECORD  
-**Raw pool manifest:** `data/marketlens/canonical_episode/v1/pool_manifest.json`  
-**Raw pool manifest SHA-256:** `3f32fa3d67878cb05335af8a89305e0487a4501a834b054d53a16129047ad086`  
-**Tracked pool record SHA-256:** `ce6d906436f153102412cd8e17da5bc74ec276c422272284d679e495c64db854`  
+**Status:** TRACKED FORMAL POOL FREEZE RECORD
+**Raw pool manifest:** `data/marketlens/canonical_episode/v1/pool_manifest.json`
+**Raw pool manifest SHA-256:** `3f32fa3d67878cb05335af8a89305e0487a4501a834b054d53a16129047ad086`
+**Tracked pool record SHA-256:** `ce6d906436f153102412cd8e17da5bc74ec276c422272284d679e495c64db854`
 **Finalization Git baseline:** `592a1e4658f978f344639ea9233a40fc4938c286` (`dissertation`)
 
 ## Frozen pool identity
