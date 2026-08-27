@@ -15,6 +15,7 @@ from marketlens.human.services.orchestration_service import ExperimentOrchestrat
 from marketlens.human.services.round_service import ParticipantProtocolRoundService
 from marketlens.human.services.session_service import SessionService
 from marketlens.human.services.trusted_context_service import TrustedParticipantContextResolver
+from marketlens.human.services.view_state_service import ParticipantViewStateService
 from marketlens.human.stores.episode_assignment_store import EpisodeAssignmentStore
 from marketlens.human.stores.judgement_store import JudgementStore
 from marketlens.human.stores.orchestration_store import ExperimentOrchestrationStore
@@ -41,6 +42,8 @@ class ParticipantRuntime:
     exposure: ParticipantExposureService
     judgements: JudgementService
     rounds: ParticipantProtocolRoundService
+    view_state: ParticipantViewStateService
+    target_stock_id: str
 
 
 def build_participant_runtime(
@@ -92,13 +95,21 @@ def build_participant_runtime(
         orchestration=orchestration,
         stimulus_engine=stimulus_engine,
     )
+    target_stock_id = stimulus_engine.material.target_stock_id
     judgements = JudgementService(
         JudgementStore(db),
         ExperimentOrchestrationStore(db),
+        target_stock_id=target_stock_id,
     )
     rounds = ParticipantProtocolRoundService(
         rounds=RoundStore(db),
         orchestration=orchestration,
+    )
+    view_state = ParticipantViewStateService(
+        orchestration=orchestration,
+        context=context,
+        calendar=calendar,
+        target_stock_id=target_stock_id,
     )
 
     return ParticipantRuntime(
@@ -110,4 +121,6 @@ def build_participant_runtime(
         exposure=exposure,
         judgements=judgements,
         rounds=rounds,
+        view_state=view_state,
+        target_stock_id=target_stock_id,
     )

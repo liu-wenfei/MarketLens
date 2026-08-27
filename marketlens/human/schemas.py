@@ -45,6 +45,91 @@ class SessionState(BaseModel):
     market_state_date: str | None
 
 
+class ParticipantRequiredAction(str, Enum):
+    LOAD_MARKET_INFORMATION = "LOAD_MARKET_INFORMATION"
+    LOAD_INFORMATION_UPDATE = "LOAD_INFORMATION_UPDATE"
+    SUBMIT_ASSESSMENT = "SUBMIT_ASSESSMENT"
+    ROUND_ACTIVE = "ROUND_ACTIVE"
+    COMPLETED = "COMPLETED"
+
+
+class ParticipantAssessmentMode(str, Enum):
+    PRE_UPDATE = "PRE_UPDATE"
+    POST_UPDATE = "POST_UPDATE"
+    LATER = "LATER"
+
+
+class ParticipantAllowedActions(BaseModel):
+    load_market_information: bool
+    load_information_update: bool
+    submit_assessment: bool
+    view_portfolio: bool
+    preview_trade: bool
+    submit_trade: bool
+    complete_round: bool
+
+
+class ParticipantMarketView(BaseModel):
+    market_open: bool
+    market_status_reason: str
+    current_market_date: str | None
+    next_trading_date: str | None
+    closure_start_date: str | None
+    closure_end_date: str | None
+    market_state_date: str | None
+    trading_enabled_by_market: bool
+
+
+class ParticipantViewState(BaseModel):
+    contract_version: str
+    session_id: str
+    current_step_assertion: int
+    period_number: int
+    period_count: int
+    current_date: str
+    experiment_status: str
+    completed: bool
+    assessment_target_stock_id: str
+    required_action: ParticipantRequiredAction
+    assessment_mode: ParticipantAssessmentMode | None
+    market: ParticipantMarketView
+    allowed_actions: ParticipantAllowedActions
+
+
+class ParticipantInformationUpdateRead(BaseModel):
+    session_id: str
+    current_date: str
+    headline: str
+    body: str
+    source_label: str
+    source_descriptor: str
+
+
+class ParticipantAssessmentCreate(BaseModel):
+    """Phase 15 participant-safe assessment payload; target/provenance are server-owned."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    request_id: str = Field(min_length=1, max_length=128)
+    action: DecisionAction
+    confidence: float = Field(ge=0.0, le=100.0)
+    evidence_sources: list[str] = Field(default_factory=list)
+    rationale: str | None = Field(default=None, max_length=5000)
+
+
+class ParticipantAssessmentRead(BaseModel):
+    assessment_id: str
+    session_id: str
+    request_id: str
+    assessment_target_stock_id: str
+    assessment_mode: ParticipantAssessmentMode
+    action: DecisionAction
+    confidence: float
+    evidence_sources: list[str]
+    rationale: str | None
+    submitted_at: datetime
+
+
 class ParticipantForumPostRead(BaseModel):
     post_id: int
     author_id: str

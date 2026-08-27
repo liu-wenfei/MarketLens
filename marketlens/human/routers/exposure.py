@@ -10,6 +10,7 @@ from marketlens.human.schemas import (
     ExposureRequest,
     ParticipantBackgroundRead,
     ParticipantControlledStimulusRead,
+    ParticipantInformationUpdateRead,
 )
 from marketlens.human.services.background_service import ParticipantBackgroundUnavailableError
 from marketlens.human.services.exposure_service import (
@@ -67,21 +68,12 @@ def deliver_background(
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
-@router.post(
-    "/session/{session_id}/exposure/stimulus",
-    response_model=ParticipantControlledStimulusRead,
-)
-def deliver_controlled_stimulus(
-    session_id: str,
-    payload: ExposureRequest,
-    request: Request,
-) -> ParticipantControlledStimulusRead:
+def _deliver_controlled_stimulus(session_id: str, payload: ExposureRequest, request: Request):
     try:
-        delivery = _runtime(request).exposure.deliver_controlled_stimulus(
+        return _runtime(request).exposure.deliver_controlled_stimulus(
             session_id,
             payload.request_id,
         )
-        return ParticipantControlledStimulusRead(**delivery.participant_payload())
     except SessionNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Unknown session") from exc
     except ParticipantEventIdempotencyConflict as exc:
@@ -96,3 +88,41 @@ def deliver_controlled_stimulus(
         TrustedParticipantContextInvariantError,
     ) as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@router.post(
+    "/session/{session_id}/exposure/stimulus",
+    response_model=ParticipantControlledStimulusRead,
+    include_in_schema=False,
+)
+def deliver_controlled_stimulus(
+    session_id: str,
+    payload: ExposureRequest,
+    request: Request,
+) -> ParticipantControlledStimulusRead:
+    """Phase 14 compatibility route; not part of the Phase 15 frontend contract."""
+
+    delivery = _deliver_controlled_stimulus(session_id, payload, request)
+    return ParticipantControlledStimulusRead(**delivery.participant_payload())
+
+
+@router.post(
+    "/session/{session_id}/information-update",
+    response_model=ParticipantInformationUpdateRead,
+)
+def deliver_information_update(
+    session_id: str,
+    payload: ExposureRequest,
+    request: Request,
+) -> ParticipantInformationUpdateRead:
+    """Participant-safe controlled information delivery without treatment labels."""
+
+    delivery = _deliver_controlled_stimulus(session_id, payload, request)
+    return ParticipantInformationUpdateRead(
+        session_id=delivery.session_id,
+        current_date=delivery.current_date,
+        headline=delivery.headline,
+        body=delivery.body,
+        source_label=delivery.source_label,
+        source_descriptor=delivery.source_descriptor,
+    )

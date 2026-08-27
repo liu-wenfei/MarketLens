@@ -33,6 +33,10 @@ class JudgementStageError(ValueError):
     pass
 
 
+class JudgementTargetError(ValueError):
+    pass
+
+
 def _to_judgement(row) -> JudgementRead:
     return JudgementRead(
         judgement_id=row["judgement_id"],
@@ -60,12 +64,19 @@ class JudgementService:
         orchestration: ExperimentOrchestrationStore,
         *,
         contract: ExperimentOrchestrationContract | None = None,
+        target_stock_id: str | None = None,
     ):
         self.judgements = judgements
         self.orchestration = orchestration
         self.contract = contract or ExperimentOrchestrationContract()
+        self.target_stock_id = target_stock_id
 
     def submit(self, session_id: str, payload: JudgementCreate) -> JudgementRead:
+        if self.target_stock_id is not None and payload.stock_id != self.target_stock_id:
+            raise JudgementTargetError(
+                "formal judgement stock_id disagrees with the server-owned assessment target"
+            )
+
         # Idempotent replay must be resolved before consulting the *current*
         # orchestration stage. A successful first submission advances the stage,
         # so checking stage first would incorrectly reject a retry of that same
