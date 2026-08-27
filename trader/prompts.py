@@ -1,5 +1,36 @@
 import json
+from contextlib import contextmanager
+from contextvars import ContextVar
+
 import pandas as pd
+
+_FORUM_POST_LANGUAGE: ContextVar[str] = ContextVar(
+    "marketlens_forum_post_language", default="zh"
+)
+
+
+@contextmanager
+def forum_post_language(language: str):
+    """Temporarily select the final forum-post language.
+
+    The inherited/default behaviour remains Chinese (``zh``). MarketLens v2
+    formal generation may enter ``en`` mode only around the final posting
+    prompt; this does not change news inputs, earlier reasoning, or belief
+    propagation.
+    """
+    normalized = str(language).strip().lower()
+    if normalized not in {"zh", "en"}:
+        raise ValueError(f"unsupported forum post language: {language!r}")
+    token = _FORUM_POST_LANGUAGE.set(normalized)
+    try:
+        yield
+    finally:
+        _FORUM_POST_LANGUAGE.reset(token)
+
+
+def current_forum_post_language() -> str:
+    return _FORUM_POST_LANGUAGE.get()
+
 
 SCHEMA2 = """# 可查询的指标说明：
 
@@ -779,6 +810,18 @@ reason:
 
     @staticmethod
     def get_intention_prompt(old_belief: str):
+        language_rule = ""
+        if current_forum_post_language() == "en":
+            language_rule = """
+
+        2A. **MarketLens v2 forum-post language constraint**：
+            - 该语言约束只适用于 YAML 的 `post` 字段。
+            - `post` 必须直接使用自然、完整的英文撰写，不得包含中文字符。
+            - 保持原有投资人设、观点、证据和发帖类型，不要因为改成英文而增加新的事实或分析。
+            - `belief` 不受此英文约束影响，继续按照下面原有要求使用中文总结，以保持既有 belief 传播语义。
+            - 不得先生成中文帖子再附加翻译；`post` 本身就是最终英文论坛文本。
+            """
+
         post_prompt = f"""
         你现在正在浏览社交媒体，根据你之前获取的新闻或公告信息，结合你的投资决策行为意图，发布一条帖子。以下是具体要求：
 
@@ -809,6 +852,9 @@ reason:
             type: type1/type2/type3  # 帖子类型，string类型，必填
             belief: 你的Belief总结
             ```"""
+        if language_rule:
+            marker = "            - 明确说明帖子类型（type1/type2/type3）。\n"
+            post_prompt = post_prompt.replace(marker, marker + language_rule, 1)
         return post_prompt
 
     @staticmethod
