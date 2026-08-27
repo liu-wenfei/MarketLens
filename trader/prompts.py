@@ -820,6 +820,8 @@ reason:
             - 保持原有投资人设、观点、证据和发帖类型，不要因为改成英文而增加新的事实或分析。
             - `belief` 不受此英文约束影响，继续按照下面原有要求使用中文总结，以保持既有 belief 传播语义。
             - 不得先生成中文帖子再附加翻译；`post` 本身就是最终英文论坛文本。
+            - 为避免自然英文中的冒号破坏 inherited YAML 解析，`post` 必须使用 YAML block scalar：`post: |-`，正文从下一行开始并缩进；不得写成 `post: <正文>` 的单行形式。
+            - `post` 正文不要再以 `type1:` / `type2:` / `type3:` 开头；帖子类型只写入独立的 `type` 字段。
             """
 
         post_prompt = f"""
@@ -855,6 +857,20 @@ reason:
         if language_rule:
             marker = "            - 明确说明帖子类型（type1/type2/type3）。\n"
             post_prompt = post_prompt.replace(marker, marker + language_rule, 1)
+            inherited_output_example = """            ```yaml
+            post: 你的帖子内容
+            type: type1/type2/type3  # 帖子类型，string类型，必填
+            belief: 你的Belief总结
+            ```"""
+            v2_output_example = """            ```yaml
+            post: |-
+              Write the final English forum post here. Natural English punctuation such as colons is allowed inside this indented block.
+            type: type1/type2/type3  # 帖子类型，string类型，必填
+            belief: 你的Belief总结
+            ```"""
+            post_prompt = post_prompt.replace(
+                inherited_output_example, v2_output_example, 1
+            )
         return post_prompt
 
     @staticmethod

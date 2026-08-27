@@ -6,6 +6,7 @@ from hashlib import sha256
 from pathlib import Path
 
 import pytest
+import yaml
 
 from marketlens.agents.population.fixture import build_population_bundle
 from marketlens.episode.contract import load_execution_plan as load_v1_execution_plan
@@ -80,9 +81,31 @@ def test_default_inherited_prompt_mode_remains_chinese_and_v2_mode_is_scoped():
         assert "MarketLens v2 forum-post language constraint" in v2_prompt
         assert "`post` 必须直接使用自然、完整的英文撰写，不得包含中文字符" in v2_prompt
         assert "`belief` 不受此英文约束影响" in v2_prompt
+        assert "`post` 必须使用 YAML block scalar：`post: |-`" in v2_prompt
+        assert "post: |-" in v2_prompt
+        assert "post: 你的帖子内容" not in v2_prompt
 
     assert current_forum_post_language() == "zh"
 
+
+
+def test_v2_yaml_block_scalar_survives_natural_english_colons_without_repair_llm():
+    payload = """post: |-
+  I remain cautious: valuations are elevated, but the trend is improving.
+type: type3
+belief: 我仍然保持谨慎，并继续观察市场。
+"""
+    parsed = yaml.safe_load(payload)
+    assert parsed["post"] == (
+        "I remain cautious: valuations are elevated, but the trend is improving."
+    )
+    assert parsed["type"] == "type3"
+    assert parsed["belief"] == "我仍然保持谨慎，并继续观察市场。"
+
+
+def test_v2_raw_formal_evidence_namespace_is_git_ignored_but_ignore_file_is_tracked():
+    ignore_file = REPO_ROOT / "artifacts/formal/canonical_episode_v2/.gitignore"
+    assert ignore_file.read_text(encoding="utf-8") == "*\n!.gitignore\n"
 
 def test_forum_post_language_context_rejects_unknown_mode():
     with pytest.raises(ValueError, match="unsupported forum post language"):
