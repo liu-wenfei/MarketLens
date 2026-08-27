@@ -27,7 +27,7 @@ EPISODE_IDS = (
     "marketlens-canonical-episode-v2-e03",
 )
 EPISODE_COUNT = 3
-PLAN_VERSION = "2.1"
+PLAN_VERSION = "2.2"
 PLAN_STATUS = "formal_episode_pool_v2_execution_plan_frozen"
 PROTOCOL_VERSION = v1.PROTOCOL_VERSION
 POPULATION_SIZE = v1.POPULATION_SIZE
@@ -38,8 +38,8 @@ EXPECTED_WORLD_TICKS = v1.EXPECTED_WORLD_TICKS
 EXPECTED_AGENT_PIPELINE_EXECUTIONS = v1.EXPECTED_AGENT_PIPELINE_EXECUTIONS
 EXPECTED_POOL_AGENT_PIPELINE_EXECUTIONS = EXPECTED_AGENT_PIPELINE_EXECUTIONS * EPISODE_COUNT
 EXPECTED_V1_EXECUTION_PLAN_SHA256 = v1.EXPECTED_EXECUTION_PLAN_SHA256
-EXPECTED_EXECUTION_PLAN_SHA256 = "86a3b754a81114a599e74c7de071297075ce2ac4107f28499c4d55893dcf1e9c"
-EXPECTED_PRODUCER_CONTRACT_SHA256 = "21dec9f02052b60190c2ea5c750857a9d0eb516783f66a590b94332b228517da"
+EXPECTED_EXECUTION_PLAN_SHA256 = "dfd0b2f2cca6dd61639425ac19dedd9f508d730359d9834da507cf3823698565"
+EXPECTED_PRODUCER_CONTRACT_SHA256 = "7ea0697cd13a5c8ce1c54a781797325b6edebcdc2c2b3c232386150317b67d22"
 FORMAL_POOL_ROOT = "data/marketlens/canonical_episode/v2"
 FORMAL_POOL_MANIFEST = f"{FORMAL_POOL_ROOT}/pool_manifest.json"
 RAW_EVIDENCE_ROOT_TEMPLATE = "artifacts/formal/canonical_episode_v2/{episode_id}"
@@ -119,6 +119,8 @@ def _expected_plan_from_v1() -> dict[str, Any]:
             "post_generation_entity_rewriting": False,
             "glossary_scope": "final_agent_forum_post_prompt_only",
         },
+        "post_type_declaration_policy": "yaml_type_field_only",
+        "inherited_type_instruction_clarified_in_v2_prompt": True,
     }
     base["acceptance_policy"][
         "participant_visible_agent_forum_posts_must_be_english"

@@ -47,9 +47,9 @@ class CanonicalEpisodeProducerError(RuntimeError):
     """Raised when a formal episode producer safety/technical gate fails."""
 
 
-PRODUCER_CONTRACT_SHA256 = "21dec9f02052b60190c2ea5c750857a9d0eb516783f66a590b94332b228517da"
+PRODUCER_CONTRACT_SHA256 = "7ea0697cd13a5c8ce1c54a781797325b6edebcdc2c2b3c232386150317b67d22"
 PRODUCER_CONTRACT_STATUS = "formal_v2_producer_contract_frozen"
-PRODUCER_CONTRACT_VERSION = "2.1"
+PRODUCER_CONTRACT_VERSION = "2.2"
 FORMAL_EXECUTION_BANNER = (
     "FORMAL / MARKETLENS V2 CANONICAL EPISODE SLOT EXECUTION / "
     "PAID REAL BACKEND / PREDECLARED TECHNICAL GATES"
@@ -143,6 +143,11 @@ def validate_producer_contract(contract: Mapping[str, Any]) -> None:
         raise CanonicalEpisodeProducerError("free entity translation/transliteration must remain disabled")
     if registry_contract.get("post_generation_entity_rewriting") is not False:
         raise CanonicalEpisodeProducerError("post-generation entity rewriting must remain disabled")
+
+    if plan_output.get("post_type_declaration_policy") != "yaml_type_field_only":
+        raise CanonicalEpisodeProducerError("MarketLens v2.2 post-type declaration policy drifted")
+    if plan_output.get("inherited_type_instruction_clarified_in_v2_prompt") is not True:
+        raise CanonicalEpisodeProducerError("MarketLens v2.2 inherited type-instruction clarification drifted")
 
     acceptance = contract.get("technical_acceptance", {})
     if acceptance.get("formal_world_ticks") != EXPECTED_WORLD_TICKS:

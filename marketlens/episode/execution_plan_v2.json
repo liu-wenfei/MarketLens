@@ -1,6 +1,6 @@
 {
   "plan_schema_version": "marketlens-canonical-episode-pool-execution-plan/2.0",
-  "plan_version": "2.1",
+  "plan_version": "2.2",
   "status": "formal_episode_pool_v2_execution_plan_frozen",
   "protocol_version": "1.1",
   "base_protocol_compatibility": {
@@ -604,6 +604,8 @@
       "free_model_translation_or_transliteration": false,
       "post_generation_entity_rewriting": false,
       "glossary_scope": "final_agent_forum_post_prompt_only"
-    }
+    },
+    "post_type_declaration_policy": "yaml_type_field_only",
+    "inherited_type_instruction_clarified_in_v2_prompt": true
   }
 }

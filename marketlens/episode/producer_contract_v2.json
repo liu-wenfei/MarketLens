@@ -1,6 +1,6 @@
 {
   "contract_schema_version": "marketlens-canonical-episode-producer-contract/2.0",
-  "contract_version": "2.1",
+  "contract_version": "2.2",
   "status": "formal_v2_producer_contract_frozen",
   "episode_pool_id": "marketlens-canonical-episode-pool-v2",
   "episode_ids": [
@@ -91,7 +91,7 @@
     "forum_post_language_complete": true
   },
   "base_v1_execution_plan_sha256": "a907079281f7deca590bd7ec741b56fab614f05b0cdd869c5f2c345fb048a8bc",
-  "execution_plan_v2_sha256": "86a3b754a81114a599e74c7de071297075ce2ac4107f28499c4d55893dcf1e9c",
+  "execution_plan_v2_sha256": "dfd0b2f2cca6dd61639425ac19dedd9f508d730359d9834da507cf3823698565",
   "forum_output_contract": {
     "intervention_scope": "final_agent_forum_post_field_only",
     "participant_visible_agent_forum_language": "English",
@@ -128,6 +128,8 @@
       "free_model_translation_or_transliteration": false,
       "post_generation_entity_rewriting": false,
       "glossary_scope": "final_agent_forum_post_prompt_only"
-    }
+    },
+    "post_type_declaration_policy": "yaml_type_field_only",
+    "inherited_type_instruction_clarified_in_v2_prompt": true
   }
 }

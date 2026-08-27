@@ -817,7 +817,7 @@ reason:
             entity_glossary = forum_entity_glossary()
             language_rule = f"""
 
-        2A. **MarketLens v2.1 forum-post language constraint**：
+        2A. **MarketLens v2.2 forum-post language constraint**：
             - 该语言约束只适用于 YAML 的 `post` 字段。
             - `post` 必须直接使用自然、完整的英文撰写，不得包含任何中文/CJK字符；即使上文中的公司名、行业名、术语或短语是中文，也不得原样复制到 `post`。
             - 保持原有投资人设、观点、证据和发帖类型，不要因为改成英文而增加新的事实或分析。
@@ -871,7 +871,13 @@ reason:
             ```"""
         if language_rule:
             marker = "            - 明确说明帖子类型（type1/type2/type3）。\n"
-            post_prompt = post_prompt.replace(marker, marker + language_rule, 1)
+            v2_type_instruction = (
+                "            - 帖子类型必须且只能通过独立的 YAML `type` 字段声明（type1/type2/type3）；"
+                "`post` 正文只写帖子内容，不要写或重复 type1/type2/type3 标签。\n"
+            )
+            post_prompt = post_prompt.replace(
+                marker, v2_type_instruction + language_rule, 1
+            )
             inherited_output_example = """            ```yaml
             post: 你的帖子内容
             type: type1/type2/type3  # 帖子类型，string类型，必填

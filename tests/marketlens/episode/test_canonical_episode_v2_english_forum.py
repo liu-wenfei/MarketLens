@@ -76,7 +76,7 @@ def _copy_required_repo_inputs(tmp_path: Path) -> Path:
 def test_default_inherited_prompt_mode_remains_chinese_and_v2_mode_is_scoped():
     assert current_forum_post_language() == "zh"
     inherited = TradingPrompt.get_intention_prompt("原有 belief")
-    assert "MarketLens v2.1 forum-post language constraint" not in inherited
+    assert "MarketLens v2.2 forum-post language constraint" not in inherited
     assert sha256(inherited.encode("utf-8")).hexdigest() == (
         "8111c8837796b3f428d5717f4ef25e9537eb9bb49257613c9e428d348a92d0c9"
     )
@@ -84,7 +84,7 @@ def test_default_inherited_prompt_mode_remains_chinese_and_v2_mode_is_scoped():
     with forum_post_language("en"):
         assert current_forum_post_language() == "en"
         v2_prompt = TradingPrompt.get_intention_prompt("原有 belief")
-        assert "MarketLens v2.1 forum-post language constraint" in v2_prompt
+        assert "MarketLens v2.2 forum-post language constraint" in v2_prompt
         assert "`post` 必须直接使用自然、完整的英文撰写，不得包含任何中文/CJK字符" in v2_prompt
         assert "`belief` 不受此英文约束影响" in v2_prompt
         assert "`post` 必须使用 YAML block scalar：`post: |-`" in v2_prompt
@@ -96,6 +96,12 @@ def test_default_inherited_prompt_mode_remains_chinese_and_v2_mode_is_scoped():
         assert "在输出最终 YAML 前，请在同一次回答中检查 `post`" in v2_prompt
         assert "post: |-" in v2_prompt
         assert "post: 你的帖子内容" not in v2_prompt
+        assert "明确说明帖子类型（type1/type2/type3）。" not in v2_prompt
+        assert (
+            "帖子类型必须且只能通过独立的 YAML `type` 字段声明（type1/type2/type3）"
+            in v2_prompt
+        )
+        assert "`post` 正文只写帖子内容，不要写或重复 type1/type2/type3 标签" in v2_prompt
 
     assert current_forum_post_language() == "zh"
 
@@ -186,17 +192,17 @@ def test_v2_plan_preserves_v1_world_population_activation_and_days_exactly():
     assert v2["world"] == v1["world"]
     assert v2["days"] == v1["days"]
     assert v2["protocol_version"] == v1["protocol_version"] == "1.1"
-    assert v2["plan_version"] == "2.1"
+    assert v2["plan_version"] == "2.2"
     assert v2["v2_forum_output"]["intervention_scope"] == "final_agent_forum_post_field_only"
     assert v2["v2_forum_output"]["live_translation_used"] is False
-    assert EXPECTED_EXECUTION_PLAN_SHA256 == "86a3b754a81114a599e74c7de071297075ce2ac4107f28499c4d55893dcf1e9c"
+    assert EXPECTED_EXECUTION_PLAN_SHA256 == "dfd0b2f2cca6dd61639425ac19dedd9f508d730359d9834da507cf3823698565"
 
 
 def test_v2_producer_contract_is_zero_llm_by_default_and_language_gate_is_predeclared():
     contract = load_producer_contract()
-    assert PRODUCER_CONTRACT_SHA256 == "21dec9f02052b60190c2ea5c750857a9d0eb516783f66a590b94332b228517da"
+    assert PRODUCER_CONTRACT_SHA256 == "7ea0697cd13a5c8ce1c54a781797325b6edebcdc2c2b3c232386150317b67d22"
     assert contract["episode_pool_id"] == EPISODE_POOL_ID
-    assert contract["contract_version"] == "2.1"
+    assert contract["contract_version"] == "2.2"
     assert contract["episode_ids"] == list(EPISODE_IDS)
     assert contract["execution_controls"]["default_mode"] == "dry_run_zero_llm"
     assert contract["execution_controls"]["full_pool_execute_command_allowed"] is False
@@ -206,6 +212,8 @@ def test_v2_producer_contract_is_zero_llm_by_default_and_language_gate_is_predec
     gate = contract["forum_output_contract"]["deterministic_language_gate"]
     assert gate["type_prefix_allowed_in_post"] is False
     assert contract["forum_output_contract"]["chinese_source_terms_may_be_copied_into_post"] is False
+    assert contract["forum_output_contract"]["post_type_declaration_policy"] == "yaml_type_field_only"
+    assert contract["forum_output_contract"]["inherited_type_instruction_clarified_in_v2_prompt"] is True
     registry_contract = contract["forum_output_contract"]["entity_name_registry"]
     assert registry_contract["sha256"] == EXPECTED_ENTITY_REGISTRY_SHA256
     assert registry_contract["known_entity_policy"] == "exact_canonical_english_display_or_stable_code"
