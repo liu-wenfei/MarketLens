@@ -9,15 +9,53 @@ AI代理基础类模块
 import os
 import random
 import time
+from contextlib import contextmanager
+from contextvars import ContextVar
 
 # 第三方库导入
 import yaml
 from openai import OpenAI  # OpenAI官方客户端库
-from tenacity import retry, wait_fixed, stop_after_attempt  # 重试机制库
+from tenacity import RetryError, retry, wait_fixed, stop_after_attempt  # 重试机制库
 
 # ============================ 全局配置 ============================
 # 默认系统提示词
 sys_default_prompt = "You are a helpful assistant."
+
+
+_MARKETLENS_FORMAL_BACKEND_ERROR_MODE: ContextVar[bool] = ContextVar(
+    "marketlens_formal_backend_error_mode",
+    default=False,
+)
+
+
+class MarketLensFormalBackendError(RuntimeError):
+    """Preserved backend root failure for formal MarketLens v2 evidence."""
+
+
+def _unwrap_retry_error(exc: Exception) -> Exception:
+    """Return the final exception hidden inside one or more Tenacity RetryErrors."""
+    current: Exception = exc
+    while isinstance(current, RetryError):
+        nested = current.last_attempt.exception()
+        if not isinstance(nested, Exception) or nested is current:
+            break
+        current = nested
+    return current
+
+
+def current_marketlens_formal_backend_error_mode() -> bool:
+    """Return whether formal-v2 backend-error preservation is active."""
+    return bool(_MARKETLENS_FORMAL_BACKEND_ERROR_MODE.get())
+
+
+@contextmanager
+def marketlens_formal_backend_error_context():
+    """Enable formal-v2 root-error preservation without changing inherited defaults."""
+    token = _MARKETLENS_FORMAL_BACKEND_ERROR_MODE.set(True)
+    try:
+        yield
+    finally:
+        _MARKETLENS_FORMAL_BACKEND_ERROR_MODE.reset(token)
 
 
 class BaseAgent:
@@ -211,6 +249,12 @@ class BaseAgent:
             return result
 
         except Exception as e:
+            if current_marketlens_formal_backend_error_mode():
+                root_error = _unwrap_retry_error(e)
+                raise MarketLensFormalBackendError(
+                    f"{type(root_error).__name__}: {root_error}"
+                ) from e
+
             # 错误处理：以红色文字打印错误信息
             print("\033[91m" + f"[错误] {str(e)}" + "\033[0m")
             return {"error": f"Error: {str(e)}"}

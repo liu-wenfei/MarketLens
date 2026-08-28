@@ -47,9 +47,9 @@ class CanonicalEpisodeProducerError(RuntimeError):
     """Raised when a formal episode producer safety/technical gate fails."""
 
 
-PRODUCER_CONTRACT_SHA256 = "43adf89370e9aa6d3e0d4ff736856ef887e6efe8170b024ee3300648904a30a3"
+PRODUCER_CONTRACT_SHA256 = "65de44fded09adec415da3a687dc29c6c3451ac63f976fd9b64f98569f67c1e1"
 PRODUCER_CONTRACT_STATUS = "formal_v2_producer_contract_frozen"
-PRODUCER_CONTRACT_VERSION = "2.3"
+PRODUCER_CONTRACT_VERSION = "2.4"
 FORMAL_EXECUTION_BANNER = (
     "FORMAL / MARKETLENS V2 CANONICAL EPISODE SLOT EXECUTION / "
     "PAID REAL BACKEND / PREDECLARED TECHNICAL GATES"
@@ -131,7 +131,7 @@ def validate_producer_contract(contract: Mapping[str, Any]) -> None:
 
     runtime_policy = contract.get("runtime_reliability_policy", {})
     expected_runtime_policy = {
-        "scope": "backend_retry_timing_and_attempt_interruption_capture_only",
+        "scope": "backend_retry_timing_interruption_and_error_preservation_only",
         "outer_tenacity_retry_wait_seconds": 1,
         "outer_tenacity_stop_after_attempt": 10,
         "openai_client_internal_retry_changed": False,
@@ -142,16 +142,20 @@ def validate_producer_contract(contract: Mapping[str, Any]) -> None:
         "partial_resume_after_interrupt_allowed": False,
         "restart_after_interrupt": "new attempt from frozen initial N30 state only",
         "historical_attempt_manifest_rewrite_allowed": False,
+        "formal_backend_error_preservation_enabled": True,
+        "formal_backend_error_context_scoped_to_v2_execution": True,
+        "retry_error_root_cause_unwrapped_for_formal_evidence": True,
+        "default_inherited_get_response_error_policy_changed": False,
         "agent_reasoning_semantics_changed": False,
     }
     if runtime_policy != expected_runtime_policy:
         raise CanonicalEpisodeProducerError(
-            "MarketLens v2.3 runtime-reliability policy drifted"
+            "MarketLens v2.4 runtime-reliability policy drifted"
         )
     active_plan = load_execution_plan()
     if active_plan.get("runtime_reliability_policy") != runtime_policy:
         raise CanonicalEpisodeProducerError(
-            "MarketLens v2.3 runtime policy no longer matches the execution plan"
+            "MarketLens v2.4 runtime policy no longer matches the execution plan"
         )
     plan_output = active_plan.get("v2_forum_output", {})
     if contract.get("forum_output_contract") != plan_output:
@@ -599,6 +603,7 @@ def execute_formal_episode_slot(
     )
     from marketlens.market.runtime.news import load_daily_news
     import simulation
+    from Agent import marketlens_formal_backend_error_context
     from marketlens.episode.language import (
         validate_english_forum_post,
         validate_forum_db_english_posts,
@@ -705,7 +710,7 @@ def execute_formal_episode_slot(
                 )
                 belief_source = {"source": "forum_with_initial_fallback", **stats}
 
-            with forum_post_language("en"):
+            with forum_post_language("en"), marketlens_formal_backend_error_context():
                 agent_results = _execute_active_agents(
                     process_user_input_fn=simulation.process_user_input,
                     population_ids=population_ids,

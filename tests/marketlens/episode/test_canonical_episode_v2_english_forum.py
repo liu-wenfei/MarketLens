@@ -7,6 +7,13 @@ from pathlib import Path
 
 import pytest
 import yaml
+from tenacity import retry, stop_after_attempt
+from Agent import (
+    BaseAgent,
+    MarketLensFormalBackendError,
+    current_marketlens_formal_backend_error_mode,
+    marketlens_formal_backend_error_context,
+)
 
 from marketlens.agents.population.fixture import build_population_bundle
 from marketlens.episode.contract import load_execution_plan as load_v1_execution_plan
@@ -192,17 +199,17 @@ def test_v2_plan_preserves_v1_world_population_activation_and_days_exactly():
     assert v2["world"] == v1["world"]
     assert v2["days"] == v1["days"]
     assert v2["protocol_version"] == v1["protocol_version"] == "1.1"
-    assert v2["plan_version"] == "2.3"
+    assert v2["plan_version"] == "2.4"
     assert v2["v2_forum_output"]["intervention_scope"] == "final_agent_forum_post_field_only"
     assert v2["v2_forum_output"]["live_translation_used"] is False
-    assert EXPECTED_EXECUTION_PLAN_SHA256 == "14baf4ea091c27288bc18a627d9d02642099ad59c1c66f4506a458bdb270957c"
+    assert EXPECTED_EXECUTION_PLAN_SHA256 == "9f67b6352848924a22bb07daa6450cbd0316c3e79328186b582d99f69180f961"
 
 
 def test_v2_producer_contract_is_zero_llm_by_default_and_language_gate_is_predeclared():
     contract = load_producer_contract()
-    assert PRODUCER_CONTRACT_SHA256 == "43adf89370e9aa6d3e0d4ff736856ef887e6efe8170b024ee3300648904a30a3"
+    assert PRODUCER_CONTRACT_SHA256 == "65de44fded09adec415da3a687dc29c6c3451ac63f976fd9b64f98569f67c1e1"
     assert contract["episode_pool_id"] == EPISODE_POOL_ID
-    assert contract["contract_version"] == "2.3"
+    assert contract["contract_version"] == "2.4"
     assert contract["episode_ids"] == list(EPISODE_IDS)
     assert contract["execution_controls"]["default_mode"] == "dry_run_zero_llm"
     assert contract["execution_controls"]["full_pool_execute_command_allowed"] is False
@@ -224,9 +231,9 @@ def test_v2_producer_contract_is_zero_llm_by_default_and_language_gate_is_predec
 
 
 
-def test_v23_backend_retry_and_interruption_policy_is_frozen():
+def test_v24_backend_retry_interruption_and_error_preservation_policy_is_frozen():
     expected = {
-        "scope": "backend_retry_timing_and_attempt_interruption_capture_only",
+        "scope": "backend_retry_timing_interruption_and_error_preservation_only",
         "outer_tenacity_retry_wait_seconds": 1,
         "outer_tenacity_stop_after_attempt": 10,
         "openai_client_internal_retry_changed": False,
@@ -237,6 +244,10 @@ def test_v23_backend_retry_and_interruption_policy_is_frozen():
         "partial_resume_after_interrupt_allowed": False,
         "restart_after_interrupt": "new attempt from frozen initial N30 state only",
         "historical_attempt_manifest_rewrite_allowed": False,
+        "formal_backend_error_preservation_enabled": True,
+        "formal_backend_error_context_scoped_to_v2_execution": True,
+        "retry_error_root_cause_unwrapped_for_formal_evidence": True,
+        "default_inherited_get_response_error_policy_changed": False,
         "agent_reasoning_semantics_changed": False,
     }
     plan = load_execution_plan()
@@ -247,6 +258,8 @@ def test_v23_backend_retry_and_interruption_policy_is_frozen():
     agent_source = (REPO_ROOT / "Agent.py").read_text(encoding="utf-8")
     assert "@retry(wait=wait_fixed(1), stop=stop_after_attempt(10))" in agent_source
     assert "wait_fixed(1000)" not in agent_source
+    assert "MarketLensFormalBackendError" in agent_source
+    assert "root_error = _unwrap_retry_error(e)" in agent_source
 
     producer_source = (
         REPO_ROOT / "marketlens/episode/producer_v2.py"
@@ -254,12 +267,56 @@ def test_v23_backend_retry_and_interruption_policy_is_frozen():
     assert "except (Exception, KeyboardInterrupt) as exc:" in producer_source
     assert '"status": "INTERRUPTED" if interrupted else "TECHNICAL_INVALID"' in producer_source
     assert 'failure["process_exit_code"] = 130' in producer_source
+    assert (
+        'with forum_post_language("en"), '
+        "marketlens_formal_backend_error_context():"
+    ) in producer_source
 
     cli_source = (
         REPO_ROOT / "scripts/formal/run_canonical_episode_producer_v2.py"
     ).read_text(encoding="utf-8")
     assert "except KeyboardInterrupt:" in cli_source
     assert "return 130" in cli_source
+
+
+
+def test_v24_formal_backend_error_context_preserves_root_cause_and_default_mode():
+    agent = BaseAgent.__new__(BaseAgent)
+    agent.default_system_prompt = "test-system"
+
+    @retry(stop=stop_after_attempt(1))
+    def wrapped_failure():
+        raise ValueError("provider-root-cause")
+
+    try:
+        wrapped_failure()
+    except Exception as exc:
+        retry_error = exc
+    else:
+        raise AssertionError("expected Tenacity RetryError")
+
+    def fake_call_api(**kwargs):
+        raise retry_error
+
+    agent._BaseAgent__call_api = fake_call_api
+
+    default_result = agent.get_response(
+        messages=[{"role": "user", "content": "test"}]
+    )
+    assert default_result["error"].startswith("Error: RetryError")
+    assert current_marketlens_formal_backend_error_mode() is False
+
+    with marketlens_formal_backend_error_context():
+        assert current_marketlens_formal_backend_error_mode() is True
+        with pytest.raises(
+            MarketLensFormalBackendError,
+            match="ValueError: provider-root-cause",
+        ):
+            agent.get_response(
+                messages=[{"role": "user", "content": "test"}]
+            )
+
+    assert current_marketlens_formal_backend_error_mode() is False
 
 
 def test_v21_frozen_entity_registry_is_complete_unique_and_time_anchored():

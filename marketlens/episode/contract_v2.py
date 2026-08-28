@@ -27,7 +27,7 @@ EPISODE_IDS = (
     "marketlens-canonical-episode-v2-e03",
 )
 EPISODE_COUNT = 3
-PLAN_VERSION = "2.3"
+PLAN_VERSION = "2.4"
 PLAN_STATUS = "formal_episode_pool_v2_execution_plan_frozen"
 PROTOCOL_VERSION = v1.PROTOCOL_VERSION
 POPULATION_SIZE = v1.POPULATION_SIZE
@@ -38,8 +38,8 @@ EXPECTED_WORLD_TICKS = v1.EXPECTED_WORLD_TICKS
 EXPECTED_AGENT_PIPELINE_EXECUTIONS = v1.EXPECTED_AGENT_PIPELINE_EXECUTIONS
 EXPECTED_POOL_AGENT_PIPELINE_EXECUTIONS = EXPECTED_AGENT_PIPELINE_EXECUTIONS * EPISODE_COUNT
 EXPECTED_V1_EXECUTION_PLAN_SHA256 = v1.EXPECTED_EXECUTION_PLAN_SHA256
-EXPECTED_EXECUTION_PLAN_SHA256 = "14baf4ea091c27288bc18a627d9d02642099ad59c1c66f4506a458bdb270957c"
-EXPECTED_PRODUCER_CONTRACT_SHA256 = "43adf89370e9aa6d3e0d4ff736856ef887e6efe8170b024ee3300648904a30a3"
+EXPECTED_EXECUTION_PLAN_SHA256 = "9f67b6352848924a22bb07daa6450cbd0316c3e79328186b582d99f69180f961"
+EXPECTED_PRODUCER_CONTRACT_SHA256 = "65de44fded09adec415da3a687dc29c6c3451ac63f976fd9b64f98569f67c1e1"
 FORMAL_POOL_ROOT = "data/marketlens/canonical_episode/v2"
 FORMAL_POOL_MANIFEST = f"{FORMAL_POOL_ROOT}/pool_manifest.json"
 RAW_EVIDENCE_ROOT_TEMPLATE = "artifacts/formal/canonical_episode_v2/{episode_id}"
@@ -88,7 +88,7 @@ def _expected_plan_from_v1() -> dict[str, Any]:
     base["plan_version"] = PLAN_VERSION
     base["status"] = PLAN_STATUS
     base["runtime_reliability_policy"] = {
-        "scope": "backend_retry_timing_and_attempt_interruption_capture_only",
+        "scope": "backend_retry_timing_interruption_and_error_preservation_only",
         "outer_tenacity_retry_wait_seconds": 1,
         "outer_tenacity_stop_after_attempt": 10,
         "openai_client_internal_retry_changed": False,
@@ -99,6 +99,10 @@ def _expected_plan_from_v1() -> dict[str, Any]:
         "partial_resume_after_interrupt_allowed": False,
         "restart_after_interrupt": "new attempt from frozen initial N30 state only",
         "historical_attempt_manifest_rewrite_allowed": False,
+        "formal_backend_error_preservation_enabled": True,
+        "formal_backend_error_context_scoped_to_v2_execution": True,
+        "retry_error_root_cause_unwrapped_for_formal_evidence": True,
+        "default_inherited_get_response_error_policy_changed": False,
         "agent_reasoning_semantics_changed": False,
     }
     base["v2_forum_output"] = {
