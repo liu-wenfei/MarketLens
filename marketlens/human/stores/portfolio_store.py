@@ -106,6 +106,27 @@ class PortfolioStore:
                 )
             ).mappings().first()
 
+    def list_transactions_for_session(
+        self,
+        session_id: str,
+    ) -> tuple[RowMapping, ...]:
+        """Return this participant session's settled transactions in stable order."""
+
+        with self.db.connect() as connection:
+            rows = connection.execute(
+                select(portfolio_transactions)
+                .where(
+                    portfolio_transactions.c.session_id
+                    == session_id
+                )
+                .order_by(
+                    portfolio_transactions.c.step,
+                    portfolio_transactions.c.submitted_at,
+                    portfolio_transactions.c.transaction_id,
+                )
+            ).mappings().all()
+        return tuple(rows)
+
     def apply_order_idempotent(
         self,
         *,

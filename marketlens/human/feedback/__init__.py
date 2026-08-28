@@ -1,4 +1,4 @@
-"""Participant feedback contracts and deterministic metrics."""
+"""Deterministic participant-feedback domain primitives."""
 
 from .portfolio_metrics import (
     EquityPoint,
@@ -6,6 +6,13 @@ from .portfolio_metrics import (
     MaxDrawdown,
     calculate_executed_turnover,
     max_drawdown,
+)
+
+from .source import (
+    FeedbackKind,
+    FeedbackSourceError,
+    FeedbackStatisticsSourceAdapter,
+    FeedbackWindow,
 )
 
 from .statistics import (
@@ -22,7 +29,11 @@ __all__ = [
     "AssessmentActionLink",
     "EquityPoint",
     "ExecutedTurnover",
+    "FeedbackKind",
+    "FeedbackSourceError",
     "FeedbackStatistics",
+    "FeedbackStatisticsSourceAdapter",
+    "FeedbackWindow",
     "JudgementObservation",
     "MaxDrawdown",
     "TradeObservation",
