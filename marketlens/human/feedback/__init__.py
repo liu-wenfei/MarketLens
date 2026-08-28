@@ -16,6 +16,21 @@ from .context import (
     FeedbackContextPack,
 )
 
+from .prompt import (
+    ALLOWED_FEEDBACK_FOCUS,
+    PROMPT_CONTRACT_VERSION,
+    SYSTEM_PROMPT_V1,
+    FeedbackPromptError,
+    FrozenFeedbackPrompt,
+    build_feedback_prompt,
+)
+from .output_validation import (
+    OUTPUT_CONTRACT_VERSION,
+    FeedbackOutputValidationError,
+    ValidatedFeedbackOutput,
+    validate_feedback_output,
+)
+
 from .source import (
     FeedbackKind,
     FeedbackSourceError,
@@ -33,9 +48,15 @@ from .statistics import (
 )
 
 __all__ = [
+    "ALLOWED_FEEDBACK_FOCUS",
     "CONTEXT_PACK_VERSION",
+    "OUTPUT_CONTRACT_VERSION",
+    "PROMPT_CONTRACT_VERSION",
+    "SYSTEM_PROMPT_V1",
     "STATISTICS_VERSION",
     "ContextLimits",
+    "FeedbackOutputValidationError",
+    "FeedbackPromptError",
     "FeedbackContextBuilder",
     "FeedbackContextError",
     "FeedbackContextPack",
@@ -47,6 +68,10 @@ __all__ = [
     "FeedbackStatistics",
     "FeedbackStatisticsSourceAdapter",
     "FeedbackWindow",
+    "FrozenFeedbackPrompt",
+    "ValidatedFeedbackOutput",
+    "build_feedback_prompt",
+    "validate_feedback_output",
     "JudgementObservation",
     "MaxDrawdown",
     "TradeObservation",
