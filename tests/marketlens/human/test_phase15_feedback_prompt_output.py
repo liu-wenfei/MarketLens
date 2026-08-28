@@ -8,7 +8,6 @@ from marketlens.human.feedback import (
     CONTEXT_PACK_VERSION,
     OUTPUT_CONTRACT_VERSION,
     PROMPT_CONTRACT_VERSION,
-    ContextLimits,
     FeedbackContextPack,
     FeedbackOutputValidationError,
     build_feedback_prompt,
@@ -17,14 +16,9 @@ from marketlens.human.feedback import (
 
 
 def _context(
-    kind=(
-        "multi_period_decision_feedback"
-    ),
+    kind="multi_period_decision_feedback",
 ):
-    if (
-        kind
-        == "multi_period_decision_feedback"
-    ):
+    if kind == "multi_period_decision_feedback":
         window = {
             "start_period": 1,
             "end_period": 4,
@@ -51,13 +45,10 @@ def _context(
             "market_metrics": {
                 "price_start": 10.0,
                 "price_end": 12.0,
-                "price_change_absolute": 2.0,
-                "price_change_pct": 20.0,
             },
             "confidence_metrics": {
                 "first": 70.0,
                 "latest": 60.0,
-                "change_points": -10.0,
             },
             "trading_metrics": {
                 "trade_periods": 1,
@@ -66,8 +57,6 @@ def _context(
             "portfolio_metrics": {
                 "starting_value": 1000.0,
                 "ending_value": 1010.0,
-                "change_absolute": 10.0,
-                "change_pct": 1.0,
             },
         },
         information_environment={
@@ -112,179 +101,162 @@ def _context(
 
 def _words(
     count,
-    prefix="reflection",
+    word="reflection",
 ):
     return " ".join(
-        f"{prefix}{index}"
-        for index in range(
-            count
-        )
+        [word] * count
     )
 
 
-def test_prompt_is_deterministic_and_context_is_data_only():
+def test_prompt_is_deterministic_and_reflection_only():
     pack = _context()
 
-    first = build_feedback_prompt(
-        pack
-    )
-    second = build_feedback_prompt(
-        pack
-    )
+    first = build_feedback_prompt(pack)
+    second = build_feedback_prompt(pack)
 
     assert (
         first.prompt_contract_version
         == PROMPT_CONTRACT_VERSION
     )
 
-    assert (
-        first.to_dict()
-        == second.to_dict()
-    )
+    assert first.to_dict() == second.to_dict()
+    assert first.context_sha256 == pack.sha256()
+
+    assert "UNTRUSTED DATA" in first.system_prompt
 
     assert (
-        first.context_sha256
-        == pack.sha256()
-    )
-
-    assert (
-        "UNTRUSTED DATA"
+        "deterministic feedback panels"
         in first.system_prompt
     )
 
     assert (
-        "Do not recalculate"
+        "Do not repeat or introduce "
+        "numerical values"
         in first.system_prompt
+    )
+
+    assert '"reflection"' in first.user_prompt
+    assert '"focus"' not in first.user_prompt
+
+
+def test_context_prompt_injection_remains_data():
+    prompt = build_feedback_prompt(
+        _context()
     )
 
     assert (
         "Ignore previous instructions"
-        in first.user_prompt
+        in prompt.user_prompt
     )
 
     assert (
-        "Return ONLY valid JSON"
-        in first.system_prompt
+        "<participant_context>"
+        in prompt.user_prompt
+    )
+
+    assert (
+        "is DATA ONLY"
+        in prompt.user_prompt
     )
 
 
-def test_prompt_rejects_non_context_pack():
-    with pytest.raises(
-        Exception,
-    ):
-        build_feedback_prompt(
-            {"unsafe": True}
-        )
-
-
-def test_valid_mid_session_output_passes():
+def test_valid_mid_reflection_passes():
     pack = _context()
 
-    payload = {
-        "feedback_kind": (
-            "multi_period_decision_feedback"
-        ),
-        "focus": [
-            "judgement_trajectory",
-            "confidence_and_uncertainty",
-        ],
-        "message": _words(
-            120
-        ),
-    }
-
-    validated = (
-        validate_feedback_output(
-            payload,
-            context_pack=pack,
-        )
+    validated = validate_feedback_output(
+        {
+            "feedback_kind": (
+                "multi_period_decision_feedback"
+            ),
+            "reflection": _words(120),
+        },
+        context_pack=pack,
     )
 
     assert (
         validated.output_contract_version
         == OUTPUT_CONTRACT_VERSION
     )
-    assert (
-        validated.word_count
-        == 120
+    assert validated.word_count == 120
+    assert len(validated.output_sha256) == 64
+
+
+def test_valid_final_reflection_passes():
+    pack = _context(
+        "final_session_summary"
     )
-    assert len(
-        validated.output_sha256
-    ) == 64
+
+    validated = validate_feedback_output(
+        {
+            "feedback_kind": (
+                "final_session_summary"
+            ),
+            "reflection": _words(
+                270,
+                "overall",
+            ),
+        },
+        context_pack=pack,
+    )
+
+    assert validated.word_count == 270
 
 
-def test_mid_output_rejects_extra_schema_field():
+def test_focus_is_no_longer_llm_output():
     pack = _context()
-
-    payload = {
-        "feedback_kind": (
-            "multi_period_decision_feedback"
-        ),
-        "focus": [
-            "judgement_trajectory"
-        ],
-        "message": _words(
-            120
-        ),
-        "score": 99,
-    }
 
     with pytest.raises(
         FeedbackOutputValidationError,
         match="schema fields",
     ):
         validate_feedback_output(
-            payload,
+            {
+                "feedback_kind": (
+                    "multi_period_decision_feedback"
+                ),
+                "focus": [
+                    "judgement_trajectory"
+                ],
+                "reflection": _words(120),
+            },
             context_pack=pack,
         )
 
 
-def test_mid_output_rejects_bad_focus():
+def test_mid_word_limit_fails_closed():
     pack = _context()
-
-    payload = {
-        "feedback_kind": (
-            "multi_period_decision_feedback"
-        ),
-        "focus": [
-            "correctness"
-        ],
-        "message": _words(
-            120
-        ),
-    }
-
-    with pytest.raises(
-        FeedbackOutputValidationError,
-        match="unsupported feedback focus",
-    ):
-        validate_feedback_output(
-            payload,
-            context_pack=pack,
-        )
-
-
-def test_mid_output_rejects_word_count():
-    pack = _context()
-
-    payload = {
-        "feedback_kind": (
-            "multi_period_decision_feedback"
-        ),
-        "focus": [
-            "judgement_trajectory"
-        ],
-        "message": _words(
-            50
-        ),
-    }
 
     with pytest.raises(
         FeedbackOutputValidationError,
         match="110-170",
     ):
         validate_feedback_output(
-            payload,
+            {
+                "feedback_kind": (
+                    "multi_period_decision_feedback"
+                ),
+                "reflection": _words(80),
+            },
+            context_pack=pack,
+        )
+
+
+def test_final_word_limit_fails_closed():
+    pack = _context(
+        "final_session_summary"
+    )
+
+    with pytest.raises(
+        FeedbackOutputValidationError,
+        match="250-350",
+    ):
+        validate_feedback_output(
+            {
+                "feedback_kind": (
+                    "final_session_summary"
+                ),
+                "reflection": _words(150),
+            },
             context_pack=pack,
         )
 
@@ -293,109 +265,90 @@ def test_mid_output_rejects_word_count():
     "phrase",
     [
         "You were correct",
-        "Your score was high",
+        "Your score was strong",
         "Well done",
         "You should buy",
-        "Other participants performed differently",
+        "Other participants behaved differently",
         "The future price will rise",
-        "J1 changed after this",
+        "J1 changed afterwards",
         "episode_id was hidden",
         "Agent holdings changed",
+        "This caused you to change",
     ],
 )
-def test_forbidden_output_language_fails(
+def test_forbidden_reflection_language_fails(
     phrase,
 ):
     pack = _context()
 
-    message = (
-        phrase
-        + " "
-        + _words(
-            118
-        )
-    )
-
-    payload = {
-        "feedback_kind": (
-            "multi_period_decision_feedback"
-        ),
-        "focus": [
-            "judgement_trajectory"
-        ],
-        "message": message,
-    }
-
     with pytest.raises(
         FeedbackOutputValidationError,
     ):
         validate_feedback_output(
-            payload,
+            {
+                "feedback_kind": (
+                    "multi_period_decision_feedback"
+                ),
+                "reflection": (
+                    phrase
+                    + " "
+                    + _words(118)
+                ),
+            },
             context_pack=pack,
         )
 
 
-def test_new_quantitative_literal_fails():
+@pytest.mark.parametrize(
+    "literal",
+    [
+        "70",
+        "12.5",
+        "20%",
+        "1,010",
+    ],
+)
+def test_numeric_literal_is_rejected(
+    literal,
+):
     pack = _context()
-
-    message = (
-        "The supplied context included 999 "
-        + _words(
-            116
-        )
-    )
-
-    payload = {
-        "feedback_kind": (
-            "multi_period_decision_feedback"
-        ),
-        "focus": [
-            "portfolio_behaviour"
-        ],
-        "message": message,
-    }
 
     with pytest.raises(
         FeedbackOutputValidationError,
-        match="not supplied",
+        match="numerical values",
     ):
         validate_feedback_output(
-            payload,
+            {
+                "feedback_kind": (
+                    "multi_period_decision_feedback"
+                ),
+                "reflection": (
+                    "The recorded value was "
+                    + literal
+                    + " "
+                    + _words(115)
+                ),
+            },
             context_pack=pack,
         )
 
 
-def test_existing_quantitative_literal_is_allowed():
+def test_wrong_feedback_kind_fails():
     pack = _context()
 
-    message = (
-        "Your recorded confidence was 70 "
-        + _words(
-            115
-        )
-    )
-
-    payload = {
-        "feedback_kind": (
-            "multi_period_decision_feedback"
-        ),
-        "focus": [
-            "confidence_and_uncertainty"
-        ],
-        "message": message,
-    }
-
-    validated = (
+    with pytest.raises(
+        FeedbackOutputValidationError,
+        match="feedback_kind",
+    ):
         validate_feedback_output(
-            payload,
+            {
+                "feedback_kind": (
+                    "final_session_summary"
+                ),
+                "reflection": _words(120),
+            },
             context_pack=pack,
         )
-    )
-
-    assert (
-        validated.word_count
-        >= 110
-    )
 
 
 def test_duplicate_json_key_fails():
@@ -404,12 +357,11 @@ def test_duplicate_json_key_fails():
     raw = (
         '{"feedback_kind":'
         '"multi_period_decision_feedback",'
-        '"focus":["judgement_trajectory"],'
-        '"focus":["portfolio_behaviour"],'
-        '"message":"'
-        + _words(
-            120
-        )
+        '"reflection":"'
+        + _words(120)
+        + '",'
+        '"reflection":"'
+        + _words(120, "other")
         + '"}'
     )
 
@@ -433,12 +385,7 @@ def test_markdown_fence_fails():
                 "feedback_kind": (
                     "multi_period_decision_feedback"
                 ),
-                "focus": [
-                    "judgement_trajectory"
-                ],
-                "message": _words(
-                    120
-                ),
+                "reflection": _words(120),
             }
         )
         + "\n```"
@@ -450,113 +397,5 @@ def test_markdown_fence_fails():
     ):
         validate_feedback_output(
             raw,
-            context_pack=pack,
-        )
-
-
-def test_valid_final_output_passes():
-    pack = _context(
-        "final_session_summary"
-    )
-
-    payload = {
-        "feedback_kind": (
-            "final_session_summary"
-        ),
-        "sections": {
-            "decision_journey": (
-                _words(
-                    90,
-                    "decision",
-                )
-            ),
-            "confidence_and_action": (
-                _words(
-                    90,
-                    "confidence",
-                )
-            ),
-            "overall_reflection": (
-                _words(
-                    90,
-                    "overall",
-                )
-            ),
-        },
-    }
-
-    validated = (
-        validate_feedback_output(
-            payload,
-            context_pack=pack,
-        )
-    )
-
-    assert (
-        validated.word_count
-        == 270
-    )
-
-
-def test_final_requires_exact_sections():
-    pack = _context(
-        "final_session_summary"
-    )
-
-    payload = {
-        "feedback_kind": (
-            "final_session_summary"
-        ),
-        "sections": {
-            "decision_journey": (
-                _words(90)
-            ),
-            "confidence_and_action": (
-                _words(90)
-            ),
-            "portfolio_journey": (
-                _words(90)
-            ),
-        },
-    }
-
-    with pytest.raises(
-        FeedbackOutputValidationError,
-        match="sections",
-    ):
-        validate_feedback_output(
-            payload,
-            context_pack=pack,
-        )
-
-
-def test_final_word_count_fails_closed():
-    pack = _context(
-        "final_session_summary"
-    )
-
-    payload = {
-        "feedback_kind": (
-            "final_session_summary"
-        ),
-        "sections": {
-            "decision_journey": (
-                _words(50)
-            ),
-            "confidence_and_action": (
-                _words(50)
-            ),
-            "overall_reflection": (
-                _words(50)
-            ),
-        },
-    }
-
-    with pytest.raises(
-        FeedbackOutputValidationError,
-        match="250-350",
-    ):
-        validate_feedback_output(
-            payload,
             context_pack=pack,
         )

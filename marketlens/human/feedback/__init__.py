@@ -17,7 +17,6 @@ from .context import (
 )
 
 from .prompt import (
-    ALLOWED_FEEDBACK_FOCUS,
     PROMPT_CONTRACT_VERSION,
     SYSTEM_PROMPT_V1,
     FeedbackPromptError,
@@ -48,7 +47,6 @@ from .statistics import (
 )
 
 __all__ = [
-    "ALLOWED_FEEDBACK_FOCUS",
     "CONTEXT_PACK_VERSION",
     "OUTPUT_CONTRACT_VERSION",
     "PROMPT_CONTRACT_VERSION",

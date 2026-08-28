@@ -1,31 +1,29 @@
-"""Deterministic schema/content validation for MarketLens feedback output.
+"""Validation for reflection-only MarketLens LLM output.
 
-This validator runs after a future LLM response and before persistence or
-participant display. It makes no LLM/API calls.
+Deterministic feedback structure and metrics are backend-owned.
+The model supplies only one qualitative reflection string.
+
+No LLM or network call is made here.
 """
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
-from decimal import Decimal, InvalidOperation
 import hashlib
 import json
 import re
-from collections.abc import Mapping
 from typing import Any
 
 from .context import FeedbackContextPack
-from .prompt import ALLOWED_FEEDBACK_FOCUS
 
 
 OUTPUT_CONTRACT_VERSION = (
-    "marketlens-feedback-output-v1"
+    "marketlens-feedback-reflection-output-v1"
 )
 
 
-class FeedbackOutputValidationError(
-    ValueError
-):
+class FeedbackOutputValidationError(ValueError):
     pass
 
 
@@ -35,16 +33,17 @@ _WORD_RE = re.compile(
 )
 
 
-_NUMBER_RE = re.compile(
+_NUMERIC_LITERAL_RE = re.compile(
     r"(?<![A-Za-z0-9_])"
     r"[-+]?"
-    r"(?:\d{1,3}(?:,\d{3})+|\d+)"
+    r"(?:\d+(?:,\d{3})*)"
     r"(?:\.\d+)?"
+    r"%?"
     r"(?![A-Za-z0-9_])"
 )
 
 
-_INTERNAL_TOKEN_PATTERNS = (
+_FORBIDDEN_PATTERNS = (
     (
         "internal judgement label",
         re.compile(
@@ -56,24 +55,10 @@ _INTERNAL_TOKEN_PATTERNS = (
         "internal identifier",
         re.compile(
             r"\b(?:episode|session|participant|"
-            r"stimulus|request|event|transaction)"
-            r"_id\b",
+            r"stimulus|request|event|transaction)_id\b",
             re.IGNORECASE,
         ),
     ),
-    (
-        "Agent internal state",
-        re.compile(
-            r"\b(?:top[_ ]?user|prominence|"
-            r"agent holdings|agent trades|"
-            r"agent strategy|raw type)\b",
-            re.IGNORECASE,
-        ),
-    ),
-)
-
-
-_FORBIDDEN_CONTENT_PATTERNS = (
     (
         "truth/correctness language",
         re.compile(
@@ -96,9 +81,9 @@ _FORBIDDEN_CONTENT_PATTERNS = (
     (
         "praise language",
         re.compile(
-            r"\b(?:well done|good job|excellent job|"
-            r"great decision|smart decision|"
-            r"excellent decision)\b",
+            r"\b(?:well done|good job|great job|"
+            r"excellent job|great decision|"
+            r"smart decision|excellent decision)\b",
             re.IGNORECASE,
         ),
     ),
@@ -133,13 +118,27 @@ _FORBIDDEN_CONTENT_PATTERNS = (
             re.IGNORECASE,
         ),
     ),
+    (
+        "Agent internal state",
+        re.compile(
+            r"\b(?:top[_ ]?user|prominence|"
+            r"agent holdings|agent trades|"
+            r"agent strategy|raw type)\b",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "explicit causal claim",
+        re.compile(
+            r"\b(?:caused you to|caused your|"
+            r"led you to)\b",
+            re.IGNORECASE,
+        ),
+    ),
 )
 
 
-@dataclass(
-    frozen=True,
-    slots=True,
-)
+@dataclass(frozen=True, slots=True)
 class ValidatedFeedbackOutput:
     output_contract_version: str
     feedback_kind: str
@@ -147,9 +146,7 @@ class ValidatedFeedbackOutput:
     word_count: int
     output_sha256: str
 
-    def to_dict(
-        self,
-    ) -> dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         return {
             "output_contract_version": (
                 self.output_contract_version
@@ -157,22 +154,14 @@ class ValidatedFeedbackOutput:
             "feedback_kind": (
                 self.feedback_kind
             ),
-            "payload": dict(
-                self.payload
-            ),
-            "word_count": (
-                self.word_count
-            ),
-            "output_sha256": (
-                self.output_sha256
-            ),
+            "payload": dict(self.payload),
+            "word_count": self.word_count,
+            "output_sha256": self.output_sha256,
         }
 
 
 def _reject_duplicate_keys(
-    pairs: list[
-        tuple[str, Any]
-    ],
+    pairs: list[tuple[str, Any]],
 ) -> dict[str, Any]:
     result: dict[str, Any] = {}
 
@@ -189,24 +178,14 @@ def _reject_duplicate_keys(
 
 
 def _parse_output(
-    raw: str | Mapping[
-        str,
-        object,
-    ],
+    raw: str | Mapping[str, object],
 ) -> dict[str, object]:
-    if isinstance(
-        raw,
-        Mapping,
-    ):
+    if isinstance(raw, Mapping):
         return dict(raw)
 
-    if not isinstance(
-        raw,
-        str,
-    ):
+    if not isinstance(raw, str):
         raise FeedbackOutputValidationError(
-            "feedback output must be "
-            "JSON text or a mapping"
+            "feedback output must be JSON text or a mapping"
         )
 
     stripped = raw.strip()
@@ -222,44 +201,24 @@ def _parse_output(
     try:
         value = json.loads(
             stripped,
-            object_pairs_hook=(
-                _reject_duplicate_keys
-            ),
+            object_pairs_hook=_reject_duplicate_keys,
         )
-    except (
-        json.JSONDecodeError,
-        FeedbackOutputValidationError,
-    ):
+    except FeedbackOutputValidationError:
         raise
-    except Exception as exc:
+    except json.JSONDecodeError as exc:
         raise FeedbackOutputValidationError(
             "invalid feedback JSON"
         ) from exc
 
-    if not isinstance(
-        value,
-        dict,
-    ):
+    if not isinstance(value, dict):
         raise FeedbackOutputValidationError(
-            "feedback JSON root must "
-            "be an object"
+            "feedback JSON root must be an object"
         )
 
     return value
 
 
-def _word_count(
-    text: str,
-) -> int:
-    return len(
-        _WORD_RE.findall(
-            text
-        )
-    )
-
-
-def _require_text(
-    name: str,
+def _reflection_text(
     value: object,
 ) -> str:
     if (
@@ -267,194 +226,40 @@ def _require_text(
         or not value.strip()
     ):
         raise FeedbackOutputValidationError(
-            f"{name} must be "
-            "non-empty text"
+            "reflection must be non-empty text"
         )
 
     return value.strip()
 
 
-def _all_output_text(
-    payload: Mapping[
-        str,
-        object,
-    ],
-) -> str:
-    chunks: list[str] = []
-
-    def visit(
-        value: object,
-    ) -> None:
-        if isinstance(
-            value,
-            str,
-        ):
-            chunks.append(
-                value
-            )
-        elif isinstance(
-            value,
-            Mapping,
-        ):
-            for child in (
-                value.values()
-            ):
-                visit(child)
-        elif isinstance(
-            value,
-            (list, tuple),
-        ):
-            for child in value:
-                visit(child)
-
-    visit(payload)
-
-    return "\n".join(
-        chunks
+def _word_count(
+    text: str,
+) -> int:
+    return len(
+        _WORD_RE.findall(text)
     )
 
 
-def _validate_content_language(
+def _validate_language(
     text: str,
 ) -> None:
-    for (
-        label,
-        pattern,
-    ) in (
-        *_INTERNAL_TOKEN_PATTERNS,
-        *_FORBIDDEN_CONTENT_PATTERNS,
-    ):
+    for label, pattern in _FORBIDDEN_PATTERNS:
         if pattern.search(text):
             raise FeedbackOutputValidationError(
-                f"feedback contains forbidden "
+                "reflection contains forbidden "
                 f"{label}"
             )
 
-
-def _context_numbers(
-    pack: FeedbackContextPack,
-) -> set[Decimal]:
-    values: set[Decimal] = set()
-
-    def visit(
-        value: object,
-    ) -> None:
-        if isinstance(
-            value,
-            bool,
-        ):
-            return
-
-        if isinstance(
-            value,
-            (int, float),
-        ):
-            try:
-                values.add(
-                    Decimal(
-                        str(value)
-                    ).normalize()
-                )
-            except InvalidOperation as exc:
-                raise FeedbackOutputValidationError(
-                    "context contains invalid "
-                    "numeric value"
-                ) from exc
-            return
-
-        if isinstance(
-            value,
-            Mapping,
-        ):
-            for child in (
-                value.values()
-            ):
-                visit(child)
-            return
-
-        if isinstance(
-            value,
-            (list, tuple),
-        ):
-            for child in value:
-                visit(child)
-
-    visit(
-        pack.to_dict()
-    )
-
-    return values
-
-
-def _output_numbers(
-    text: str,
-) -> set[Decimal]:
-    result: set[Decimal] = set()
-
-    for raw in _NUMBER_RE.findall(
-        text
-    ):
-        normalized = raw.replace(
-            ",",
-            "",
-        )
-
-        try:
-            number = Decimal(
-                normalized
-            ).normalize()
-        except InvalidOperation as exc:
-            raise FeedbackOutputValidationError(
-                "feedback contains invalid "
-                "numeric literal"
-            ) from exc
-
-        result.add(
-            number
-        )
-
-    return result
-
-
-def _validate_quantitative_literals(
-    *,
-    text: str,
-    pack: FeedbackContextPack,
-) -> None:
-    available = (
-        _context_numbers(
-            pack
-        )
-    )
-
-    used = _output_numbers(
-        text
-    )
-
-    invented = (
-        used - available
-    )
-
-    if invented:
+    if _NUMERIC_LITERAL_RE.search(text):
         raise FeedbackOutputValidationError(
-            "feedback contains quantitative "
-            "literal(s) not supplied by the "
-            "validated context: "
-            + ", ".join(
-                sorted(
-                    str(value)
-                    for value
-                    in invented
-                )
-            )
+            "reflection must not repeat or introduce "
+            "numerical values; deterministic panels "
+            "display them separately"
         )
 
 
 def _canonical_sha256(
-    payload: Mapping[
-        str,
-        object,
-    ],
+    payload: Mapping[str, object],
 ) -> str:
     encoded = json.dumps(
         payload,
@@ -469,10 +274,7 @@ def _canonical_sha256(
 
 
 def validate_feedback_output(
-    raw: str | Mapping[
-        str,
-        object,
-    ],
+    raw: str | Mapping[str, object],
     *,
     context_pack: FeedbackContextPack,
 ) -> ValidatedFeedbackOutput:
@@ -481,174 +283,62 @@ def validate_feedback_output(
         FeedbackContextPack,
     ):
         raise FeedbackOutputValidationError(
-            "output validation requires "
-            "a validated FeedbackContextPack"
+            "output validation requires a validated "
+            "FeedbackContextPack"
         )
 
-    payload = _parse_output(
-        raw
-    )
+    payload = _parse_output(raw)
+
+    if set(payload) != {
+        "feedback_kind",
+        "reflection",
+    }:
+        raise FeedbackOutputValidationError(
+            "reflection output schema fields are invalid"
+        )
 
     expected_kind = (
         context_pack.feedback_kind
     )
 
     if (
+        payload["feedback_kind"]
+        != expected_kind
+    ):
+        raise FeedbackOutputValidationError(
+            "feedback_kind mismatch"
+        )
+
+    reflection = _reflection_text(
+        payload["reflection"]
+    )
+
+    words = _word_count(
+        reflection
+    )
+
+    if (
         expected_kind
         == "multi_period_decision_feedback"
     ):
-        if set(payload) != {
-            "feedback_kind",
-            "focus",
-            "message",
-        }:
-            raise FeedbackOutputValidationError(
-                "mid-session feedback "
-                "schema fields are invalid"
-            )
-
-        if (
-            payload[
-                "feedback_kind"
-            ]
-            != expected_kind
-        ):
-            raise FeedbackOutputValidationError(
-                "feedback_kind mismatch"
-            )
-
-        focus = payload[
-            "focus"
-        ]
-
-        if (
-            not isinstance(
-                focus,
-                list,
-            )
-            or not focus
-        ):
-            raise FeedbackOutputValidationError(
-                "focus must be a "
-                "non-empty list"
-            )
-
-        if len(focus) != len(
-            set(focus)
-        ):
-            raise FeedbackOutputValidationError(
-                "focus values must be unique"
-            )
-
-        for item in focus:
-            if (
-                not isinstance(
-                    item,
-                    str,
-                )
-                or item
-                not in ALLOWED_FEEDBACK_FOCUS
-            ):
-                raise FeedbackOutputValidationError(
-                    "unsupported feedback focus"
-                )
-
-        message = _require_text(
-            "message",
-            payload["message"],
-        )
-
-        words = _word_count(
-            message
-        )
-
         if not (
             110 <= words <= 170
         ):
             raise FeedbackOutputValidationError(
-                "mid-session feedback must "
+                "mid-session reflection must "
                 "contain 110-170 English words"
             )
-
-        prose = message
 
     elif (
         expected_kind
         == "final_session_summary"
     ):
-        if set(payload) != {
-            "feedback_kind",
-            "sections",
-        }:
-            raise FeedbackOutputValidationError(
-                "final feedback schema "
-                "fields are invalid"
-            )
-
-        if (
-            payload[
-                "feedback_kind"
-            ]
-            != expected_kind
-        ):
-            raise FeedbackOutputValidationError(
-                "feedback_kind mismatch"
-            )
-
-        sections = payload[
-            "sections"
-        ]
-
-        if not isinstance(
-            sections,
-            Mapping,
-        ):
-            raise FeedbackOutputValidationError(
-                "final sections must "
-                "be an object"
-            )
-
-        expected_sections = {
-            "decision_journey",
-            "confidence_and_action",
-            "overall_reflection",
-        }
-
-        if (
-            set(sections)
-            != expected_sections
-        ):
-            raise FeedbackOutputValidationError(
-                "final feedback sections "
-                "are invalid"
-            )
-
-        section_texts = [
-            _require_text(
-                name,
-                sections[name],
-            )
-            for name in (
-                "decision_journey",
-                "confidence_and_action",
-                "overall_reflection",
-            )
-        ]
-
-        prose = "\n".join(
-            section_texts
-        )
-
-        words = _word_count(
-            prose
-        )
-
         if not (
             250 <= words <= 350
         ):
             raise FeedbackOutputValidationError(
-                "final feedback must contain "
-                "250-350 English words total"
+                "final reflection must "
+                "contain 250-350 English words"
             )
 
     else:
@@ -656,13 +346,8 @@ def validate_feedback_output(
             "unsupported context feedback_kind"
         )
 
-    _validate_content_language(
-        prose
-    )
-
-    _validate_quantitative_literals(
-        text=prose,
-        pack=context_pack,
+    _validate_language(
+        reflection
     )
 
     detached = json.loads(
@@ -676,14 +361,10 @@ def validate_feedback_output(
         output_contract_version=(
             OUTPUT_CONTRACT_VERSION
         ),
-        feedback_kind=(
-            expected_kind
-        ),
+        feedback_kind=expected_kind,
         payload=detached,
         word_count=words,
         output_sha256=(
-            _canonical_sha256(
-                detached
-            )
+            _canonical_sha256(detached)
         ),
     )
