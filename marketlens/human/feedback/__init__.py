@@ -8,6 +8,14 @@ from .portfolio_metrics import (
     max_drawdown,
 )
 
+from .context import (
+    CONTEXT_PACK_VERSION,
+    ContextLimits,
+    FeedbackContextBuilder,
+    FeedbackContextError,
+    FeedbackContextPack,
+)
+
 from .source import (
     FeedbackKind,
     FeedbackSourceError,
@@ -25,7 +33,12 @@ from .statistics import (
 )
 
 __all__ = [
+    "CONTEXT_PACK_VERSION",
     "STATISTICS_VERSION",
+    "ContextLimits",
+    "FeedbackContextBuilder",
+    "FeedbackContextError",
+    "FeedbackContextPack",
     "AssessmentActionLink",
     "EquityPoint",
     "ExecutedTurnover",
