@@ -136,6 +136,12 @@ class ParticipantProtocolRoundService:
             next_step, next_date = next_checkpoint
             next_stage = ParticipantStage.BACKGROUND_REQUIRED
 
+        interstitial_stage = (
+            ParticipantStage.FEEDBACK_REQUIRED.value
+            if self.contract.feedback_required_after_round(state.experiment_step)
+            else None
+        )
+
         now = datetime.now(timezone.utc).isoformat()
         try:
             row = self.rounds.complete_protocol_idempotent(
@@ -148,6 +154,7 @@ class ParticipantProtocolRoundService:
                 next_step=next_step,
                 next_date=next_date,
                 next_stage=next_stage.value,
+                interstitial_stage=interstitial_stage,
                 completed_at=now,
             )
         except StoreSessionNotFoundError as exc:

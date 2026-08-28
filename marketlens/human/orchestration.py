@@ -21,6 +21,8 @@ class ParticipantStage(str, Enum):
     J3_REQUIRED = "J3_REQUIRED"
     J4_REQUIRED = "J4_REQUIRED"
     ROUND_ACTIVE = "ROUND_ACTIVE"
+    FEEDBACK_REQUIRED = "FEEDBACK_REQUIRED"
+    DEBRIEF_REQUIRED = "DEBRIEF_REQUIRED"
     COMPLETED = "COMPLETED"
 
 
@@ -48,6 +50,9 @@ _JUDGEMENT_NEXT_STAGE = {
     "J3": ParticipantStage.ROUND_ACTIVE,
     "J4": ParticipantStage.ROUND_ACTIVE,
 }
+
+
+_FEEDBACK_REQUIRED_AFTER_ROUND_STEPS = frozenset({3, 10, 14})
 
 
 class ExperimentOrchestrationContract:
@@ -168,6 +173,12 @@ class ExperimentOrchestrationContract:
         raise ExperimentOrchestrationError(
             f"participant stage {resolved.value} does not accept controlled-stimulus delivery"
         )
+
+    def feedback_required_after_round(self, experiment_step: int) -> bool:
+        """Return whether the completed participant period must enter feedback."""
+        step = int(experiment_step)
+        self.checkpoint_date(step)
+        return step in _FEEDBACK_REQUIRED_AFTER_ROUND_STEPS
 
     def next_checkpoint(self, experiment_step: int) -> tuple[int, str] | None:
         step = int(experiment_step)

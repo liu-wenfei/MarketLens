@@ -149,6 +149,7 @@ class RoundStore:
         next_step: int | None,
         next_date: str | None,
         next_stage: str,
+        interstitial_stage: str | None = None,
         completed_at: str,
     ) -> RowMapping:
         """Record one participant checkpoint completion and advance protocol state atomically.
@@ -221,16 +222,26 @@ class RoundStore:
             )
 
             try:
-                ExperimentOrchestrationStore.advance_checkpoint_on_connection(
-                    connection,
-                    session_id=session_id,
-                    experiment_step=step,
-                    agent_world_date=agent_world_date,
-                    expected_stage=expected_stage,
-                    next_step=next_step,
-                    next_date=next_date,
-                    next_stage=next_stage,
-                )
+                if interstitial_stage is None:
+                    ExperimentOrchestrationStore.advance_checkpoint_on_connection(
+                        connection,
+                        session_id=session_id,
+                        experiment_step=step,
+                        agent_world_date=agent_world_date,
+                        expected_stage=expected_stage,
+                        next_step=next_step,
+                        next_date=next_date,
+                        next_stage=next_stage,
+                    )
+                else:
+                    ExperimentOrchestrationStore.transition_stage_on_connection(
+                        connection,
+                        session_id=session_id,
+                        experiment_step=step,
+                        agent_world_date=agent_world_date,
+                        expected_stage=expected_stage,
+                        next_stage=interstitial_stage,
+                    )
             except StoreExperimentStateConflictError as exc:
                 raise StoreProtocolRoundStateConflictError(str(exc)) from exc
 

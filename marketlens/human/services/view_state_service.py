@@ -65,6 +65,10 @@ def _required_action(stage: ParticipantStage) -> ParticipantRequiredAction:
         return ParticipantRequiredAction.LOAD_INFORMATION_UPDATE
     if stage is ParticipantStage.ROUND_ACTIVE:
         return ParticipantRequiredAction.ROUND_ACTIVE
+    if stage is ParticipantStage.FEEDBACK_REQUIRED:
+        return ParticipantRequiredAction.VIEW_FEEDBACK
+    if stage is ParticipantStage.DEBRIEF_REQUIRED:
+        return ParticipantRequiredAction.VIEW_DEBRIEF
     if stage is ParticipantStage.COMPLETED:
         return ParticipantRequiredAction.COMPLETED
     raise ParticipantViewStateInvariantError(
@@ -155,6 +159,14 @@ class ParticipantViewStateService:
         assessment_mode = _JUDGEMENT_MODES.get(stage)
         round_active = stage is ParticipantStage.ROUND_ACTIVE and not state.completed
         can_trade = round_active and trusted.participant_trading_enabled
+        interstitial = (
+            stage
+            in {
+                ParticipantStage.FEEDBACK_REQUIRED,
+                ParticipantStage.DEBRIEF_REQUIRED,
+            }
+            and not state.completed
+        )
 
         return ParticipantViewState(
             contract_version=VIEW_CONTRACT_VERSION,
@@ -201,7 +213,7 @@ class ParticipantViewStateService:
                     and not state.completed
                 ),
                 submit_assessment=(stage in _JUDGEMENT_MODES and not state.completed),
-                view_portfolio=True,
+                view_portfolio=not interstitial,
                 preview_trade=can_trade,
                 submit_trade=can_trade,
                 complete_round=round_active,

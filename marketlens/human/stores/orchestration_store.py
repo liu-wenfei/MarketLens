@@ -81,6 +81,45 @@ class ExperimentOrchestrationStore:
                 )
             return self._locked_session(connection, session_id)
 
+    @classmethod
+    def transition_stage_on_connection(
+        cls,
+        connection,
+        *,
+        session_id: str,
+        experiment_step: int,
+        agent_world_date: str,
+        expected_stage: str,
+        next_stage: str,
+    ) -> RowMapping:
+        """Transition stage without advancing step/date inside an open transaction."""
+        session = cls._locked_session(connection, session_id)
+        if (
+            int(session["current_step"]) != int(experiment_step)
+            or session["current_date"] != agent_world_date
+            or session["current_stage"] != expected_stage
+            or bool(session["completed"])
+        ):
+            raise StoreExperimentStateConflictError(
+                "session step/date/stage does not match the required orchestration transition"
+            )
+        result = connection.execute(
+            update(sessions)
+            .where(
+                sessions.c.session_id == session_id,
+                sessions.c.current_step == experiment_step,
+                sessions.c.current_date == agent_world_date,
+                sessions.c.current_stage == expected_stage,
+                sessions.c.completed.is_(False),
+            )
+            .values(current_stage=next_stage)
+        )
+        if result.rowcount != 1:
+            raise StoreExperimentStateConflictError(
+                "session changed during stage transition"
+            )
+        return cls._locked_session(connection, session_id)
+
     def transition_stage(
         self,
         *,

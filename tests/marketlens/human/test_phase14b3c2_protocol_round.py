@@ -208,6 +208,41 @@ def test_full_15_checkpoint_runtime_finishes_without_step_15(tmp_path) -> None:
             else:
                 assert first.json()["next_step"] is None
 
+            # Phase 15 feedback interstitial continuation.
+            if step in {3, 10, 14}:
+                orchestration = client.app.state.participant_runtime.orchestration
+                feedback_state = orchestration.get(sid)
+                assert feedback_state.experiment_step == step
+                assert feedback_state.current_stage == "FEEDBACK_REQUIRED"
+
+                feedback_response = client.get(f"/session/{sid}/view")
+                assert feedback_response.status_code == 200
+                feedback_view = feedback_response.json()
+                assert feedback_view["required_action"] == "VIEW_FEEDBACK"
+                assert not any(feedback_view["allowed_actions"].values())
+
+                after_feedback = orchestration.continue_after_feedback(sid)
+
+                if step < 14:
+                    assert after_feedback.completed is False
+                    assert after_feedback.experiment_step == step + 1
+                    assert after_feedback.current_stage == "BACKGROUND_REQUIRED"
+                else:
+                    assert after_feedback.completed is False
+                    assert after_feedback.experiment_step == 14
+                    assert after_feedback.current_stage == "DEBRIEF_REQUIRED"
+
+                    debrief_response = client.get(f"/session/{sid}/view")
+                    assert debrief_response.status_code == 200
+                    debrief_view = debrief_response.json()
+                    assert debrief_view["required_action"] == "VIEW_DEBRIEF"
+                    assert not any(debrief_view["allowed_actions"].values())
+
+                    completed = orchestration.complete_after_debrief(sid)
+                    assert completed.completed is True
+                    assert completed.experiment_step == 14
+                    assert completed.current_stage == "COMPLETED"
+
         final = app.state.participant_runtime.orchestration.get(sid)
         assert final.completed is True
         assert final.experiment_step == 14

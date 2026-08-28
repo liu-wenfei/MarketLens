@@ -114,6 +114,10 @@ class ExperimentOrchestrationService:
         state = self.get(session_id)
         if state.agent_world_date is None:
             raise ExperimentStateConflictError("session has no protocol-bound current date")
+        if self.contract.feedback_required_after_round(state.experiment_step):
+            raise ExperimentStateConflictError(
+                "feedback checkpoint must continue through the feedback transition"
+            )
         try:
             self.contract.validate_checkpoint(state.experiment_step, state.agent_world_date)
             next_checkpoint = self.contract.next_checkpoint(state.experiment_step)
@@ -135,4 +139,85 @@ class ExperimentOrchestrationService:
             )
         except (ExperimentOrchestrationError, StoreExperimentStateConflictError) as exc:
             raise ExperimentStateConflictError(str(exc)) from exc
+        return _to_state(row)
+
+    def continue_after_feedback(self, session_id: str) -> ParticipantExperimentState:
+        """Leave the one-time feedback exposure using server-owned timing only."""
+        state = self.get(session_id)
+        if (
+            state.agent_world_date is None
+            or state.current_stage != ParticipantStage.FEEDBACK_REQUIRED.value
+        ):
+            raise ExperimentStateConflictError(
+                "session is not waiting for participant feedback continuation"
+            )
+
+        try:
+            self.contract.validate_checkpoint(
+                state.experiment_step,
+                state.agent_world_date,
+            )
+            if not self.contract.feedback_required_after_round(state.experiment_step):
+                raise ExperimentOrchestrationError(
+                    "current checkpoint is not a feedback checkpoint"
+                )
+
+            next_checkpoint = self.contract.next_checkpoint(state.experiment_step)
+
+            if next_checkpoint is None:
+                row = self.store.transition_stage(
+                    session_id=session_id,
+                    experiment_step=state.experiment_step,
+                    agent_world_date=state.agent_world_date,
+                    expected_stage=ParticipantStage.FEEDBACK_REQUIRED.value,
+                    next_stage=ParticipantStage.DEBRIEF_REQUIRED.value,
+                )
+            else:
+                next_step, next_date = next_checkpoint
+                row = self.store.advance_checkpoint(
+                    session_id=session_id,
+                    experiment_step=state.experiment_step,
+                    agent_world_date=state.agent_world_date,
+                    expected_stage=ParticipantStage.FEEDBACK_REQUIRED.value,
+                    next_step=next_step,
+                    next_date=next_date,
+                    next_stage=ParticipantStage.BACKGROUND_REQUIRED.value,
+                )
+        except (ExperimentOrchestrationError, StoreExperimentStateConflictError) as exc:
+            raise ExperimentStateConflictError(str(exc)) from exc
+
+        return _to_state(row)
+
+    def complete_after_debrief(self, session_id: str) -> ParticipantExperimentState:
+        """Complete the participant session only after the final debrief stage."""
+        state = self.get(session_id)
+        if (
+            state.agent_world_date is None
+            or state.current_stage != ParticipantStage.DEBRIEF_REQUIRED.value
+        ):
+            raise ExperimentStateConflictError(
+                "session is not waiting for debrief completion"
+            )
+
+        try:
+            self.contract.validate_checkpoint(
+                state.experiment_step,
+                state.agent_world_date,
+            )
+            if self.contract.next_checkpoint(state.experiment_step) is not None:
+                raise ExperimentOrchestrationError(
+                    "debrief completion is only valid at the terminal checkpoint"
+                )
+            row = self.store.advance_checkpoint(
+                session_id=session_id,
+                experiment_step=state.experiment_step,
+                agent_world_date=state.agent_world_date,
+                expected_stage=ParticipantStage.DEBRIEF_REQUIRED.value,
+                next_step=None,
+                next_date=None,
+                next_stage=ParticipantStage.COMPLETED.value,
+            )
+        except (ExperimentOrchestrationError, StoreExperimentStateConflictError) as exc:
+            raise ExperimentStateConflictError(str(exc)) from exc
+
         return _to_state(row)

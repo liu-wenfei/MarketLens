@@ -123,7 +123,23 @@ def test_wrong_stage_fails_closed_without_creating_judgement(tmp_path) -> None:
 def _advance_ordinary(orchestration, session_id: str) -> None:
     state = orchestration.after_background_delivery(session_id)
     assert state.current_stage == ParticipantStage.ROUND_ACTIVE.value
-    orchestration.advance_checkpoint(session_id)
+
+    if orchestration.contract.feedback_required_after_round(
+        state.experiment_step
+    ):
+        # Unit-test simulation only: the protocol-round integration
+        # tests separately verify that the real round completion
+        # atomically records the behaviour lock and enters this stage.
+        orchestration.store.transition_stage(
+            session_id=session_id,
+            experiment_step=state.experiment_step,
+            agent_world_date=state.agent_world_date,
+            expected_stage=ParticipantStage.ROUND_ACTIVE.value,
+            next_stage=ParticipantStage.FEEDBACK_REQUIRED.value,
+        )
+        orchestration.continue_after_feedback(session_id)
+    else:
+        orchestration.advance_checkpoint(session_id)
 
 
 def test_protocol_driven_advancement_reaches_j2_j3_and_j4(tmp_path) -> None:
@@ -154,7 +170,31 @@ def test_protocol_driven_advancement_reaches_j2_j3_and_j4(tmp_path) -> None:
     assert state.current_stage == ParticipantStage.J4_REQUIRED.value
     j4 = judgements.submit(session.session_id, _payload("j4"))
     assert (j4.experiment_step, j4.agent_world_date) == (14, "2023-07-11")
-    completed = orchestration.advance_checkpoint(session.session_id)
+    final_round_state = orchestration.get(session.session_id)
+    assert final_round_state.current_stage == ParticipantStage.ROUND_ACTIVE.value
+
+    # Unit-test simulation only: integration tests verify the real terminal
+    # round completion atomically records the behaviour lock and enters
+    # FEEDBACK_REQUIRED.
+    orchestration.store.transition_stage(
+        session_id=session.session_id,
+        experiment_step=final_round_state.experiment_step,
+        agent_world_date=final_round_state.agent_world_date,
+        expected_stage=ParticipantStage.ROUND_ACTIVE.value,
+        next_stage=ParticipantStage.FEEDBACK_REQUIRED.value,
+    )
+
+    feedback_state = orchestration.get(session.session_id)
+    assert feedback_state.experiment_step == 14
+    assert feedback_state.current_stage == ParticipantStage.FEEDBACK_REQUIRED.value
+    assert feedback_state.completed is False
+
+    after_feedback = orchestration.continue_after_feedback(session.session_id)
+    assert after_feedback.experiment_step == 14
+    assert after_feedback.current_stage == ParticipantStage.DEBRIEF_REQUIRED.value
+    assert after_feedback.completed is False
+
+    completed = orchestration.complete_after_debrief(session.session_id)
     assert completed.completed is True
     assert completed.current_stage == ParticipantStage.COMPLETED.value
     assert [r["judgement_event"] for r in JudgementStore(db).list_for_session(session.session_id)] == ["J0", "J1", "J2", "J3", "J4"]
