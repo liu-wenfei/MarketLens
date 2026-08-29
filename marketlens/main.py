@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from marketlens.human.routers.feedback import router as feedback_router
+
 from pathlib import Path
 from typing import Mapping
 
@@ -93,6 +95,8 @@ def create_app(
     app.include_router(judgement_router)
     app.include_router(portfolio_router)
     app.include_router(round_router)
+    app.include_router(feedback_router)
+
     return app
 
 

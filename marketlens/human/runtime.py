@@ -10,6 +10,7 @@ from marketlens.human.services.episode_background_service import (
     EpisodeAwareParticipantBackgroundService,
 )
 from marketlens.human.services.exposure_service import ParticipantExposureService
+from marketlens.human.services.feedback_delivery_service import ParticipantFeedbackDeliveryService
 from marketlens.human.services.judgement_service import JudgementService
 from marketlens.human.services.orchestration_service import ExperimentOrchestrationService
 from marketlens.human.services.round_service import ParticipantProtocolRoundService
@@ -17,6 +18,7 @@ from marketlens.human.services.session_service import SessionService
 from marketlens.human.services.trusted_context_service import TrustedParticipantContextResolver
 from marketlens.human.services.view_state_service import ParticipantViewStateService
 from marketlens.human.stores.episode_assignment_store import EpisodeAssignmentStore
+from marketlens.human.stores.feedback_store import FeedbackStore
 from marketlens.human.stores.judgement_store import JudgementStore
 from marketlens.human.stores.orchestration_store import ExperimentOrchestrationStore
 from marketlens.human.stores.round_store import RoundStore
@@ -42,6 +44,7 @@ class ParticipantRuntime:
     exposure: ParticipantExposureService
     judgements: JudgementService
     rounds: ParticipantProtocolRoundService
+    feedback: ParticipantFeedbackDeliveryService
     view_state: ParticipantViewStateService
     target_stock_id: str
     episode_ids: tuple[str, ...]
@@ -106,6 +109,10 @@ def build_participant_runtime(
         rounds=RoundStore(db),
         orchestration=orchestration,
     )
+    feedback = ParticipantFeedbackDeliveryService(
+        store=FeedbackStore(db),
+        orchestration=orchestration,
+    )
     view_state = ParticipantViewStateService(
         orchestration=orchestration,
         context=context,
@@ -122,6 +129,7 @@ def build_participant_runtime(
         exposure=exposure,
         judgements=judgements,
         rounds=rounds,
+        feedback=feedback,
         view_state=view_state,
         target_stock_id=target_stock_id,
         episode_ids=tuple(projections),

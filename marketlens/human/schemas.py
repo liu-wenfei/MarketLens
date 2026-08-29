@@ -326,3 +326,29 @@ class PortfolioRead(BaseModel):
     cash: float
     total_value: float
     holdings: list[PortfolioHoldingRead]
+
+
+class ParticipantFeedbackRead(BaseModel):
+    """Participant-safe feedback projection.
+
+    Internal checkpoint identity, hashes, prompt/model provenance and
+    feedback IDs are deliberately not exposed.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    feedback_kind: str
+    statistics: dict[str, object]
+    reflection: str
+
+
+class ParticipantFeedbackContinueCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    request_id: str = Field(min_length=1, max_length=128)
+
+
+class ParticipantFeedbackContinueRead(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    continued: bool
