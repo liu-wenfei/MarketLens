@@ -1,0 +1,370 @@
+{
+  "manifest_schema_version": "marketlens-canonical-episode-manifest/2.0",
+  "status": "formal_frozen",
+  "episode_pool_id": "marketlens-canonical-episode-pool-v2",
+  "episode_id": "marketlens-canonical-episode-v2-e02",
+  "episode_slot": 2,
+  "protocol_version": "1.1",
+  "execution_plan_sha256": "9f67b6352848924a22bb07daa6450cbd0316c3e79328186b582d99f69180f961",
+  "producer_contract_sha256": "65de44fded09adec415da3a687dc29c6c3451ac63f976fd9b64f98569f67c1e1",
+  "git": {
+    "commit": "aae9318962aa87b4537c26e5478acd276c51e48e",
+    "branch": "formal-v2-e02-run",
+    "status_porcelain": ""
+  },
+  "backend": {
+    "model_name": "gpt-5.4-mini",
+    "base_url": "https://zhi-api.com/v1",
+    "api_key_recorded": false,
+    "exact_backend_call_count_claimed": false
+  },
+  "population": {
+    "size": 30,
+    "selection_seed": "marketlens-dev-population-01",
+    "selected_agent_ids_sha256": "60d846b21c15e2213f6f897a17a7ea98039fbf461abe54ee89e1b6779d24b2d4"
+  },
+  "activation": {
+    "seed": "marketlens-phase09b-activation-01",
+    "same_frozen_plan_as_other_episode_slots": true
+  },
+  "world": {
+    "initialization_date": "2023-06-15",
+    "end_date": "2023-07-11",
+    "formal_world_ticks": 27
+  },
+  "attempt": {
+    "attempt_number": 2,
+    "attempt_evidence_root": "artifacts/formal/canonical_episode_v2/marketlens-canonical-episode-v2-e02/attempt_002",
+    "seed_substitution_used": false,
+    "partial_resume_used": false,
+    "outcome_review_used_for_acceptance": false,
+    "episode_similarity_review_used_for_acceptance": false
+  },
+  "forum_output": {
+    "intervention_scope": "final_agent_forum_post_field_only",
+    "participant_visible_agent_forum_language": "English",
+    "post_generated_directly_in_english": true,
+    "live_translation_used": false,
+    "inherited_natural_news_language_changed": false,
+    "agent_reasoning_pipeline_rewritten": false,
+    "belief_language_policy": "preserve_inherited_chinese_output",
+    "deterministic_language_gate": {
+      "zero_llm": true,
+      "all_stored_posts_checked": true,
+      "cjk_characters_allowed_in_post": false,
+      "latin_letter_required": true,
+      "content_quality_or_sentiment_gate": false,
+      "type_prefix_allowed_in_post": false
+    },
+    "chinese_source_terms_may_be_copied_into_post": false,
+    "same_call_self_check_required": true,
+    "entity_name_registry": {
+      "path": "marketlens/episode/entity_name_registry_v2_1.json",
+      "registry_id": "marketlens-entity-name-registry-v2.1",
+      "registry_version": "2.1",
+      "status": "formal_v2_entity_name_registry_frozen",
+      "sha256": "0bdf5dfc9851e21440496dfdf220de512965efeed33f6ee67ef68ec91a65ad5b",
+      "simulation_reference_date": "2023-06-15",
+      "counts": {
+        "sectors": 10,
+        "indices": 10,
+        "companies": 50,
+        "total_entities": 70
+      },
+      "known_entity_policy": "exact_canonical_english_display_or_stable_code",
+      "unknown_entity_fallback": "ticker_or_index_code",
+      "free_model_translation_or_transliteration": false,
+      "post_generation_entity_rewriting": false,
+      "glossary_scope": "final_agent_forum_post_prompt_only"
+    },
+    "post_type_declaration_policy": "yaml_type_field_only",
+    "inherited_type_instruction_clarified_in_v2_prompt": true
+  },
+  "execution": {
+    "active_agent_pipeline_executions_expected": 193,
+    "active_agent_pipeline_executions_completed": 193,
+    "failed_agent_pipeline_count": 0,
+    "participant_data_used": false,
+    "controlled_stimulus_injected_into_agent_world": false,
+    "custom_matching_price_forum_belief_logic_used": false,
+    "inherited_entrypoints": {
+      "agent_reasoning": "simulation.process_user_input",
+      "social_graph": "marketlens.agents.social.graph.build_bounded_social_graph",
+      "prominence": "marketlens.agents.social.prominence.make_prominence_snapshot",
+      "trading_day": "marketlens.market.runtime.inherited_market.advance_trading_day",
+      "non_trading_day": "marketlens.market.runtime.inherited_market.advance_non_trading_day",
+      "forum_reader": "util.ForumDB.get_all_users_posts_db",
+      "forum_post_writer": "util.ForumDB.create_post_db",
+      "forum_actions": "util.ForumDB.execute_forum_actions",
+      "forum_score_update": "util.ForumDB.update_posts_score_by_date_range",
+      "custom_matching_price_forum_belief_logic_allowed": false
+    }
+  },
+  "validation": {
+    "all_days_complete": true,
+    "activation_plan_exact": true,
+    "calendar_actions_exact": true,
+    "state_chain_complete": true,
+    "protected_sources_unchanged": true,
+    "participant_price_coverage_complete": true,
+    "forum_profile_source_cue_join_complete": true,
+    "forum_post_language_complete": true,
+    "price_coverage_evidence": {
+      "complete": true,
+      "asset_count": 10,
+      "decision_date_count": 15,
+      "expected_exact_price_cells": 150,
+      "missing": [],
+      "invalid": []
+    },
+    "forum_profile_join_evidence": {
+      "complete": true,
+      "participant_visible_nonrepost_posts_checked": 193,
+      "missing_same_day_profile_snapshots": []
+    },
+    "forum_post_language_evidence": {
+      "complete": true,
+      "posts_checked": 193,
+      "invalid_post_count": 0,
+      "invalid_posts": [],
+      "validation_mode": "deterministic_zero_llm_no_translation"
+    }
+  },
+  "daily_state_chain": [
+    {
+      "step": 0,
+      "agent_world_date": "2023-06-15",
+      "agent_world_db_sha256_before": "98a95b5ee631ac4a57648867103c25828bfa1b8af640871640cdf071e2f01a26",
+      "forum_db_sha256_before": "4fed1d5ef7196020df4221dbad8449144f0679980def410f157c2d46c05c7702",
+      "agent_world_db_sha256": "d0c88466ebcff84e946917fc52582b020c8e9eb949a094ca17e10c2ec9911864",
+      "forum_db_sha256": "dd14642b2eb3d8d98f791d8fb6255e5ebf41b653eef0dc9c47fe9ee493208f52"
+    },
+    {
+      "step": 1,
+      "agent_world_date": "2023-06-16",
+      "agent_world_db_sha256_before": "d0c88466ebcff84e946917fc52582b020c8e9eb949a094ca17e10c2ec9911864",
+      "forum_db_sha256_before": "dd14642b2eb3d8d98f791d8fb6255e5ebf41b653eef0dc9c47fe9ee493208f52",
+      "agent_world_db_sha256": "5f8f2f1ca4725a92c7f2d6bde8f07ae21fb70753761c5cb2b7815709c5d72e3a",
+      "forum_db_sha256": "58a9274b0e891f6186ced2d91563001d4f1715ab973fb6718072062e8554d1d9"
+    },
+    {
+      "step": 2,
+      "agent_world_date": "2023-06-17",
+      "agent_world_db_sha256_before": "5f8f2f1ca4725a92c7f2d6bde8f07ae21fb70753761c5cb2b7815709c5d72e3a",
+      "forum_db_sha256_before": "58a9274b0e891f6186ced2d91563001d4f1715ab973fb6718072062e8554d1d9",
+      "agent_world_db_sha256": "fe785aed58bbb929f0b7a1b60ecd7da44ebd847d9742bd6f68e726571779834e",
+      "forum_db_sha256": "1fa039a0d119218ce8d2451aa06713cbbf8f7b07993dcd014962d0c6c84b3909"
+    },
+    {
+      "step": 3,
+      "agent_world_date": "2023-06-18",
+      "agent_world_db_sha256_before": "fe785aed58bbb929f0b7a1b60ecd7da44ebd847d9742bd6f68e726571779834e",
+      "forum_db_sha256_before": "1fa039a0d119218ce8d2451aa06713cbbf8f7b07993dcd014962d0c6c84b3909",
+      "agent_world_db_sha256": "1c19d5733d9222770d68ffdcdf0b94349aa60db5a713f848486a6413a9daff2d",
+      "forum_db_sha256": "bab2d8b0a63cf441716e56ec46226074947a7ccc6a1aa5dc8b5895f486bfd4d8"
+    },
+    {
+      "step": 4,
+      "agent_world_date": "2023-06-19",
+      "agent_world_db_sha256_before": "1c19d5733d9222770d68ffdcdf0b94349aa60db5a713f848486a6413a9daff2d",
+      "forum_db_sha256_before": "bab2d8b0a63cf441716e56ec46226074947a7ccc6a1aa5dc8b5895f486bfd4d8",
+      "agent_world_db_sha256": "4ddf8385de11a6f76dc36d1ed06c9cf390ea8e216c5a7b6ebe6e43140190c573",
+      "forum_db_sha256": "27f1b44c96742328a2bc9d62ed8f932d6c0a7b4c72b1c621a27c5c0c718fcf08"
+    },
+    {
+      "step": 5,
+      "agent_world_date": "2023-06-20",
+      "agent_world_db_sha256_before": "4ddf8385de11a6f76dc36d1ed06c9cf390ea8e216c5a7b6ebe6e43140190c573",
+      "forum_db_sha256_before": "27f1b44c96742328a2bc9d62ed8f932d6c0a7b4c72b1c621a27c5c0c718fcf08",
+      "agent_world_db_sha256": "3809be465419c8f9acb6a1e5286652427456f8c9c0ea431ff8fc773b9f70d1e0",
+      "forum_db_sha256": "7a5125a9648c7698e477bdf97ccec168bae92c630493b8f19b1d896499526050"
+    },
+    {
+      "step": 6,
+      "agent_world_date": "2023-06-21",
+      "agent_world_db_sha256_before": "3809be465419c8f9acb6a1e5286652427456f8c9c0ea431ff8fc773b9f70d1e0",
+      "forum_db_sha256_before": "7a5125a9648c7698e477bdf97ccec168bae92c630493b8f19b1d896499526050",
+      "agent_world_db_sha256": "b37e6d7093590e44a60db672ac5ab197a0b4b14a718ee5d4531d97384ea0fb6d",
+      "forum_db_sha256": "4bb7a40b913dd7cce69fd248280255437f3b401eba88578145a7fcdcd1298f83"
+    },
+    {
+      "step": 7,
+      "agent_world_date": "2023-06-22",
+      "agent_world_db_sha256_before": "b37e6d7093590e44a60db672ac5ab197a0b4b14a718ee5d4531d97384ea0fb6d",
+      "forum_db_sha256_before": "4bb7a40b913dd7cce69fd248280255437f3b401eba88578145a7fcdcd1298f83",
+      "agent_world_db_sha256": "0d7d452068e9335cee47974e755acc1753480f2083a3894c41f392b939fd1902",
+      "forum_db_sha256": "73d252cab72b034771bfe1feb152b9b0a49b83104c08e177f45c4856aad7f09c"
+    },
+    {
+      "step": 8,
+      "agent_world_date": "2023-06-23",
+      "agent_world_db_sha256_before": "0d7d452068e9335cee47974e755acc1753480f2083a3894c41f392b939fd1902",
+      "forum_db_sha256_before": "73d252cab72b034771bfe1feb152b9b0a49b83104c08e177f45c4856aad7f09c",
+      "agent_world_db_sha256": "2cc1788fdfbd06e078e1add6c354ec6bb4f63941d05962ecadb881098a732be5",
+      "forum_db_sha256": "172639f8b47946b024ad179934534a79e85f295c34aad03442158c2b30ef91d3"
+    },
+    {
+      "step": 9,
+      "agent_world_date": "2023-06-24",
+      "agent_world_db_sha256_before": "2cc1788fdfbd06e078e1add6c354ec6bb4f63941d05962ecadb881098a732be5",
+      "forum_db_sha256_before": "172639f8b47946b024ad179934534a79e85f295c34aad03442158c2b30ef91d3",
+      "agent_world_db_sha256": "0de2639a33a0134b4272414eb4e1c212bcbf430334c8795e50d73cb50e5231bc",
+      "forum_db_sha256": "c2ab5422710d17271bb77a3d05b70e801cc08a4cfd6eb8be8d76791929a5e42f"
+    },
+    {
+      "step": 10,
+      "agent_world_date": "2023-06-25",
+      "agent_world_db_sha256_before": "0de2639a33a0134b4272414eb4e1c212bcbf430334c8795e50d73cb50e5231bc",
+      "forum_db_sha256_before": "c2ab5422710d17271bb77a3d05b70e801cc08a4cfd6eb8be8d76791929a5e42f",
+      "agent_world_db_sha256": "3434692d1d0289859cfc78b239a86b2e0189694be5537ab7114b95d95fc44fd5",
+      "forum_db_sha256": "f792a365096fe0a5522b724bfd99651682094ca1ae468f418e13c503fd657c32"
+    },
+    {
+      "step": 11,
+      "agent_world_date": "2023-06-26",
+      "agent_world_db_sha256_before": "3434692d1d0289859cfc78b239a86b2e0189694be5537ab7114b95d95fc44fd5",
+      "forum_db_sha256_before": "f792a365096fe0a5522b724bfd99651682094ca1ae468f418e13c503fd657c32",
+      "agent_world_db_sha256": "93777aeaa6e07a76de2c4fff4da1490c2d4a484c947be742257aa4a970d69a82",
+      "forum_db_sha256": "b337111a2bbdb20022c28e56ee10e87d103878d22aaa47377a4283b8eafa0859"
+    },
+    {
+      "step": 12,
+      "agent_world_date": "2023-06-27",
+      "agent_world_db_sha256_before": "93777aeaa6e07a76de2c4fff4da1490c2d4a484c947be742257aa4a970d69a82",
+      "forum_db_sha256_before": "b337111a2bbdb20022c28e56ee10e87d103878d22aaa47377a4283b8eafa0859",
+      "agent_world_db_sha256": "1b1b9162e07382f8679a1fe8695e527d9263332d7791500173a341692a9698c6",
+      "forum_db_sha256": "54a09eab1e5e5da1b6248d4b817e7111a1b8c24c3bf6bf1946df268dd07aea73"
+    },
+    {
+      "step": 13,
+      "agent_world_date": "2023-06-28",
+      "agent_world_db_sha256_before": "1b1b9162e07382f8679a1fe8695e527d9263332d7791500173a341692a9698c6",
+      "forum_db_sha256_before": "54a09eab1e5e5da1b6248d4b817e7111a1b8c24c3bf6bf1946df268dd07aea73",
+      "agent_world_db_sha256": "503a0e7d9ca4e06d0e95c8b91ce73a2178de697ede2d021ec30268cb07391d8a",
+      "forum_db_sha256": "70504a884811bed34899cb8b278d6efd0d90e922a644e7328cc5c48c61a4f03d"
+    },
+    {
+      "step": 14,
+      "agent_world_date": "2023-06-29",
+      "agent_world_db_sha256_before": "503a0e7d9ca4e06d0e95c8b91ce73a2178de697ede2d021ec30268cb07391d8a",
+      "forum_db_sha256_before": "70504a884811bed34899cb8b278d6efd0d90e922a644e7328cc5c48c61a4f03d",
+      "agent_world_db_sha256": "4cbc30d8624fab5ead46a39f909048bc625836ffe9e3ffdc15297cb615a5f6d1",
+      "forum_db_sha256": "44626f53e069da08e31470cf4681fcafea883f65e31dd56694af700c91de3f1f"
+    },
+    {
+      "step": 15,
+      "agent_world_date": "2023-06-30",
+      "agent_world_db_sha256_before": "4cbc30d8624fab5ead46a39f909048bc625836ffe9e3ffdc15297cb615a5f6d1",
+      "forum_db_sha256_before": "44626f53e069da08e31470cf4681fcafea883f65e31dd56694af700c91de3f1f",
+      "agent_world_db_sha256": "404f1e4f6ba1ead172fdf6391d3ab28a3d10a902c4b1a6346add60f7442f225e",
+      "forum_db_sha256": "5c6bbf370c81e0a3903ee3c3a11b7ff84596753e65a5b41d4f85dc6056ba0778"
+    },
+    {
+      "step": 16,
+      "agent_world_date": "2023-07-01",
+      "agent_world_db_sha256_before": "404f1e4f6ba1ead172fdf6391d3ab28a3d10a902c4b1a6346add60f7442f225e",
+      "forum_db_sha256_before": "5c6bbf370c81e0a3903ee3c3a11b7ff84596753e65a5b41d4f85dc6056ba0778",
+      "agent_world_db_sha256": "e4daffe59ebd28d5c2fd7f309fe490f3a0e1e7b7905ddb6600dcdabafd225b43",
+      "forum_db_sha256": "ba4e7dca158c5f54726a988acd0b0a17219e0b07b4c889de3725a6bb4510f050"
+    },
+    {
+      "step": 17,
+      "agent_world_date": "2023-07-02",
+      "agent_world_db_sha256_before": "e4daffe59ebd28d5c2fd7f309fe490f3a0e1e7b7905ddb6600dcdabafd225b43",
+      "forum_db_sha256_before": "ba4e7dca158c5f54726a988acd0b0a17219e0b07b4c889de3725a6bb4510f050",
+      "agent_world_db_sha256": "b39126b0bab68e5306cb6b8ba0723c37729e68dd5b92057554c3223a38c9ac94",
+      "forum_db_sha256": "d91e54d4adbe88ec4d1a00ee4e235658b8c732f7021ee5fa43a9762ba5e20cf4"
+    },
+    {
+      "step": 18,
+      "agent_world_date": "2023-07-03",
+      "agent_world_db_sha256_before": "b39126b0bab68e5306cb6b8ba0723c37729e68dd5b92057554c3223a38c9ac94",
+      "forum_db_sha256_before": "d91e54d4adbe88ec4d1a00ee4e235658b8c732f7021ee5fa43a9762ba5e20cf4",
+      "agent_world_db_sha256": "6f67ebab455a25e1211f9d05e484167228fe0ad0741a690056acefa3d96e2f03",
+      "forum_db_sha256": "62e4220bb232d35409bb8aa8ea937a22d7c3e7f0f251ab8d3e5c101414430c73"
+    },
+    {
+      "step": 19,
+      "agent_world_date": "2023-07-04",
+      "agent_world_db_sha256_before": "6f67ebab455a25e1211f9d05e484167228fe0ad0741a690056acefa3d96e2f03",
+      "forum_db_sha256_before": "62e4220bb232d35409bb8aa8ea937a22d7c3e7f0f251ab8d3e5c101414430c73",
+      "agent_world_db_sha256": "3ada3e3f92c4d21ca408cd456f96b1090f41092f1d00e01f43764e7b402121d6",
+      "forum_db_sha256": "f9d9c08b62b4062a83f93307714b1a1a0078bcb0fbd5e1c5dca84844f55cd6be"
+    },
+    {
+      "step": 20,
+      "agent_world_date": "2023-07-05",
+      "agent_world_db_sha256_before": "3ada3e3f92c4d21ca408cd456f96b1090f41092f1d00e01f43764e7b402121d6",
+      "forum_db_sha256_before": "f9d9c08b62b4062a83f93307714b1a1a0078bcb0fbd5e1c5dca84844f55cd6be",
+      "agent_world_db_sha256": "4c5ce8df71f841a5da6baaa04712500ad450794b0c091f663308678536029013",
+      "forum_db_sha256": "d49ed825815c80e1c5c78fd6ad5970df52565d07fc87bfca983a3ea3a9e4d5dc"
+    },
+    {
+      "step": 21,
+      "agent_world_date": "2023-07-06",
+      "agent_world_db_sha256_before": "4c5ce8df71f841a5da6baaa04712500ad450794b0c091f663308678536029013",
+      "forum_db_sha256_before": "d49ed825815c80e1c5c78fd6ad5970df52565d07fc87bfca983a3ea3a9e4d5dc",
+      "agent_world_db_sha256": "49eb86cc788e6fe71a2d7d9756a275ff5e0911030ae598615d52ee54ba833b21",
+      "forum_db_sha256": "966a567c3288c39d8b677b29f935b9ae1e9af3bb754f5908f7eb5418ad8f8e2e"
+    },
+    {
+      "step": 22,
+      "agent_world_date": "2023-07-07",
+      "agent_world_db_sha256_before": "49eb86cc788e6fe71a2d7d9756a275ff5e0911030ae598615d52ee54ba833b21",
+      "forum_db_sha256_before": "966a567c3288c39d8b677b29f935b9ae1e9af3bb754f5908f7eb5418ad8f8e2e",
+      "agent_world_db_sha256": "0c4603438768b3f609d3745f9d3a01617b6f9222885b9c46050343b6ae7ad655",
+      "forum_db_sha256": "eee0af572b6c66c0b4e494d31a107f987d7550ac6d97b3dbe8a422fcaa0bd4f4"
+    },
+    {
+      "step": 23,
+      "agent_world_date": "2023-07-08",
+      "agent_world_db_sha256_before": "0c4603438768b3f609d3745f9d3a01617b6f9222885b9c46050343b6ae7ad655",
+      "forum_db_sha256_before": "eee0af572b6c66c0b4e494d31a107f987d7550ac6d97b3dbe8a422fcaa0bd4f4",
+      "agent_world_db_sha256": "ac65507cd17b279e954363a4ed9310639f6f96e3a350790d86646709d894ac53",
+      "forum_db_sha256": "48d2ba3e106c853b398a52098c9995948fdbf95b47d2255858916f61cdbbf7a0"
+    },
+    {
+      "step": 24,
+      "agent_world_date": "2023-07-09",
+      "agent_world_db_sha256_before": "ac65507cd17b279e954363a4ed9310639f6f96e3a350790d86646709d894ac53",
+      "forum_db_sha256_before": "48d2ba3e106c853b398a52098c9995948fdbf95b47d2255858916f61cdbbf7a0",
+      "agent_world_db_sha256": "e8fac7977bb876da640f3c9f681d0ff8da5a1c7adf0d98ca23260065d53cff7d",
+      "forum_db_sha256": "bff198286528e68740adbbb2078c5b0fe7e4bddbc86dd1e383b4e6c80ecc24e3"
+    },
+    {
+      "step": 25,
+      "agent_world_date": "2023-07-10",
+      "agent_world_db_sha256_before": "e8fac7977bb876da640f3c9f681d0ff8da5a1c7adf0d98ca23260065d53cff7d",
+      "forum_db_sha256_before": "bff198286528e68740adbbb2078c5b0fe7e4bddbc86dd1e383b4e6c80ecc24e3",
+      "agent_world_db_sha256": "33e1c344a5b7d1409cbf5cfc905dd30581160aa61e62db2cc58a68c7ab7abd28",
+      "forum_db_sha256": "4958ccfdeca5fd6a4d30d244ce47c5560e11b04899a790b1954e35d9ca1bcba0"
+    },
+    {
+      "step": 26,
+      "agent_world_date": "2023-07-11",
+      "agent_world_db_sha256_before": "33e1c344a5b7d1409cbf5cfc905dd30581160aa61e62db2cc58a68c7ab7abd28",
+      "forum_db_sha256_before": "4958ccfdeca5fd6a4d30d244ce47c5560e11b04899a790b1954e35d9ca1bcba0",
+      "agent_world_db_sha256": "96c02cf66ab7157cf7db30cf6dce4b9d2cc8d07b934baad0671ccf95ef57f112",
+      "forum_db_sha256": "4bb901beac8d33a1351a02010ea2928f643f3e136a2fdc3df4029b4a4cfa584a"
+    }
+  ],
+  "outputs": {
+    "agent_world_db": {
+      "path": "data/marketlens/canonical_episode/v2/episode_02/agent_world.db",
+      "sha256": "96c02cf66ab7157cf7db30cf6dce4b9d2cc8d07b934baad0671ccf95ef57f112"
+    },
+    "forum_db": {
+      "path": "data/marketlens/canonical_episode/v2/episode_02/forum.db",
+      "sha256": "4bb901beac8d33a1351a02010ea2928f643f3e136a2fdc3df4029b4a4cfa584a"
+    }
+  },
+  "protected_input_sha256": {
+    "data/sys_1000.db": "90b19c5cb9dac6708dff06fe4def5205cecef1a90da0f74eec449dab5a6769c3",
+    "data/trading_days.csv": "5bd8f6b6972b8433ed5a1ece27fa926df29a0f90517437fee41c6316f8cafaee",
+    "data/sorted_impact_news.pkl": "09ed6be6bacf8a1edeb90311d3c477d9ea83be8a8f156da06705f9dba68e5b1c",
+    "util/belief/belief_1000_0129.csv": "d28058f42a8c6fc733539d84edff4994fbd9036648a186c1ff7d5fc808f755de",
+    "data/stock_profile.csv": "18dfc6a8a00774f264f5a6aa740c62e080ec0401b7fce2d4b977f960bc421b5e",
+    "data/stock_data.csv": "166d2cd53037f0b27fc25b7653c013d144fc83e4f10ed0f718333d57cfd22124",
+    "marketlens/experiment/protocol_v1.json": "70814b9aa47e2ed258c3e6bd04ad9df743b6cd71587be8f6c95b3d0c69df62fc"
+  }
+}
