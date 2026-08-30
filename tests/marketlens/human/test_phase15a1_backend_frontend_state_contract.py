@@ -38,6 +38,7 @@ def _runtime_app(tmp_path):
         participant_runtime_enabled=True,
         participant_event_store=events,
         background_projections={episode_id: FakeProjection(episode_id)},
+        journey_price_providers={episode_id: object()},
         stimulus_engine=engine,
     )
     return app, events, episode_id

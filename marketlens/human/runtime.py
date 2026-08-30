@@ -12,6 +12,7 @@ from marketlens.human.services.episode_background_service import (
 from marketlens.human.services.exposure_service import ParticipantExposureService
 from marketlens.human.services.feedback_delivery_service import ParticipantFeedbackDeliveryService
 from marketlens.human.services.judgement_service import JudgementService
+from marketlens.human.services.journey_service import ParticipantJourneyService
 from marketlens.human.services.orchestration_service import ExperimentOrchestrationService
 from marketlens.human.services.round_service import ParticipantProtocolRoundService
 from marketlens.human.services.session_service import SessionService
@@ -21,6 +22,7 @@ from marketlens.human.stores.episode_assignment_store import EpisodeAssignmentSt
 from marketlens.human.stores.feedback_store import FeedbackStore
 from marketlens.human.stores.judgement_store import JudgementStore
 from marketlens.human.stores.orchestration_store import ExperimentOrchestrationStore
+from marketlens.human.stores.portfolio_store import PortfolioStore
 from marketlens.human.stores.round_store import RoundStore
 from marketlens.human.stores.session_store import SessionStore
 from marketlens.information.projection import ParticipantBackgroundProjection
@@ -45,6 +47,7 @@ class ParticipantRuntime:
     judgements: JudgementService
     rounds: ParticipantProtocolRoundService
     feedback: ParticipantFeedbackDeliveryService
+    journey: ParticipantJourneyService
     view_state: ParticipantViewStateService
     target_stock_id: str
     episode_ids: tuple[str, ...]
@@ -57,6 +60,7 @@ def build_participant_runtime(
     events: ParticipantEventStore,
     background_projections: Mapping[str, ParticipantBackgroundProjection],
     stimulus_engine: StimulusEngine,
+    journey_price_providers: Mapping[str, object],
 ) -> ParticipantRuntime:
     """Bind the already-frozen Phase 14 services without allocating an episode."""
 
@@ -72,6 +76,14 @@ def build_participant_runtime(
             raise ParticipantRuntimeConfigurationError(
                 f"background projection key {episode_id!r} disagrees with its canonical episode binding {bound_episode_id!r}"
             )
+
+    provider_episode_ids = set(journey_price_providers)
+    projection_episode_ids = set(projections)
+    if provider_episode_ids != projection_episode_ids:
+        raise ParticipantRuntimeConfigurationError(
+            "Journey price-provider episode keys must exactly match canonical "
+            "background-projection episode keys"
+        )
 
     if stimulus_engine.material.formal_use_status is not FormalUseStatus.FORMAL_FROZEN:
         raise ParticipantRuntimeConfigurationError(
@@ -100,18 +112,32 @@ def build_participant_runtime(
         stimulus_engine=stimulus_engine,
     )
     target_stock_id = stimulus_engine.material.target_stock_id
+    judgement_store = JudgementStore(db)
+    round_store = RoundStore(db)
+    portfolio_store = PortfolioStore(db)
     judgements = JudgementService(
-        JudgementStore(db),
+        judgement_store,
         ExperimentOrchestrationStore(db),
         target_stock_id=target_stock_id,
     )
     rounds = ParticipantProtocolRoundService(
-        rounds=RoundStore(db),
+        rounds=round_store,
         orchestration=orchestration,
     )
     feedback = ParticipantFeedbackDeliveryService(
         store=FeedbackStore(db),
         orchestration=orchestration,
+    )
+    journey = ParticipantJourneyService(
+        sessions=sessions,
+        assignments=assignments,
+        judgements=judgement_store,
+        portfolios=portfolio_store,
+        rounds=round_store,
+        price_providers=journey_price_providers,
+        calendar=calendar,
+        contract=stimulus_engine,
+        target_stock_id=target_stock_id,
     )
     view_state = ParticipantViewStateService(
         orchestration=orchestration,
@@ -130,6 +156,7 @@ def build_participant_runtime(
         judgements=judgements,
         rounds=rounds,
         feedback=feedback,
+        journey=journey,
         view_state=view_state,
         target_stock_id=target_stock_id,
         episode_ids=tuple(projections),

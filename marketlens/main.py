@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from marketlens.human.routers.feedback import router as feedback_router
+from marketlens.human.routers.journey import router as journey_router
 
 from pathlib import Path
 from typing import Mapping
@@ -17,6 +18,9 @@ from marketlens.human.routers.portfolio import router as portfolio_router
 from marketlens.human.routers.round import router as round_router
 from marketlens.human.routers.session import router as session_router
 from marketlens.human.runtime import build_participant_runtime
+from marketlens.human.services.journey_provider_factory import (
+    build_canonical_journey_price_providers,
+)
 from marketlens.information.projection import ParticipantBackgroundProjection
 from marketlens.market.asset_catalog import AssetCatalog
 from marketlens.market.price_provider import CsvClosePriceProvider
@@ -41,6 +45,7 @@ def create_app(
     participant_event_store: ParticipantEventStore | None = None,
     background_projections: Mapping[str, ParticipantBackgroundProjection] | None = None,
     stimulus_engine: StimulusEngine | None = None,
+    journey_price_providers: Mapping[str, object] | None = None,
 ) -> FastAPI:
     app = FastAPI(title="MarketLens Human Backend", version="0.2.1")
 
@@ -75,12 +80,20 @@ def create_app(
             raise ValueError(
                 "participant_runtime_enabled requires an explicit formal StimulusEngine"
             )
+        resolved_journey_price_providers = (
+            dict(journey_price_providers)
+            if journey_price_providers is not None
+            else build_canonical_journey_price_providers(
+                Path(__file__).resolve().parents[1]
+            )
+        )
         app.state.participant_runtime = build_participant_runtime(
             db=app.state.db,
             calendar=app.state.trading_calendar,
             events=participant_event_store,
             background_projections=background_projections,
             stimulus_engine=stimulus_engine,
+            journey_price_providers=resolved_journey_price_providers,
         )
 
     @app.get("/health")
@@ -96,6 +109,7 @@ def create_app(
     app.include_router(portfolio_router)
     app.include_router(round_router)
     app.include_router(feedback_router)
+    app.include_router(journey_router)
 
     return app
 

@@ -47,7 +47,14 @@ def _runtime_app(tmp_path: Path, *, episode_ids=EPISODE_IDS):
         tmp_path / "human.db",
         participant_runtime_enabled=True,
         participant_event_store=events,
-        background_projections={episode_id: FakeProjection(episode_id) for episode_id in episode_ids},
+        background_projections={
+            episode_id: FakeProjection(episode_id)
+            for episode_id in episode_ids
+        },
+        journey_price_providers={
+            episode_id: object()
+            for episode_id in episode_ids
+        },
         stimulus_engine=engine,
     )
     return app, events

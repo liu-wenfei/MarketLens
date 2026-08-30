@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from pathlib import Path
+
+import pytest
 from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
@@ -11,6 +13,7 @@ from marketlens.human.measurement.event_store import ParticipantEventStore
 from marketlens.human.schemas import PortfolioTransactionRead
 from marketlens.human.routers.portfolio import get_portfolio_service
 from marketlens.main import create_app
+from marketlens.human.runtime import ParticipantRuntimeConfigurationError
 from marketlens.stimulus.engine import StimulusEngine
 from marketlens.stimulus.material import load_material
 
@@ -85,6 +88,10 @@ def _runtime_app(tmp_path):
             episode_b: FakeProjection(episode_b, "episode-b-background"),
         },
         stimulus_engine=engine,
+        journey_price_providers={
+            episode_a: object(),
+            episode_b: object(),
+        },
     )
     return app, events, episode_b
 
@@ -270,3 +277,53 @@ def test_default_app_keeps_legacy_runtime_disabled(tmp_path) -> None:
             json={"request_id": "bg"},
         )
         assert runtime_only.status_code == 503
+
+
+def test_runtime_rejects_missing_journey_episode_provider(tmp_path) -> None:
+    episode_a, episode_b = EPISODE_IDS[:2]
+    events = ParticipantEventStore(tmp_path / "participant_events.db")
+    engine = StimulusEngine(load_material(FORMAL_STIMULUS, formal=True))
+
+    with pytest.raises(
+        ParticipantRuntimeConfigurationError,
+        match="Journey price-provider episode keys must exactly match",
+    ):
+        create_app(
+            tmp_path / "human.db",
+            participant_runtime_enabled=True,
+            participant_event_store=events,
+            background_projections={
+                episode_a: FakeProjection(episode_a, "episode-a-background"),
+                episode_b: FakeProjection(episode_b, "episode-b-background"),
+            },
+            stimulus_engine=engine,
+            journey_price_providers={
+                episode_a: object(),
+            },
+        )
+
+
+def test_runtime_rejects_extra_journey_episode_provider(tmp_path) -> None:
+    episode_a, episode_b = EPISODE_IDS[:2]
+    events = ParticipantEventStore(tmp_path / "participant_events.db")
+    engine = StimulusEngine(load_material(FORMAL_STIMULUS, formal=True))
+
+    with pytest.raises(
+        ParticipantRuntimeConfigurationError,
+        match="Journey price-provider episode keys must exactly match",
+    ):
+        create_app(
+            tmp_path / "human.db",
+            participant_runtime_enabled=True,
+            participant_event_store=events,
+            background_projections={
+                episode_a: FakeProjection(episode_a, "episode-a-background"),
+                episode_b: FakeProjection(episode_b, "episode-b-background"),
+            },
+            stimulus_engine=engine,
+            journey_price_providers={
+                episode_a: object(),
+                episode_b: object(),
+                "unexpected-episode": object(),
+            },
+        )

@@ -42,6 +42,7 @@ def _app(tmp_path):
         participant_runtime_enabled=True,
         participant_event_store=events,
         background_projections={episode_id: Projection(episode_id)},
+        journey_price_providers={episode_id: object()},
         stimulus_engine=StimulusEngine(load_material(FORMAL_STIMULUS, formal=True)),
     )
     return app, events, episode_id

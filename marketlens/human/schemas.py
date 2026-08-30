@@ -352,3 +352,99 @@ class ParticipantFeedbackContinueRead(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     continued: bool
+
+
+class ParticipantJourneyJudgementRead(BaseModel):
+    """Participant-safe historical judgement projection."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    sequence_within_period: int
+    stock_id: str
+    action: str
+    confidence: float
+    evidence_sources: tuple[str, ...]
+    rationale: str | None
+    submitted_at: str
+
+
+class ParticipantJourneyTransactionRead(BaseModel):
+    """Participant-safe settled transaction projection."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    sequence_within_period: int
+    transaction_id: str
+    stock_id: str
+    action: str
+
+    requested_amount: float | None
+    requested_units: float | None
+
+    executed_units: int
+    executed_notional: float
+    settlement_price: float
+    fee: float
+
+    cash_before: float
+    cash_after: float
+
+    holding_before: int
+    holding_after: int
+
+    submitted_at: str
+
+
+class ParticipantJourneyPortfolioSnapshotRead(BaseModel):
+    """Participant-safe end-of-period portfolio projection."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    cash: float
+    holdings: dict[str, int]
+    portfolio_value: float
+
+
+class ParticipantJourneyPeriodRead(BaseModel):
+    """Participant-safe historical Period projection."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    period_number: int
+    agent_world_date: str
+
+    market_open: bool
+    participant_trading_enabled: bool
+
+    judgements: tuple[ParticipantJourneyJudgementRead, ...]
+    transactions: tuple[ParticipantJourneyTransactionRead, ...]
+
+    behaviour_summary: str
+    holding_changes: dict[str, int]
+
+    portfolio_end: ParticipantJourneyPortfolioSnapshotRead
+
+    period_pnl: float
+    cumulative_pnl: float
+    pnl_direction: str
+
+    feedback_boundary: str
+
+
+class ParticipantDecisionJourneyRead(BaseModel):
+    """Participant-safe accumulated decision-journey projection.
+
+    Internal round-lock state, canonical close-price inputs, episode identity,
+    provider provenance and formal artifact paths are deliberately not exposed.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    journey_version: str
+    target_stock_id: str
+
+    initial_cash: float
+    initial_holdings: dict[str, int]
+    initial_portfolio_value: float
+
+    periods: tuple[ParticipantJourneyPeriodRead, ...]
