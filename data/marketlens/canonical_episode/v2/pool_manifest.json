@@ -1,0 +1,77 @@
+{
+  "manifest_schema_version": "marketlens-canonical-episode-pool-manifest/2.0",
+  "status": "formal_frozen",
+  "episode_pool_id": "marketlens-canonical-episode-pool-v2",
+  "execution_plan_sha256": "9f67b6352848924a22bb07daa6450cbd0316c3e79328186b582d99f69180f961",
+  "producer_contract_sha256": "65de44fded09adec415da3a687dc29c6c3451ac63f976fd9b64f98569f67c1e1",
+  "forum_output": {
+    "intervention_scope": "final_agent_forum_post_field_only",
+    "participant_visible_agent_forum_language": "English",
+    "post_generated_directly_in_english": true,
+    "live_translation_used": false,
+    "inherited_natural_news_language_changed": false,
+    "agent_reasoning_pipeline_rewritten": false,
+    "belief_language_policy": "preserve_inherited_chinese_output",
+    "deterministic_language_gate": {
+      "zero_llm": true,
+      "all_stored_posts_checked": true,
+      "cjk_characters_allowed_in_post": false,
+      "latin_letter_required": true,
+      "content_quality_or_sentiment_gate": false,
+      "type_prefix_allowed_in_post": false
+    },
+    "chinese_source_terms_may_be_copied_into_post": false,
+    "same_call_self_check_required": true,
+    "entity_name_registry": {
+      "path": "marketlens/episode/entity_name_registry_v2_1.json",
+      "registry_id": "marketlens-entity-name-registry-v2.1",
+      "registry_version": "2.1",
+      "status": "formal_v2_entity_name_registry_frozen",
+      "sha256": "0bdf5dfc9851e21440496dfdf220de512965efeed33f6ee67ef68ec91a65ad5b",
+      "simulation_reference_date": "2023-06-15",
+      "counts": {
+        "sectors": 10,
+        "indices": 10,
+        "companies": 50,
+        "total_entities": 70
+      },
+      "known_entity_policy": "exact_canonical_english_display_or_stable_code",
+      "unknown_entity_fallback": "ticker_or_index_code",
+      "free_model_translation_or_transliteration": false,
+      "post_generation_entity_rewriting": false,
+      "glossary_scope": "final_agent_forum_post_prompt_only"
+    },
+    "post_type_declaration_policy": "yaml_type_field_only",
+    "inherited_type_instruction_clarified_in_v2_prompt": true
+  },
+  "episode_count": 3,
+  "episode_ids": [
+    "marketlens-canonical-episode-v2-e01",
+    "marketlens-canonical-episode-v2-e02",
+    "marketlens-canonical-episode-v2-e03"
+  ],
+  "participant_assignment": {
+    "mode": "balanced_random_across_episode_pool",
+    "episode_id_recorded_for_analysis": true,
+    "assignment_uses_episode_outcomes": false
+  },
+  "episodes": [
+    {
+      "episode_id": "marketlens-canonical-episode-v2-e01",
+      "episode_manifest_path": "data/marketlens/canonical_episode/v2/episode_01/episode_manifest.json"
+    },
+    {
+      "episode_id": "marketlens-canonical-episode-v2-e02",
+      "episode_manifest_path": "data/marketlens/canonical_episode/v2/episode_02/episode_manifest.json"
+    },
+    {
+      "episode_id": "marketlens-canonical-episode-v2-e03",
+      "episode_manifest_path": "data/marketlens/canonical_episode/v2/episode_03/episode_manifest.json"
+    }
+  ],
+  "finalization": {
+    "llm_api_calls": 0,
+    "outcome_review_used": false,
+    "episode_similarity_review_used": false
+  }
+}
