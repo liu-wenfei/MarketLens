@@ -1,8 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Mapping
+from typing import Mapping, Sequence
 
+from marketlens.episode.contract import (
+    EPISODE_IDS as DEFAULT_EPISODE_IDS,
+    EPISODE_POOL_ID as DEFAULT_EPISODE_POOL_ID,
+)
 from marketlens.human.measurement.event_store import ParticipantEventStore
 from marketlens.human.measurement.runtime_recorder import ParticipantRuntimeEventRecorder
 from marketlens.human.services.episode_assignment_service import EpisodeAssignmentService
@@ -50,7 +54,9 @@ class ParticipantRuntime:
     journey: ParticipantJourneyService
     view_state: ParticipantViewStateService
     target_stock_id: str
+    episode_pool_id: str
     episode_ids: tuple[str, ...]
+    expected_episode_ids: tuple[str, ...]
 
 
 def build_participant_runtime(
@@ -61,10 +67,31 @@ def build_participant_runtime(
     background_projections: Mapping[str, ParticipantBackgroundProjection],
     stimulus_engine: StimulusEngine,
     journey_price_providers: Mapping[str, object],
+    episode_pool_id: str = DEFAULT_EPISODE_POOL_ID,
+    expected_episode_ids: Sequence[str] = DEFAULT_EPISODE_IDS,
 ) -> ParticipantRuntime:
     """Bind the already-frozen Phase 14 services without allocating an episode."""
 
     projections = dict(background_projections)
+    resolved_expected_episode_ids = tuple(
+        str(value) for value in expected_episode_ids
+    )
+
+    if not str(episode_pool_id).strip():
+        raise ParticipantRuntimeConfigurationError(
+            "participant runtime episode_pool_id must be non-empty"
+        )
+    if not resolved_expected_episode_ids:
+        raise ParticipantRuntimeConfigurationError(
+            "participant runtime expected_episode_ids must be non-empty"
+        )
+    if len(set(resolved_expected_episode_ids)) != len(
+        resolved_expected_episode_ids
+    ):
+        raise ParticipantRuntimeConfigurationError(
+            "participant runtime expected_episode_ids must be unique"
+        )
+
     if not projections:
         raise ParticipantRuntimeConfigurationError(
             "participant runtime requires at least one explicitly bound canonical episode projection"
@@ -85,18 +112,37 @@ def build_participant_runtime(
             "background-projection episode keys"
         )
 
+    unexpected_projection_ids = (
+        set(projections) - set(resolved_expected_episode_ids)
+    )
+    if unexpected_projection_ids:
+        raise ParticipantRuntimeConfigurationError(
+            "background projections contain episode ids outside the "
+            f"runtime canonical pool: {sorted(unexpected_projection_ids)}"
+        )
+
     if stimulus_engine.material.formal_use_status is not FormalUseStatus.FORMAL_FROZEN:
         raise ParticipantRuntimeConfigurationError(
             "participant runtime requires a formal_frozen controlled-stimulus engine"
         )
 
     sessions = SessionService(SessionStore(db))
-    assignments = EpisodeAssignmentService(EpisodeAssignmentStore(db))
+    assignment_store = EpisodeAssignmentStore(
+        db,
+        episode_pool_id=episode_pool_id,
+        episode_ids=resolved_expected_episode_ids,
+    )
+    assignments = EpisodeAssignmentService(
+        assignment_store,
+        episode_pool_id=episode_pool_id,
+    )
     orchestration = ExperimentOrchestrationService(ExperimentOrchestrationStore(db))
     context = TrustedParticipantContextResolver(
         sessions=sessions,
         assignments=assignments,
         calendar=calendar,
+        episode_pool_id=episode_pool_id,
+        episode_ids=resolved_expected_episode_ids,
     )
     recorder = ParticipantRuntimeEventRecorder(store=events, context=context)
     backgrounds = EpisodeAwareParticipantBackgroundService(
@@ -159,5 +205,7 @@ def build_participant_runtime(
         journey=journey,
         view_state=view_state,
         target_stock_id=target_stock_id,
+        episode_pool_id=str(episode_pool_id),
         episode_ids=tuple(projections),
+        expected_episode_ids=resolved_expected_episode_ids,
     )

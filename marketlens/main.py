@@ -4,9 +4,14 @@ from marketlens.human.routers.feedback import router as feedback_router
 from marketlens.human.routers.journey import router as journey_router
 
 from pathlib import Path
-from typing import Mapping
+from typing import Mapping, Sequence
 
 from fastapi import FastAPI
+
+from marketlens.episode.contract import (
+    EPISODE_IDS as DEFAULT_EPISODE_IDS,
+    EPISODE_POOL_ID as DEFAULT_EPISODE_POOL_ID,
+)
 
 from marketlens.human.measurement.event_store import ParticipantEventStore
 from marketlens.human.portfolio.policy import PortfolioPolicy
@@ -46,6 +51,8 @@ def create_app(
     background_projections: Mapping[str, ParticipantBackgroundProjection] | None = None,
     stimulus_engine: StimulusEngine | None = None,
     journey_price_providers: Mapping[str, object] | None = None,
+    participant_episode_pool_id: str = DEFAULT_EPISODE_POOL_ID,
+    participant_episode_ids: Sequence[str] = DEFAULT_EPISODE_IDS,
 ) -> FastAPI:
     app = FastAPI(title="MarketLens Human Backend", version="0.2.1")
 
@@ -94,6 +101,8 @@ def create_app(
             background_projections=background_projections,
             stimulus_engine=stimulus_engine,
             journey_price_providers=resolved_journey_price_providers,
+            episode_pool_id=participant_episode_pool_id,
+            expected_episode_ids=participant_episode_ids,
         )
 
     @app.get("/health")

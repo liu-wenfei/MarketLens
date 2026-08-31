@@ -5,7 +5,10 @@ from typing import Any, Callable, Mapping, Sequence
 from sqlalchemy import func, insert, select, update
 from sqlalchemy.exc import IntegrityError
 
-from marketlens.episode.contract import EPISODE_IDS, EPISODE_POOL_ID
+from marketlens.episode.contract import (
+    EPISODE_IDS as DEFAULT_EPISODE_IDS,
+    EPISODE_POOL_ID as DEFAULT_EPISODE_POOL_ID,
+)
 from marketlens.persistence.database import Database
 from marketlens.persistence.schema import participant_episode_assignments, sessions
 
@@ -32,8 +35,35 @@ class EpisodeAssignmentStore:
     so episode selection and persistence happen inside one database transaction.
     """
 
-    def __init__(self, db: Database):
+    def __init__(
+        self,
+        db: Database,
+        *,
+        episode_pool_id: str = DEFAULT_EPISODE_POOL_ID,
+        episode_ids: Sequence[str] = DEFAULT_EPISODE_IDS,
+    ):
+        resolved_episode_ids = tuple(str(value) for value in episode_ids)
+
+        if not str(episode_pool_id).strip():
+            raise StoreEpisodeAssignmentValidationError(
+                "episode_pool_id must be non-empty"
+            )
+        if not resolved_episode_ids:
+            raise StoreEpisodeAssignmentValidationError(
+                "episode_ids must be non-empty"
+            )
+        if len(set(resolved_episode_ids)) != len(resolved_episode_ids):
+            raise StoreEpisodeAssignmentValidationError(
+                "episode_ids must be unique"
+            )
+        if any(not value.strip() for value in resolved_episode_ids):
+            raise StoreEpisodeAssignmentValidationError(
+                "episode_ids must contain only non-empty values"
+            )
+
         self.db = db
+        self.episode_pool_id = str(episode_pool_id)
+        self.episode_ids = resolved_episode_ids
 
     def get(self, session_id: str) -> RowMapping | None:
         with self.db.connect() as connection:
@@ -43,13 +73,16 @@ class EpisodeAssignmentStore:
                 )
             ).mappings().first()
 
-    @staticmethod
-    def _validate_identity(episode_pool_id: str, episode_id: str) -> None:
-        if episode_pool_id != EPISODE_POOL_ID:
+    def _validate_identity(
+        self,
+        episode_pool_id: str,
+        episode_id: str,
+    ) -> None:
+        if episode_pool_id != self.episode_pool_id:
             raise StoreEpisodeAssignmentValidationError(
-                "episode_pool_id does not match the frozen canonical episode pool"
+                "episode_pool_id does not match the runtime canonical episode pool"
             )
-        if episode_id not in EPISODE_IDS:
+        if episode_id not in self.episode_ids:
             raise StoreEpisodeAssignmentValidationError(
                 f"unknown canonical episode_id: {episode_id}"
             )
@@ -224,7 +257,7 @@ class EpisodeAssignmentStore:
         bootstrap requests on supported databases.
         """
 
-        if episode_pool_id != EPISODE_POOL_ID:
+        if episode_pool_id != self.episode_pool_id:
             raise StoreEpisodeAssignmentValidationError(
                 "episode_pool_id does not match the frozen canonical episode pool"
             )
@@ -245,7 +278,7 @@ class EpisodeAssignmentStore:
                 if (
                     existing["participant_id"] != session["participant_id"]
                     or existing["episode_pool_id"] != episode_pool_id
-                    or existing["episode_id"] not in EPISODE_IDS
+                    or existing["episode_id"] not in self.episode_ids
                     or existing["assignment_method"] != assignment_method
                     or existing["assignment_version"] != assignment_version
                 ):
@@ -254,7 +287,7 @@ class EpisodeAssignmentStore:
                     )
                 return existing
 
-            counts = {episode_id: 0 for episode_id in EPISODE_IDS}
+            counts = {episode_id: 0 for episode_id in self.episode_ids}
             rows = connection.execute(
                 select(
                     participant_episode_assignments.c.episode_id,
@@ -276,7 +309,7 @@ class EpisodeAssignmentStore:
             minimum = min(counts.values())
             candidates = tuple(
                 episode_id
-                for episode_id in EPISODE_IDS
+                for episode_id in self.episode_ids
                 if counts[episode_id] == minimum
             )
             selected = chooser(candidates)

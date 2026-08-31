@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
-from marketlens.episode.contract import EPISODE_IDS
 from marketlens.human.schemas import (
     ParticipantSessionCreate,
     ParticipantViewState,
@@ -85,7 +84,7 @@ def create_participant_session(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Participant runtime is not configured",
         )
-    if set(runtime.episode_ids) != set(EPISODE_IDS):
+    if set(runtime.episode_ids) != set(runtime.expected_episode_ids):
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Formal participant bootstrap requires the complete frozen canonical episode pool",
@@ -158,3 +157,52 @@ def get_participant_view_state(
         ParticipantViewStateInvariantError,
     ) as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+@router.post(
+    "/session/{session_id}/debrief/complete",
+    response_model=ParticipantViewState,
+)
+def complete_participant_debrief(
+    session_id: str,
+    request: Request,
+) -> ParticipantViewState:
+    """Complete the participant session after the terminal debrief."""
+
+    runtime = getattr(
+        request.app.state,
+        "participant_runtime",
+        None,
+    )
+    if runtime is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Participant runtime is not configured",
+        )
+
+    try:
+        state = runtime.orchestration.get(session_id)
+
+        # Terminal completion is retry-safe at the HTTP boundary.
+        if not state.completed:
+            runtime.orchestration.complete_after_debrief(
+                session_id
+            )
+
+        return runtime.view_state.get(session_id)
+
+    except SessionNotFoundError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail="Unknown session",
+        ) from exc
+    except (
+        ExperimentStateConflictError,
+        TrustedParticipantContextUnavailableError,
+        TrustedParticipantContextInvariantError,
+        ParticipantViewStateUnavailableError,
+        ParticipantViewStateInvariantError,
+    ) as exc:
+        raise HTTPException(
+            status_code=409,
+            detail=str(exc),
+        ) from exc

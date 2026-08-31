@@ -6,7 +6,9 @@ from random import SystemRandom
 from typing import Callable, Sequence
 from uuid import uuid4
 
-from marketlens.episode.contract import EPISODE_POOL_ID
+from marketlens.episode.contract import (
+    EPISODE_POOL_ID as DEFAULT_EPISODE_POOL_ID,
+)
 from marketlens.human.services.session_service import SessionNotFoundError
 from marketlens.human.stores.episode_assignment_store import (
     EpisodeAssignmentStore,
@@ -64,9 +66,16 @@ class EpisodeAssignmentService:
         self,
         store: EpisodeAssignmentStore,
         *,
+        episode_pool_id: str = DEFAULT_EPISODE_POOL_ID,
         formal_chooser: Callable[[Sequence[str]], str] | None = None,
     ):
+        if not str(episode_pool_id).strip():
+            raise EpisodeAssignmentValidationError(
+                "episode_pool_id must be non-empty"
+            )
+
         self.store = store
+        self.episode_pool_id = str(episode_pool_id)
         self.formal_chooser = formal_chooser or _SYSTEM_RANDOM.choice
 
     def get(self, session_id: str) -> ParticipantEpisodeAssignment | None:
@@ -86,7 +95,7 @@ class EpisodeAssignmentService:
             row = self.store.bind_idempotent(
                 assignment_id=str(uuid4()),
                 session_id=session_id,
-                episode_pool_id=EPISODE_POOL_ID,
+                episode_pool_id=self.episode_pool_id,
                 episode_id=episode_id,
                 assignment_method=assignment_method,
                 assignment_version=assignment_version,
@@ -111,7 +120,7 @@ class EpisodeAssignmentService:
             row = self.store.allocate_balanced_idempotent(
                 assignment_id=str(uuid4()),
                 session_id=session_id,
-                episode_pool_id=EPISODE_POOL_ID,
+                episode_pool_id=self.episode_pool_id,
                 assignment_method=FORMAL_ASSIGNMENT_METHOD,
                 assignment_version=FORMAL_ALLOCATOR_VERSION,
                 assigned_at=now,

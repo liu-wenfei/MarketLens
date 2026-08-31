@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Mapping
+from typing import Any, Mapping, Sequence
 
-from marketlens.episode.contract import EPISODE_IDS, EPISODE_POOL_ID
+from marketlens.episode.contract import (
+    EPISODE_IDS as DEFAULT_EPISODE_IDS,
+    EPISODE_POOL_ID as DEFAULT_EPISODE_POOL_ID,
+)
 from marketlens.experiment.protocol import load_protocol, validate_protocol
 from marketlens.human.services.episode_assignment_service import EpisodeAssignmentService
 from marketlens.human.services.session_service import SessionService
@@ -57,11 +60,30 @@ class TrustedParticipantContextResolver:
         sessions: SessionService,
         assignments: EpisodeAssignmentService,
         calendar: TradingCalendar,
+        episode_pool_id: str = DEFAULT_EPISODE_POOL_ID,
+        episode_ids: Sequence[str] = DEFAULT_EPISODE_IDS,
         protocol: Mapping[str, Any] | None = None,
     ):
+        resolved_episode_ids = tuple(str(value) for value in episode_ids)
+
+        if not str(episode_pool_id).strip():
+            raise TrustedParticipantContextInvariantError(
+                "runtime episode_pool_id must be non-empty"
+            )
+        if not resolved_episode_ids:
+            raise TrustedParticipantContextInvariantError(
+                "runtime episode_ids must be non-empty"
+            )
+        if len(set(resolved_episode_ids)) != len(resolved_episode_ids):
+            raise TrustedParticipantContextInvariantError(
+                "runtime episode_ids must be unique"
+            )
+
         self.sessions = sessions
         self.assignments = assignments
         self.calendar = calendar
+        self.episode_pool_id = str(episode_pool_id)
+        self.episode_ids = resolved_episode_ids
         self.protocol = validate_protocol(protocol) if protocol is not None else load_protocol()
         self._checkpoint_by_step = {
             int(row["experiment_step"]): row
@@ -85,11 +107,11 @@ class TrustedParticipantContextResolver:
             raise TrustedParticipantContextInvariantError(
                 "episode assignment participant_id disagrees with the authoritative session"
             )
-        if assignment.episode_pool_id != EPISODE_POOL_ID:
+        if assignment.episode_pool_id != self.episode_pool_id:
             raise TrustedParticipantContextInvariantError(
                 "episode assignment pool identity drifted from the frozen canonical pool"
             )
-        if assignment.episode_id not in EPISODE_IDS:
+        if assignment.episode_id not in self.episode_ids:
             raise TrustedParticipantContextInvariantError(
                 "episode assignment identity is not in the frozen canonical episode pool"
             )

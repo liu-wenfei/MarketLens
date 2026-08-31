@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import datetime, timezone
 from uuid import uuid4
 
@@ -83,10 +84,43 @@ class ParticipantProtocolRoundService:
         rounds: RoundStore,
         orchestration: ExperimentOrchestrationService,
         contract: ExperimentOrchestrationContract | None = None,
+        feedback_preparer: Callable[[str, int], object] | None = None,
     ):
         self.rounds = rounds
         self.orchestration = orchestration
         self.contract = contract or orchestration.contract
+        self.feedback_preparer = feedback_preparer
+
+    def bind_feedback_preparer(
+        self,
+        feedback_preparer: Callable[[str, int], object],
+    ) -> None:
+        if self.feedback_preparer is not None:
+            raise RoundStateConflictError(
+                "feedback preparer is already bound"
+            )
+        self.feedback_preparer = feedback_preparer
+
+    def _prepare_feedback_if_required(
+        self,
+        session_id: str,
+        experiment_step: int,
+    ) -> None:
+        if self.feedback_preparer is None:
+            return
+
+        try:
+            required = self.contract.feedback_required_after_round(
+                experiment_step
+            )
+        except ExperimentOrchestrationError as exc:
+            raise RoundStateConflictError(str(exc)) from exc
+
+        if required:
+            self.feedback_preparer(
+                session_id,
+                experiment_step,
+            )
 
     def complete(self, session_id: str, payload: RoundComplete) -> RoundCompletionRead:
         # A replay must be resolved before consulting the current session state:
@@ -97,6 +131,11 @@ class ParticipantProtocolRoundService:
                 raise IdempotencyConflictError(
                     "request_id was already used to complete a different step"
                 )
+
+            self._prepare_feedback_if_required(
+                session_id,
+                int(existing["step"]),
+            )
             return _to_completion(existing)
 
         existing_step = self.rounds.get_by_step(session_id, payload.step)
@@ -165,4 +204,9 @@ class ParticipantProtocolRoundService:
             raise RoundAlreadyCompletedError(str(exc)) from exc
         except StoreProtocolRoundStateConflictError as exc:
             raise RoundStateConflictError(str(exc)) from exc
+
+        self._prepare_feedback_if_required(
+            session_id,
+            int(state.experiment_step),
+        )
         return _to_completion(row)

@@ -34,11 +34,56 @@ from marketlens.market.asset_catalog import AssetNotFoundError
 router = APIRouter()
 
 
-def get_portfolio_service(request: Request) -> PortfolioService:
+def get_portfolio_service(
+    request: Request,
+    session_id: str,
+) -> PortfolioService:
+    """Resolve the authoritative price source for this participant session.
+
+    Legacy/non-participant routes retain the inherited CSV provider.
+
+    Participant runtime settlement is episode-aware: the participant is a
+    price-taking investor in the assigned canonical episode, so settlement and
+    portfolio mark-to-market must use the same episode-specific exact-date
+    canonical close-price provider used by Decision Journey.
+    """
+
+    prices = request.app.state.price_provider
+    runtime = getattr(request.app.state, "participant_runtime", None)
+
+    if runtime is not None:
+        try:
+            trusted = runtime.context.resolve(session_id)
+        except SessionNotFoundError as exc:
+            raise HTTPException(
+                status_code=404,
+                detail="Unknown session",
+            ) from exc
+        except (
+            TrustedParticipantContextUnavailableError,
+            TrustedParticipantContextInvariantError,
+        ) as exc:
+            raise HTTPException(
+                status_code=409,
+                detail=str(exc),
+            ) from exc
+
+        prices = runtime.journey.price_providers.get(
+            trusted.episode_id
+        )
+        if prices is None:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=(
+                    "No canonical close-price provider is bound for "
+                    "the participant's assigned episode"
+                ),
+            )
+
     return PortfolioService(
         store=PortfolioStore(request.app.state.db),
         assets=request.app.state.asset_catalog,
-        prices=request.app.state.price_provider,
+        prices=prices,
         policy=request.app.state.portfolio_policy,
         calendar=request.app.state.trading_calendar,
     )
