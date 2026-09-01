@@ -21,16 +21,16 @@ from marketlens.human.feedback import (
 
 
 FORMAL_GENERATOR_CONTRACT_VERSION = (
-    "marketlens-formal-feedback-generator-v1"
+    "marketlens-formal-feedback-generator-v2"
 )
 FORMAL_GENERATOR_ID = (
-    "marketlens-openai-responses-gpt-5.6-terra-v1"
+    "marketlens-openai-responses-gpt-5-nano-v2"
 )
 FORMAL_GENERATION_STATUS = "formal_provider_validated"
 FORMAL_PROVIDER = "openai"
 FORMAL_API_SURFACE = "responses"
-FORMAL_MODEL = "gpt-5.6-terra"
-FORMAL_REASONING_EFFORT = "none"
+FORMAL_MODEL = "gpt-5-nano"
+FORMAL_REASONING_EFFORT = "minimal"
 FORMAL_MAX_OUTPUT_TOKENS = 1024
 FORMAL_TIMEOUT_SECONDS = 45.0
 FORMAL_SDK_MAX_RETRIES = 0
@@ -57,7 +57,7 @@ class OpenAIClient(Protocol):
 
 @dataclass(frozen=True, slots=True)
 class FormalFeedbackGeneratorConfig:
-    """Exact Phase 15C3B v1 configuration; variants require a new version."""
+    """Exact Phase 15C3B v2 configuration; variants require a new version."""
 
     contract_version: str = FORMAL_GENERATOR_CONTRACT_VERSION
     generator_id: str = FORMAL_GENERATOR_ID

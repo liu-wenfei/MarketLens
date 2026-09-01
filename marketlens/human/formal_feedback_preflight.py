@@ -30,7 +30,7 @@ from marketlens.human.formal_feedback_generator import (
 
 
 PREFLIGHT_CONTRACT_VERSION = (
-    "marketlens-formal-feedback-provider-preflight-v1"
+    "marketlens-formal-feedback-provider-preflight-v2"
 )
 PREFLIGHT_LABEL = (
     "NON-FORMAL / PAID PROVIDER PREFLIGHT / "
@@ -38,7 +38,7 @@ PREFLIGHT_LABEL = (
 )
 PREFLIGHT_OUTPUT_RELATIVE = Path(
     "data/marketlens/human/preflight/"
-    "formal_feedback_provider_v1"
+    "formal_feedback_provider_v2"
 )
 EXECUTION_LOCK_NAME = "execution_lock.json"
 SUCCESS_RECEIPT_NAME = "preflight_success.json"

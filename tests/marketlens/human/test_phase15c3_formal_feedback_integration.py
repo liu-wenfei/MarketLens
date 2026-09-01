@@ -64,7 +64,7 @@ def _response(output: str, suffix: str):
     return SimpleNamespace(
         id=f"resp-{suffix}",
         _request_id=f"req-{suffix}",
-        model="gpt-5.6-terra",
+        model="gpt-5-nano",
         status="completed",
         output_text=output,
         usage=SimpleNamespace(

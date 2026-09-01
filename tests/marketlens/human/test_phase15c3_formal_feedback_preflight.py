@@ -29,7 +29,7 @@ class _FakeResponses:
         return SimpleNamespace(
             id=f"resp-{len(self.calls)}",
             _request_id=f"req-{len(self.calls)}",
-            model="gpt-5.6-terra",
+            model="gpt-5-nano",
             status="completed",
             output_text=output,
             usage=SimpleNamespace(

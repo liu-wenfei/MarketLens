@@ -37,7 +37,7 @@ def _response(output: str = '{"feedback_kind":"x"}'):
     return SimpleNamespace(
         id="resp-test-001",
         _request_id="req-test-001",
-        model="gpt-5.6-terra",
+        model="gpt-5-nano",
         status="completed",
         output_text=output,
         usage=SimpleNamespace(
@@ -95,8 +95,8 @@ def test_frozen_configuration_matches_15c3b_contract():
     config = FormalFeedbackGeneratorConfig()
     config.validate()
 
-    assert config.model == "gpt-5.6-terra"
-    assert config.reasoning_effort == "none"
+    assert config.model == "gpt-5-nano"
+    assert config.reasoning_effort == "minimal"
     assert config.max_output_tokens == 1024
     assert config.timeout_seconds == 45.0
     assert config.sdk_max_retries == 0
@@ -133,10 +133,10 @@ def test_request_uses_exact_frozen_shape():
     assert len(client.responses.calls) == 1
     request = client.responses.calls[0]
     assert request == {
-        "model": "gpt-5.6-terra",
+        "model": "gpt-5-nano",
         "instructions": "SYSTEM PROMPT",
         "input": "USER PROMPT",
-        "reasoning": {"effort": "none"},
+        "reasoning": {"effort": "minimal"},
         "max_output_tokens": 1024,
         "store": False,
         "stream": False,
@@ -156,7 +156,7 @@ def test_request_uses_exact_frozen_shape():
         "req-test-001"
     )
     assert result.metadata["resolved_model"] == (
-        "gpt-5.6-terra"
+        "gpt-5-nano"
     )
     assert result.metadata["input_tokens"] == 120
     assert result.metadata["output_tokens"] == 40
