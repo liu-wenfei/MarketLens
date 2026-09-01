@@ -56,6 +56,7 @@ trader/cache/
 # 配置文件(可能包含API密钥)
 config/api.yaml
 config/embedding.yaml
+config/feedback.yaml
 # *.yaml
 # *.yml
 
