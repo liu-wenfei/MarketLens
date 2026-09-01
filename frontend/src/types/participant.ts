@@ -190,6 +190,7 @@ export interface PortfolioTransactionRead {
 
 export interface ParticipantFeedbackRead {
   feedback_kind: string;
+  reflection_stage: "early" | "mid_session" | "final";
   statistics: Record<string, unknown>;
   reflection: string;
 }

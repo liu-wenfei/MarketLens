@@ -340,6 +340,7 @@ class ParticipantFeedbackRead(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     feedback_kind: str
+    reflection_stage: str
     statistics: dict[str, object]
     reflection: str
 

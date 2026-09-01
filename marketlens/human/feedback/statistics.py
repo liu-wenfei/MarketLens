@@ -7,7 +7,7 @@ import math
 from typing import Mapping, Sequence
 
 
-STATISTICS_VERSION = "marketlens-feedback-statistics-v1"
+STATISTICS_VERSION = "marketlens-feedback-statistics-v4"
 
 JUDGEMENT_ACTIONS = frozenset(
     {"BUY", "HOLD", "SELL"}
@@ -81,12 +81,14 @@ class JudgementObservation:
     period_number: int
     action: str
     confidence: float
+    evidence_sources: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
 class TradeObservation:
     period_number: int
     action: str
+    executed_notional: float = 0.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -121,12 +123,17 @@ class FeedbackStatistics:
     trading_metrics: Mapping[str, object]
     judgement_action_metrics: Mapping[str, int]
 
-    portfolio_metrics: Mapping[str, float]
+    portfolio_metrics: Mapping[str, object]
 
     information_metrics: Mapping[str, object]
 
+    final_only_metrics: Mapping[str, object] | None = None
+
     def to_dict(self) -> dict[str, object]:
-        return asdict(self)
+        payload = asdict(self)
+        if self.final_only_metrics is None:
+            payload.pop("final_only_metrics")
+        return payload
 
 
 def _check_period(
@@ -305,6 +312,7 @@ def build_feedback_statistics(
     source_label_counts: (
         Mapping[str, int] | None
     ) = None,
+    final_only_metrics: Mapping[str, object] | None = None,
 ) -> FeedbackStatistics:
 
     start_period = _require_int(
@@ -419,11 +427,21 @@ def build_feedback_statistics(
                 "between 0 and 100"
             )
 
+        evidence_sources: list[str] = []
+
+        for raw_source in judgement.evidence_sources:
+            if not isinstance(raw_source, str) or not raw_source.strip():
+                raise ValueError(
+                    "evidence_sources values must be non-empty strings"
+                )
+            evidence_sources.append(raw_source.strip())
+
         normalized_judgements.append(
             JudgementObservation(
                 period_number=judgement_period,
                 action=action,
                 confidence=confidence,
+                evidence_sources=tuple(evidence_sources),
             )
         )
 
@@ -484,10 +502,17 @@ def build_feedback_statistics(
                 f"trade action: {trade.action!r}"
             )
 
+        executed_notional = _require_finite_number(
+            "executed_notional",
+            trade.executed_notional,
+            minimum=0.0,
+        )
+
         normalized_trades.append(
             TradeObservation(
                 period_number=trade_period,
                 action=action,
+                executed_notional=executed_notional,
             )
         )
 
@@ -540,6 +565,32 @@ def build_feedback_statistics(
     first = normalized_judgements[0]
     latest = normalized_judgements[-1]
 
+    confidence_values = [
+        judgement.confidence
+        for judgement in normalized_judgements
+    ]
+
+    confidence_mean = (
+        sum(confidence_values)
+        / len(confidence_values)
+    )
+    confidence_minimum = min(confidence_values)
+    confidence_maximum = max(confidence_values)
+
+    portfolio_change_absolute = (
+        float(portfolio_end_value)
+        - float(portfolio_start_value)
+    )
+    portfolio_change_pct = (
+        None
+        if float(portfolio_start_value) == 0.0
+        else (
+            portfolio_change_absolute
+            / float(portfolio_start_value)
+            * 100.0
+        )
+    )
+
     price_change_absolute = (
         float(market_price_end)
         - float(market_price_start)
@@ -571,6 +622,57 @@ def build_feedback_statistics(
             count,
             minimum=0,
         )
+
+    gross_executed_notional = sum(
+        trade.executed_notional
+        for trade in normalized_trades
+    )
+
+    evidence_sets = [
+        frozenset(judgement.evidence_sources)
+        for judgement in normalized_judgements
+    ]
+
+    total_evidence_selections = sum(
+        len(judgement.evidence_sources)
+        for judgement in normalized_judgements
+    )
+
+    assessments_with_evidence = sum(
+        1
+        for judgement in normalized_judgements
+        if judgement.evidence_sources
+    )
+
+    unique_evidence_sources = {
+        source
+        for judgement in normalized_judgements
+        for source in judgement.evidence_sources
+    }
+
+    repeated_evidence_selections = (
+        total_evidence_selections
+        - len(unique_evidence_sources)
+    )
+
+    evidence_set_changes = sum(
+        1
+        for previous, current in zip(
+            evidence_sets,
+            evidence_sets[1:],
+        )
+        if previous != current
+    )
+
+    if final_only_metrics is not None:
+        if (start_period, end_period) != (1, 15):
+            raise ValueError(
+                "final_only_metrics are only valid for the exact P1-P15 FINAL window"
+            )
+        if not isinstance(final_only_metrics, Mapping):
+            raise ValueError(
+                "final_only_metrics must be a mapping when provided"
+            )
 
     return FeedbackStatistics(
 
@@ -622,6 +724,9 @@ def build_feedback_statistics(
                 latest.confidence
                 - first.confidence
             ),
+            "mean": confidence_mean,
+            "minimum": confidence_minimum,
+            "maximum": confidence_maximum,
         },
 
         trading_metrics={
@@ -639,6 +744,9 @@ def build_feedback_statistics(
             ),
             "buy_actions": buy_count,
             "sell_actions": sell_count,
+            "gross_executed_notional": (
+                gross_executed_notional
+            ),
             "trading_activity_pct": (
                 None
                 if eligible_count == 0
@@ -670,6 +778,10 @@ def build_feedback_statistics(
             "ending_value": float(
                 portfolio_end_value
             ),
+            "absolute_change": (
+                portfolio_change_absolute
+            ),
+            "change_pct": portfolio_change_pct,
         },
 
         information_metrics={
@@ -680,5 +792,23 @@ def build_feedback_statistics(
                 community_posts_available
             ),
             "source_label_counts": labels,
+            "participant_reported_evidence": {
+                "total_selections": (
+                    total_evidence_selections
+                ),
+                "assessments_with_evidence": (
+                    assessments_with_evidence
+                ),
+                "unique_reported_sources": (
+                    len(unique_evidence_sources)
+                ),
+                "repeated_selections": (
+                    repeated_evidence_selections
+                ),
+                "evidence_set_changes": (
+                    evidence_set_changes
+                ),
+            },
         },
+        final_only_metrics=final_only_metrics,
     )

@@ -15,7 +15,7 @@ from .context import FeedbackContextPack
 
 
 PROMPT_CONTRACT_VERSION = (
-    "marketlens-feedback-reflection-prompt-v1"
+    "marketlens-feedback-reflection-prompt-v2"
 )
 
 
@@ -104,10 +104,7 @@ def build_feedback_prompt(
             "FeedbackContextPack"
         )
 
-    if (
-        pack.feedback_kind
-        == "multi_period_decision_feedback"
-    ):
+    if pack.reflection_stage == "early":
         schema = {
             "feedback_kind": (
                 "multi_period_decision_feedback"
@@ -121,14 +118,33 @@ def build_feedback_prompt(
             "in the reflection field."
         )
         purpose = (
-            "Write a process-level reflection on "
-            "the participant's recent decision period."
+            "Write an early process-level reflection on patterns "
+            "beginning to appear in the participant's decisions, "
+            "confidence and recorded activity. Keep the reflection "
+            "descriptive and low-intervention."
         )
 
-    elif (
-        pack.feedback_kind
-        == "final_session_summary"
-    ):
+    elif pack.reflection_stage == "mid_session":
+        schema = {
+            "feedback_kind": (
+                "multi_period_decision_feedback"
+            ),
+            "reflection": (
+                "110-170 English words"
+            ),
+        }
+        length_rule = (
+            "Write 110-170 English words "
+            "in the reflection field."
+        )
+        purpose = (
+            "Write a longitudinal process-level reflection on how "
+            "the participant's more recent decision process compares "
+            "with the earlier pattern represented in prior_context "
+            "when that context is supplied."
+        )
+
+    elif pack.reflection_stage == "final":
         schema = {
             "feedback_kind": (
                 "final_session_summary"
@@ -147,7 +163,7 @@ def build_feedback_prompt(
 
     else:
         raise FeedbackPromptError(
-            "unsupported feedback_kind in context pack"
+            "unsupported reflection_stage in context pack"
         )
 
     schema_json = json.dumps(

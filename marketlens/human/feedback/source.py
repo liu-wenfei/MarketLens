@@ -21,12 +21,21 @@ Important semantics:
 """
 
 from __future__ import annotations
+from marketlens.human.feedback.final_analytics import (
+    FinalAnalyticsError,
+    build_final_analytics,
+)
+from marketlens.human.feedback.journey_source import (
+    JourneyAuthoritativeSourceAdapter,
+    JourneySourceError,
+)
 
 from collections import Counter
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import date
 from enum import StrEnum
+import json
 import math
 from typing import Any
 
@@ -326,6 +335,17 @@ class FeedbackStatisticsSourceAdapter:
             window=window,
         )
 
+        final_only_metrics = None
+        if (
+            window.start_period == 1
+            and window.end_period == 15
+        ):
+            final_only_metrics = (
+                self._final_only_metrics(
+                    session_id
+                )
+            )
+
         return build_feedback_statistics(
             start_period=window.start_period,
             end_period=window.end_period,
@@ -348,6 +368,7 @@ class FeedbackStatisticsSourceAdapter:
             source_label_counts=(
                 source_label_counts
             ),
+            final_only_metrics=final_only_metrics,
         )
 
     def _resolve_episode_projection(
@@ -803,11 +824,44 @@ class FeedbackStatisticsSourceAdapter:
                 minimum=0.0,
             )
 
+            raw_evidence = _field(
+                row,
+                "evidence_sources",
+            )
+
+            if not isinstance(raw_evidence, str):
+                raise FeedbackSourceError(
+                    "judgement evidence_sources must be persisted JSON text"
+                )
+
+            try:
+                parsed_evidence = json.loads(raw_evidence)
+            except json.JSONDecodeError as exc:
+                raise FeedbackSourceError(
+                    "judgement evidence_sources is invalid JSON"
+                ) from exc
+
+            if (
+                not isinstance(parsed_evidence, list)
+                or any(
+                    not isinstance(item, str)
+                    or not item.strip()
+                    for item in parsed_evidence
+                )
+            ):
+                raise FeedbackSourceError(
+                    "judgement evidence_sources must be a JSON string list"
+                )
+
             observations.append(
                 JudgementObservation(
                     period_number=period,
                     action=action,
                     confidence=confidence,
+                    evidence_sources=tuple(
+                        item.strip()
+                        for item in parsed_evidence
+                    ),
                 )
             )
 
@@ -1242,10 +1296,22 @@ class FeedbackStatisticsSourceAdapter:
                     <= period
                     <= window.end_period
                 ):
+                    executed_notional = _finite_number(
+                        "transaction executed_notional",
+                        _field(
+                            row,
+                            "executed_notional",
+                        ),
+                        minimum=0.0,
+                    )
+
                     trade_observations.append(
                         TradeObservation(
                             period_number=period,
                             action=action,
+                            executed_notional=(
+                                executed_notional
+                            ),
                         )
                     )
 
@@ -1635,3 +1701,107 @@ class FeedbackStatisticsSourceAdapter:
                 )
             ),
         )
+    def _final_only_metrics(
+        self,
+        session_id: str,
+    ) -> dict[str, object]:
+        """Build FINAL-only analytics from authoritative Journey state.
+
+        The Journey remains the source of cross-period portfolio continuity.
+        Exact-date canonical prices are reused only to value the prior account
+        at each eligible settlement date and the final risky-asset sleeve.
+        """
+
+        try:
+            journey = JourneyAuthoritativeSourceAdapter(
+                judgements=self.judgements,
+                portfolios=self.portfolios,
+                rounds=self.rounds,
+                price_provider=self.price_provider,
+                calendar=self.calendar,
+                contract=self.contract,
+                target_stock_id=self.target_stock_id,
+            ).build(session_id)
+        except JourneySourceError as exc:
+            raise FeedbackSourceError(
+                "failed to build authoritative FINAL participant Journey"
+            ) from exc
+
+        if tuple(
+            period.period_number
+            for period in journey.periods
+        ) != tuple(range(1, 16)):
+            raise FeedbackSourceError(
+                "FINAL feedback requires the complete authoritative P1-P15 Journey"
+            )
+
+        trades_by_day: dict[str, tuple[float, ...]] = {}
+        previous_portfolio_values: dict[str, float] = {}
+
+        previous_cash = journey.initial_cash
+        previous_positions = dict(
+            journey.initial_holdings
+        )
+
+        for period in journey.periods:
+            if period.participant_trading_enabled:
+                previous_portfolio_values[
+                    period.agent_world_date
+                ] = self._account_value(
+                    cash=previous_cash,
+                    positions=previous_positions,
+                    period_number=period.period_number,
+                )
+
+                trades_by_day[
+                    period.agent_world_date
+                ] = tuple(
+                    transaction.executed_notional
+                    for transaction in period.transactions
+                )
+
+            previous_cash = period.portfolio_end.cash
+            previous_positions = dict(
+                period.portfolio_end.holdings
+            )
+
+        final_period = journey.periods[-1]
+        final_risky_asset_values: dict[str, float] = {}
+
+        for stock_id, quantity in sorted(
+            final_period.portfolio_end.holdings.items()
+        ):
+            quantity = _strict_int(
+                "FINAL portfolio holding quantity",
+                quantity,
+                minimum=0,
+            )
+
+            if quantity == 0:
+                continue
+
+            final_risky_asset_values[stock_id] = (
+                quantity
+                * self._price(
+                    stock_id=stock_id,
+                    period_number=(
+                        final_period.period_number
+                    ),
+                )
+            )
+
+        try:
+            return build_final_analytics(
+                journey=journey,
+                trades_by_day=trades_by_day,
+                previous_portfolio_values=(
+                    previous_portfolio_values
+                ),
+                final_risky_asset_values=(
+                    final_risky_asset_values
+                ),
+            )
+        except FinalAnalyticsError as exc:
+            raise FeedbackSourceError(
+                "authoritative FINAL analytics are incomplete or inconsistent"
+            ) from exc

@@ -921,3 +921,88 @@ fieldset {
     font-size: 2rem;
   }
 }
+
+
+/* MarketLens participant engagement clarity v2 */
+.participant-progress {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-top: 1rem;
+}
+
+.participant-progress span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0.35rem 0.7rem;
+  border: 1px solid rgba(15, 23, 42, 0.16);
+  border-radius: 999px;
+  font-size: 0.86rem;
+  line-height: 1.2;
+}
+
+.interaction-note {
+  margin: 0.75rem 0 1rem;
+  max-width: 72ch;
+  line-height: 1.55;
+}
+
+.preview-state-note {
+  margin: 0.75rem 0 1rem;
+  padding: 0.8rem 1rem;
+  border-left: 3px solid currentColor;
+  line-height: 1.55;
+}
+
+.preview-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.execution-receipt {
+  margin-top: 1rem;
+}
+
+@media (max-width: 640px) {
+  .preview-actions {
+    flex-direction: column;
+  }
+
+  .preview-actions button {
+    width: 100%;
+  }
+}
+
+
+/* MarketLens explicit portfolio decision v1 */
+.decision-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+  background: rgba(15, 23, 42, 0.46);
+}
+
+.decision-modal {
+  width: min(100%, 34rem);
+  padding: 1.4rem;
+  border: 1px solid rgba(15, 23, 42, 0.18);
+  border-radius: 1rem;
+  background: #ffffff;
+  box-shadow: 0 1.25rem 3.5rem rgba(15, 23, 42, 0.22);
+}
+
+.decision-modal h2 {
+  margin: 0.3rem 0 0.65rem;
+}
+
+.decision-modal p {
+  margin: 0;
+  max-width: 60ch;
+  line-height: 1.55;
+}

@@ -48,6 +48,8 @@ export function TradingScreen({
     useState<PortfolioOrderPreviewRead | null>(null);
   const [lastTrade, setLastTrade] =
     useState<PortfolioTransactionRead | null>(null);
+  const [showNoTradeConfirm, setShowNoTradeConfirm] =
+    useState(false);
   const [busy, setBusy] = useState(false);
   const [portfolioBusy, setPortfolioBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -91,7 +93,7 @@ export function TradingScreen({
 
   function invalidatePreview() {
     setPreview(null);
-    setLastTrade(null);
+    setShowNoTradeConfirm(false);
   }
 
   async function handlePreview() {
@@ -104,7 +106,7 @@ export function TradingScreen({
 
     setBusy(true);
     setError(null);
-    setLastTrade(null);
+    setShowNoTradeConfirm(false);
 
     try {
       const result = await previewPortfolioOrder(
@@ -151,6 +153,7 @@ export function TradingScreen({
 
       setLastTrade(transaction);
       setPreview(null);
+      setShowNoTradeConfirm(false);
       setAmount("");
       await loadPortfolio();
       await onChanged();
@@ -165,9 +168,17 @@ export function TradingScreen({
     }
   }
 
-  async function handleContinue() {
+  async function handleContinue(
+    confirmedNoTrade = false,
+  ) {
+    if (!lastTrade && !preview?.valid && !confirmedNoTrade) {
+      setShowNoTradeConfirm(true);
+      return;
+    }
+
     setBusy(true);
     setError(null);
+    setShowNoTradeConfirm(false);
 
     try {
       await completeRound(
@@ -190,12 +201,21 @@ export function TradingScreen({
   return (
     <main className="screen-shell">
       <div className="screen-title">
-        <span className="eyebrow">Market environment</span>
+        <span className="eyebrow">Decide · Portfolio action</span>
         <h1>Portfolio & Trading</h1>
         <p>
-          Review your simulated portfolio and decide whether you
-          want to place a trade during this market period.
+          Trading is optional. Review your simulated portfolio and
+          decide whether you want to change it during this market
+          period.
         </p>
+
+        <div className="participant-progress" aria-label="Session progress">
+          <span>
+            Market period {view.period_number} of {view.period_count}
+          </span>
+          <span>{view.market.current_market_date}</span>
+          <span>Current task: Portfolio decision</span>
+        </div>
       </div>
 
       <MarketContext
@@ -304,10 +324,15 @@ export function TradingScreen({
         <section className="panel trading-panel">
           <div className="panel-heading">
             <div>
-              <span className="eyebrow">Optional action</span>
-              <h2>Place a simulated trade</h2>
+              <span className="eyebrow">Optional portfolio action</span>
+              <h2>Choose whether to change your portfolio</h2>
             </div>
           </div>
+
+          <p className="interaction-note">
+            You may preview an order before deciding. Previewing an
+            order does not execute it or change your portfolio.
+          </p>
 
           <div className="trade-grid">
             <div className="form-section">
@@ -329,7 +354,7 @@ export function TradingScreen({
             </div>
 
             <div className="form-section">
-              <span className="field-label">Action</span>
+              <span className="field-label">Portfolio action</span>
               <div className="trade-actions">
                 {(["BUY", "SELL"] as PortfolioAction[]).map(
                   (value) => (
@@ -355,7 +380,7 @@ export function TradingScreen({
             </div>
 
             <div className="form-section">
-              <label htmlFor="amount">Trade amount</label>
+              <label htmlFor="amount">Order amount</label>
               <input
                 id="amount"
                 type="number"
@@ -366,7 +391,7 @@ export function TradingScreen({
                   setAmount(event.target.value);
                   invalidatePreview();
                 }}
-                placeholder="Enter amount"
+                placeholder="Enter simulated currency amount"
               />
             </div>
           </div>
@@ -377,7 +402,7 @@ export function TradingScreen({
             disabled={busy || !view.allowed_actions.preview_trade}
             onClick={() => void handlePreview()}
           >
-            {busy ? "Checking…" : "Preview trade"}
+            {busy ? "Checking…" : "Preview Order"}
           </button>
 
           {preview && (
@@ -390,15 +415,23 @@ export function TradingScreen({
             >
               <div className="panel-heading">
                 <div>
-                  <span className="eyebrow">Server preview</span>
+                  <span className="eyebrow">Order preview</span>
                   <h3>
                     {preview.action} {preview.stock_id}
                   </h3>
                 </div>
                 <strong>
-                  {preview.valid ? "Valid" : "Unavailable"}
+                  {preview.valid ? "NOT EXECUTED" : "Unavailable"}
                 </strong>
               </div>
+
+              {preview.valid && (
+                <p className="preview-state-note">
+                  <strong>Preview only.</strong> Your portfolio has not
+                  changed yet. Confirm the order below if you want to
+                  execute this simulated trade.
+                </p>
+              )}
 
               <div className="preview-grid">
                 <div>
@@ -446,29 +479,142 @@ export function TradingScreen({
               )}
 
               {preview.valid && (
-                <button
-                  type="button"
-                  className="primary-button"
-                  disabled={
-                    busy || !view.allowed_actions.submit_trade
-                  }
-                  onClick={() => void handleConfirm()}
-                >
-                  {busy ? "Submitting…" : "Confirm trade"}
-                </button>
+                <div className="preview-actions">
+                  <button
+                    type="button"
+                    className="primary-button"
+                    disabled={
+                      busy || !view.allowed_actions.submit_trade
+                    }
+                    onClick={() => void handleConfirm()}
+                  >
+                    {busy
+                      ? "Executing trade…"
+                      : "Confirm & Execute Trade"}
+                  </button>
+
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    disabled={busy}
+                    onClick={() => setPreview(null)}
+                  >
+                    Edit Order
+                  </button>
+
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    disabled={busy}
+                    onClick={() => {
+                      setPreview(null);
+                      setAmount("");
+                    }}
+                  >
+                    Discard Preview
+                  </button>
+                </div>
               )}
             </div>
           )}
 
           {lastTrade && (
-            <div className="success-banner">
-              Trade recorded: {lastTrade.action}{" "}
-              {lastTrade.executed_units} units of{" "}
-              {lastTrade.stock_id} at{" "}
-              {formatNumber(lastTrade.settlement_price)}.
+            <div className="preview-card execution-receipt">
+              <div className="panel-heading">
+                <div>
+                  <span className="eyebrow">Trade executed</span>
+                  <h3>
+                    {lastTrade.action} {lastTrade.executed_units}{" "}
+                    {lastTrade.stock_id}
+                  </h3>
+                </div>
+                <strong>RECORDED</strong>
+              </div>
+
+              <div className="preview-grid">
+                <div>
+                  <span>Requested amount</span>
+                  <strong>
+                    {formatNumber(lastTrade.requested_amount)}
+                  </strong>
+                </div>
+                <div>
+                  <span>Executed units</span>
+                  <strong>{lastTrade.executed_units}</strong>
+                </div>
+                <div>
+                  <span>Settlement price</span>
+                  <strong>
+                    {formatNumber(lastTrade.settlement_price)}
+                  </strong>
+                </div>
+                <div>
+                  <span>Executed notional</span>
+                  <strong>
+                    {formatNumber(lastTrade.executed_notional)}
+                  </strong>
+                </div>
+                <div>
+                  <span>Cash after trade</span>
+                  <strong>
+                    {formatNumber(lastTrade.cash_after)}
+                  </strong>
+                </div>
+                <div>
+                  <span>Holding after trade</span>
+                  <strong>{lastTrade.holding_after}</strong>
+                </div>
+              </div>
+
+              <p className="interaction-note">
+                This transaction has been executed and recorded in
+                your simulated portfolio.
+              </p>
             </div>
           )}
         </section>
+      )}
+
+      {showNoTradeConfirm && !lastTrade && !preview?.valid && (
+        <div className="decision-modal-backdrop">
+          <div
+            className="decision-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="no-trade-confirm-title"
+            aria-describedby="no-trade-confirm-copy"
+          >
+            <span className="eyebrow">Portfolio decision</span>
+            <h2 id="no-trade-confirm-title">
+              Confirm before continuing
+            </h2>
+            <p id="no-trade-confirm-copy">
+              No trade has been confirmed in this interaction.
+              If you continue now, this market period will
+              finish without an additional portfolio trade.
+            </p>
+
+            <div className="preview-actions">
+              <button
+                type="button"
+                className="secondary-button"
+                disabled={busy}
+                onClick={() => setShowNoTradeConfirm(false)}
+              >
+                Review Trading Options
+              </button>
+
+              <button
+                type="button"
+                className="primary-button"
+                disabled={busy}
+                onClick={() => void handleContinue(true)}
+              >
+                Continue Without Trading
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       <section className="panel period-complete-panel">
@@ -476,8 +622,11 @@ export function TradingScreen({
           <span className="eyebrow">Finish this market period</span>
           <h2>Ready to continue?</h2>
           <p>
-            Trading is optional. Continue when you have finished
-            reviewing this market period.
+            {preview?.valid
+              ? "You have a previewed order that has not been executed. Confirm, edit or discard it before continuing."
+              : lastTrade
+                ? "Your confirmed trade has been recorded. Continue when you have finished reviewing this market period."
+                : "Trading is optional. You may continue without changing your portfolio."}
           </p>
         </div>
 
@@ -487,15 +636,23 @@ export function TradingScreen({
           type="button"
           className="primary-button"
           disabled={
-            busy || !view.allowed_actions.complete_round
+            busy ||
+            !view.allowed_actions.complete_round ||
+            Boolean(preview?.valid)
           }
           onClick={() => void handleContinue()}
         >
           {busy
             ? "Completing period…"
-            : view.period_number === view.period_count
-              ? "Complete final market period"
-              : "Continue to next market period"}
+            : preview?.valid
+              ? "Resolve Preview Before Continuing"
+              : lastTrade
+                ? view.period_number === view.period_count
+                  ? "Complete Final Market Period"
+                  : "Continue to Next Market Period"
+                : view.period_number === view.period_count
+                  ? "Complete Final Market Period"
+                  : "Continue"}
         </button>
       </section>
     </main>

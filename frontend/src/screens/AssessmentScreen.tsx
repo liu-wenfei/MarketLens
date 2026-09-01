@@ -21,14 +21,14 @@ interface Props {
 
 function assessmentTitle(view: ParticipantViewState): string {
   if (view.assessment_mode === "POST_UPDATE") {
-    return "Updated Assessment";
+    return "Updated Market Judgement";
   }
 
   if (view.assessment_mode === "LATER") {
-    return "Later Assessment";
+    return "Later Market Judgement";
   }
 
-  return "Current Assessment";
+  return "Current Market Judgement";
 }
 
 export function AssessmentScreen({
@@ -106,12 +106,22 @@ export function AssessmentScreen({
   return (
     <main className="screen-shell">
       <div className="screen-title">
-        <span className="eyebrow">Current task</span>
+        <span className="eyebrow">Think · Market judgement</span>
         <h1>{assessmentTitle(view)}</h1>
         <p>
           Record your current view of{" "}
-          <strong>{view.assessment_target_stock_id}</strong>.
+          <strong>{view.assessment_target_stock_id}</strong>. This
+          records your judgement only and does not change your
+          simulated portfolio.
         </p>
+
+        <div className="participant-progress" aria-label="Session progress">
+          <span>
+            Market period {view.period_number} of {view.period_count}
+          </span>
+          <span>{view.market.current_market_date}</span>
+          <span>Current task: Market judgement</span>
+        </div>
       </div>
 
       <MarketContext
@@ -122,11 +132,15 @@ export function AssessmentScreen({
 
       <section className="panel assessment-panel">
         <div className="assessment-question">
-          <span className="eyebrow">Your assessment</span>
+          <span className="eyebrow">Your market judgement</span>
           <h2>
             What is your current view on{" "}
             {view.assessment_target_stock_id}?
           </h2>
+          <p className="interaction-note">
+            Your BUY, HOLD or SELL judgement is recorded separately
+            from any portfolio trade you may choose to make.
+          </p>
         </div>
 
         <div
@@ -177,7 +191,7 @@ export function AssessmentScreen({
         </div>
 
         <fieldset className="form-section">
-          <legend>Information sources considered (optional)</legend>
+          <legend>Information considered (optional)</legend>
 
           <div className="evidence-options">
             {evidenceOptions.map((value) => (
@@ -195,7 +209,7 @@ export function AssessmentScreen({
 
         <div className="form-section">
           <label htmlFor="rationale">
-            Brief rationale (optional)
+            Brief reasoning (optional)
           </label>
           <textarea
             id="rationale"
@@ -203,7 +217,7 @@ export function AssessmentScreen({
             maxLength={5000}
             value={rationale}
             onChange={(event) => setRationale(event.target.value)}
-            placeholder="You may briefly explain what informed your current assessment."
+            placeholder="You may briefly note what informed your current judgement."
           />
         </div>
 
@@ -219,7 +233,7 @@ export function AssessmentScreen({
           }
           onClick={() => void handleSubmit()}
         >
-          {busy ? "Submitting assessment…" : "Submit assessment"}
+          {busy ? "Recording judgement…" : "Record Market Judgement"}
         </button>
       </section>
     </main>

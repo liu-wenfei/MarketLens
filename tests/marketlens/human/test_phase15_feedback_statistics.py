@@ -80,7 +80,7 @@ def test_core_feedback_statistics():
 
     assert (
         result.statistics_version
-        == "marketlens-feedback-statistics-v1"
+        == "marketlens-feedback-statistics-v4"
     )
 
     assert (
@@ -475,7 +475,7 @@ def test_feedback_statistics_serialise_to_plain_mapping():
         payload[
             "statistics_version"
         ]
-        == "marketlens-feedback-statistics-v1"
+        == "marketlens-feedback-statistics-v4"
     )
 
     assert (

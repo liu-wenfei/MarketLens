@@ -29,6 +29,11 @@ from marketlens.episode.contract_v2 import (
     formal_episode_paths,
     validate_formal_episode_pool_manifest,
 )
+from marketlens.human.formal_feedback_generator import (
+    FORMAL_GENERATION_STATUS,
+    FORMAL_GENERATOR_ID,
+    is_formal_feedback_generator,
+)
 from marketlens.human.feedback import (
     ContextLimits,
     FrozenFeedbackPrompt,
@@ -312,7 +317,7 @@ def create_formal_participant_app(
     feedback_generator: (
         Callable[
             [FrozenFeedbackPrompt],
-            str | Mapping[str, object],
+            object,
         ]
         | None
     ) = None,
@@ -322,12 +327,55 @@ def create_formal_participant_app(
     feedback_generation_metadata: (
         Mapping[str, object] | None
     ) = None,
+    _allow_nonformal_feedback: bool = False,
 ) -> FastAPI:
     root = (
         Path(repo_root).resolve()
         if repo_root is not None
         else Path(__file__).resolve().parents[1]
     )
+
+    if (
+        feedback_generator is not None
+        and not _allow_nonformal_feedback
+    ):
+        if not is_formal_feedback_generator(
+            feedback_generator
+        ):
+            raise FormalParticipantServerConfigurationError(
+                "formal participant feedback requires the "
+                "frozen formal feedback generator"
+            )
+
+        if feedback_generator_id not in (
+            None,
+            FORMAL_GENERATOR_ID,
+        ):
+            raise FormalParticipantServerConfigurationError(
+                "formal feedback generator_id conflicts "
+                "with the frozen generator identity"
+            )
+        if feedback_generation_status not in (
+            None,
+            FORMAL_GENERATION_STATUS,
+        ):
+            raise FormalParticipantServerConfigurationError(
+                "formal feedback generation_status conflicts "
+                "with the frozen generator identity"
+            )
+        if feedback_generation_metadata:
+            raise FormalParticipantServerConfigurationError(
+                "formal feedback generation metadata is derived "
+                "from the frozen generator configuration"
+            )
+
+        feedback_generator_id = FORMAL_GENERATOR_ID
+        feedback_generation_status = (
+            FORMAL_GENERATION_STATUS
+        )
+        feedback_generation_metadata = (
+            feedback_generator.config.static_metadata()
+        )
 
     _load_formal_v2_pool(root)
 
@@ -512,6 +560,7 @@ def create_nonformal_smoke_participant_app(
         feedback_generation_status=(
             "nonformal_smoke_validated"
         ),
+        _allow_nonformal_feedback=True,
         feedback_generation_metadata={
             "mode": (
                 "NON-FORMAL / DETERMINISTIC "

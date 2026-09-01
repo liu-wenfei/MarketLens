@@ -3,7 +3,7 @@ aiosqlite
 matplotlib
 networkx
 numpy
-openai>=1.0.0
+openai==2.54.0
 pandas
 pyyaml
 requests

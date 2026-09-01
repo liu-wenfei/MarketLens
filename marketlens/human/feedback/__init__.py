@@ -1,5 +1,11 @@
 """Deterministic participant-feedback domain primitives."""
 
+from .generation import (
+    BoundedValidatedFeedbackGenerator,
+    FeedbackGenerationContractError,
+    FeedbackGenerationResult,
+)
+
 from .portfolio_metrics import (
     EquityPoint,
     ExecutedTurnover,
@@ -53,6 +59,9 @@ __all__ = [
     "SYSTEM_PROMPT_V1",
     "STATISTICS_VERSION",
     "ContextLimits",
+    "BoundedValidatedFeedbackGenerator",
+    "FeedbackGenerationContractError",
+    "FeedbackGenerationResult",
     "FeedbackOutputValidationError",
     "FeedbackPromptError",
     "FeedbackContextBuilder",

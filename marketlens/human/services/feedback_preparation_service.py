@@ -15,6 +15,14 @@ from collections.abc import Callable, Mapping
 from datetime import datetime, timezone
 from threading import Lock
 
+from marketlens.human.feedback.generation import (
+    BoundedValidatedFeedbackGenerator,
+    FeedbackGenerationResult,
+)
+from marketlens.human.feedback.output_validation import (
+    FeedbackOutputValidationError,
+    ValidatedFeedbackOutput,
+)
 from marketlens.human.feedback import (
     ContextLimits,
     FeedbackContextBuilder,
@@ -31,10 +39,17 @@ from marketlens.human.services.feedback_delivery_service import (
 )
 
 
-FeedbackGenerator = Callable[
-    [FrozenFeedbackPrompt],
-    str | Mapping[str, object],
-]
+FeedbackGenerator = (
+    Callable[
+        [FrozenFeedbackPrompt],
+        (
+            str
+            | Mapping[str, object]
+            | FeedbackGenerationResult
+        ),
+    ]
+    | BoundedValidatedFeedbackGenerator
+)
 
 
 class ParticipantFeedbackPreparationError(ValueError):
@@ -262,12 +277,57 @@ class ParticipantFeedbackPreparationService:
                 context_pack
             )
 
-            generated = self.generator(prompt)
+            dynamic_generation_metadata: dict[
+                str, object
+            ] = {}
 
-            validated = validate_feedback_output(
-                generated,
-                context_pack=context_pack,
-            )
+            if isinstance(
+                self.generator,
+                BoundedValidatedFeedbackGenerator,
+            ):
+                result, validated_candidate = (
+                    self.generator.generate_validated(
+                        prompt,
+                        validator=lambda output: (
+                            validate_feedback_output(
+                                output,
+                                context_pack=context_pack,
+                            )
+                        ),
+                        validation_error_types=(
+                            FeedbackOutputValidationError,
+                        ),
+                    )
+                )
+
+                if not isinstance(
+                    result,
+                    FeedbackGenerationResult,
+                ):
+                    raise ParticipantFeedbackPreparationError(
+                        "bounded feedback generator returned "
+                        "an invalid result envelope"
+                    )
+                if not isinstance(
+                    validated_candidate,
+                    ValidatedFeedbackOutput,
+                ):
+                    raise ParticipantFeedbackPreparationError(
+                        "bounded feedback generator returned "
+                        "an invalid validation result"
+                    )
+
+                generated = result.output
+                dynamic_generation_metadata = dict(
+                    result.metadata
+                )
+                validated = validated_candidate
+            else:
+                generated = self.generator(prompt)
+                validated = validate_feedback_output(
+                    generated,
+                    context_pack=context_pack,
+                )
 
             validated_payload = dict(
                 validated.payload
@@ -292,6 +352,19 @@ class ParticipantFeedbackPreparationService:
             metadata = dict(
                 self.generation_metadata
             )
+            for key, value in (
+                dynamic_generation_metadata.items()
+            ):
+                if (
+                    key in metadata
+                    and metadata[key] != value
+                ):
+                    raise ParticipantFeedbackPreparationError(
+                        "dynamic generation metadata conflicts "
+                        "with frozen generator metadata"
+                    )
+                metadata[key] = value
+
             metadata.update(
                 {
                     "output_contract_version": (

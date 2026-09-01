@@ -48,7 +48,7 @@ from .source import FeedbackKind
 
 
 CONTEXT_PACK_VERSION = (
-    "marketlens-feedback-context-v1"
+    "marketlens-feedback-context-v2"
 )
 
 
@@ -155,12 +155,47 @@ class FeedbackContextPack:
         object,
     ]
 
+    @property
+    def reflection_stage(self) -> str:
+        # Participant-safe academic purpose of this feedback checkpoint.
+        try:
+            start_period = int(self.window["start_period"])
+            end_period = int(self.window["end_period"])
+        except (KeyError, TypeError, ValueError) as exc:
+            raise FeedbackContextError(
+                "feedback window cannot resolve reflection_stage"
+            ) from exc
+
+        if self.feedback_kind == "final_session_summary":
+            if (start_period, end_period) != (1, 15):
+                raise FeedbackContextError(
+                    "final reflection requires the full P1-P15 window"
+                )
+            return "final"
+
+        if self.feedback_kind != "multi_period_decision_feedback":
+            raise FeedbackContextError(
+                "unsupported feedback_kind for reflection_stage"
+            )
+
+        if (start_period, end_period) == (1, 4):
+            return "early"
+
+        if (start_period, end_period) == (5, 11):
+            return "mid_session"
+
+        raise FeedbackContextError(
+            "multi-period feedback window has no frozen reflection_stage"
+        )
+
     def to_dict(self) -> dict[str, object]:
         # JSON round-trip creates a detached, JSON-safe representation and
         # normalises tuples to arrays before hashing/prompt serialization.
+        payload = asdict(self)
+        payload["reflection_stage"] = self.reflection_stage
         return json.loads(
             json.dumps(
-                asdict(self),
+                payload,
                 ensure_ascii=False,
             )
         )
