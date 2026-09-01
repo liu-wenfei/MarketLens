@@ -29,14 +29,16 @@ from marketlens.episode.contract_v2 import (
     formal_episode_paths,
     validate_formal_episode_pool_manifest,
 )
-from marketlens.human.formal_feedback_generator import (
-    FORMAL_GENERATION_STATUS,
-    FORMAL_GENERATOR_ID,
-    is_formal_feedback_generator,
-)
 from marketlens.human.feedback import (
     ContextLimits,
     FrozenFeedbackPrompt,
+)
+from marketlens.human.feedback.reviewed_runtime import (
+    REVIEWED_RUNTIME_GENERATION_STATUS,
+    REVIEWED_RUNTIME_GENERATOR_ID,
+    ReviewedAcceptedFeedbackRuntimeError,
+    create_reviewed_accepted_feedback_generator,
+    is_reviewed_accepted_feedback_generator,
 )
 from marketlens.human.measurement.event_store import ParticipantEventStore
 from marketlens.human.services.feedback_preparation_service import (
@@ -321,6 +323,7 @@ def create_formal_participant_app(
         ]
         | None
     ) = None,
+    accepted_feedback_root: str | Path | None = None,
     feedback_context_limits: ContextLimits | None = None,
     feedback_generator_id: str | None = None,
     feedback_generation_status: str | None = None,
@@ -335,46 +338,72 @@ def create_formal_participant_app(
         else Path(__file__).resolve().parents[1]
     )
 
+    if accepted_feedback_root is not None:
+        if _allow_nonformal_feedback:
+            raise FormalParticipantServerConfigurationError(
+                "NON-FORMAL smoke mode cannot use accepted "
+                "formal artifacts"
+            )
+        if feedback_generator is not None:
+            raise FormalParticipantServerConfigurationError(
+                "provide accepted_feedback_root or "
+                "feedback_generator, not both"
+            )
+        resolved_feedback_root = Path(accepted_feedback_root)
+        if not resolved_feedback_root.is_absolute():
+            resolved_feedback_root = root / resolved_feedback_root
+        try:
+            feedback_generator = (
+                create_reviewed_accepted_feedback_generator(
+                    resolved_feedback_root
+                )
+            )
+        except ReviewedAcceptedFeedbackRuntimeError as exc:
+            raise FormalParticipantServerConfigurationError(
+                "cannot compose reviewed accepted feedback runtime"
+            ) from exc
+
     if (
         feedback_generator is not None
         and not _allow_nonformal_feedback
     ):
-        if not is_formal_feedback_generator(
+        if not is_reviewed_accepted_feedback_generator(
             feedback_generator
         ):
             raise FormalParticipantServerConfigurationError(
                 "formal participant feedback requires the "
-                "frozen formal feedback generator"
+                "reviewed accepted artifact generator; provider "
+                "generation is prohibited at participant runtime"
             )
 
         if feedback_generator_id not in (
             None,
-            FORMAL_GENERATOR_ID,
+            REVIEWED_RUNTIME_GENERATOR_ID,
         ):
             raise FormalParticipantServerConfigurationError(
                 "formal feedback generator_id conflicts "
-                "with the frozen generator identity"
+                "with the reviewed runtime identity"
             )
         if feedback_generation_status not in (
             None,
-            FORMAL_GENERATION_STATUS,
+            REVIEWED_RUNTIME_GENERATION_STATUS,
         ):
             raise FormalParticipantServerConfigurationError(
                 "formal feedback generation_status conflicts "
-                "with the frozen generator identity"
+                "with the reviewed runtime identity"
             )
         if feedback_generation_metadata:
             raise FormalParticipantServerConfigurationError(
                 "formal feedback generation metadata is derived "
-                "from the frozen generator configuration"
+                "from the reviewed runtime configuration"
             )
 
-        feedback_generator_id = FORMAL_GENERATOR_ID
+        feedback_generator_id = REVIEWED_RUNTIME_GENERATOR_ID
         feedback_generation_status = (
-            FORMAL_GENERATION_STATUS
+            REVIEWED_RUNTIME_GENERATION_STATUS
         )
         feedback_generation_metadata = (
-            feedback_generator.config.static_metadata()
+            feedback_generator.static_metadata()
         )
 
     _load_formal_v2_pool(root)
@@ -571,4 +600,3 @@ def create_nonformal_smoke_participant_app(
             "formal_evidence": False,
         },
     )
-

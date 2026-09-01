@@ -10,9 +10,15 @@ import pytest
 
 from marketlens.human.feedback import FrozenFeedbackPrompt
 from marketlens.human.formal_feedback_generator import (
-    FORMAL_GENERATION_STATUS,
-    FORMAL_GENERATOR_ID,
     OpenAIResponsesFormalFeedbackGenerator,
+)
+from marketlens.human.feedback.review_artifacts import (
+    FeedbackReviewArtifactStore,
+)
+from marketlens.human.feedback.reviewed_runtime import (
+    REVIEWED_RUNTIME_GENERATION_STATUS,
+    REVIEWED_RUNTIME_GENERATOR_ID,
+    ReviewedAcceptedFeedbackGenerator,
 )
 from marketlens.participant_server import (
     NONFORMAL_SMOKE_CONTEXT_LIMITS,
@@ -170,7 +176,7 @@ def test_formal_factory_rejects_nonformal_smoke_generator(
 ):
     with pytest.raises(
         FormalParticipantServerConfigurationError,
-        match="frozen formal feedback generator",
+        match="reviewed accepted artifact generator",
     ):
         create_formal_participant_app(
             repo_root=ROOT,
@@ -197,7 +203,7 @@ def test_formal_factory_rejects_nonformal_smoke_generator(
     assert not (tmp_path / "rejected-events.db").exists()
 
 
-def test_formal_factory_derives_identity_and_metadata(
+def test_formal_factory_rejects_provider_generator_at_runtime(
     tmp_path,
 ):
     client = _FakeClient(
@@ -206,6 +212,32 @@ def test_formal_factory_derives_identity_and_metadata(
     generator = OpenAIResponsesFormalFeedbackGenerator(
         client=client
     )
+    with pytest.raises(
+        FormalParticipantServerConfigurationError,
+        match="provider generation is prohibited",
+    ):
+        create_formal_participant_app(
+            repo_root=ROOT,
+            db_path=tmp_path / "formal-human.db",
+            participant_event_db_path=(
+                tmp_path / "formal-events.db"
+            ),
+            feedback_generator=generator,
+            feedback_context_limits=(
+                NONFORMAL_SMOKE_CONTEXT_LIMITS
+            ),
+        )
+
+    assert client.responses.calls == []
+    assert not (tmp_path / "formal-human.db").exists()
+    assert not (tmp_path / "formal-events.db").exists()
+
+
+def test_formal_factory_derives_reviewed_runtime_identity(
+    tmp_path,
+):
+    artifact_root = tmp_path / "review-artifacts"
+    artifact_root.mkdir()
     limits = replace(
         NONFORMAL_SMOKE_CONTEXT_LIMITS,
         policy_version=(
@@ -215,34 +247,31 @@ def test_formal_factory_derives_identity_and_metadata(
 
     app = create_formal_participant_app(
         repo_root=ROOT,
-        db_path=tmp_path / "formal-human.db",
+        db_path=tmp_path / "reviewed-human.db",
         participant_event_db_path=(
-            tmp_path / "formal-events.db"
+            tmp_path / "reviewed-events.db"
         ),
-        feedback_generator=generator,
+        accepted_feedback_root=artifact_root,
         feedback_context_limits=limits,
     )
 
     try:
-        preparation = (
-            app.state.feedback_preparation_service
-        )
+        preparation = app.state.feedback_preparation_service
         assert preparation is not None
-        assert preparation.generator is generator
-        assert preparation.generator_id == FORMAL_GENERATOR_ID
-        assert (
-            preparation.generation_status
-            == FORMAL_GENERATION_STATUS
+        assert isinstance(
+            preparation.generator,
+            ReviewedAcceptedFeedbackGenerator,
         )
-        assert (
-            preparation.generation_metadata["provider"]
-            == "openai"
+        assert preparation.generator.store.root == artifact_root
+        assert preparation.generator_id == (
+            REVIEWED_RUNTIME_GENERATOR_ID
         )
-        assert (
-            preparation.generation_metadata["api_surface"]
-            == "responses"
+        assert preparation.generation_status == (
+            REVIEWED_RUNTIME_GENERATION_STATUS
         )
-        assert client.responses.calls == []
+        assert preparation.generation_metadata == (
+            preparation.generator.static_metadata()
+        )
     finally:
         app.state.formal_participant_event_store.dispose()
         app.state.db.dispose()
@@ -251,10 +280,10 @@ def test_formal_factory_derives_identity_and_metadata(
 def test_formal_factory_rejects_manual_metadata_override(
     tmp_path,
 ):
-    generator = OpenAIResponsesFormalFeedbackGenerator(
-        client=_FakeClient(
-            [_response("NOT CALLED", "unused")]
-        )
+    artifact_root = tmp_path / "metadata-artifacts"
+    artifact_root.mkdir()
+    generator = ReviewedAcceptedFeedbackGenerator(
+        store=FeedbackReviewArtifactStore(artifact_root)
     )
 
     with pytest.raises(
