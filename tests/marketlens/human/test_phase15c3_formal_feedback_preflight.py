@@ -239,3 +239,114 @@ def test_validation_failure_uses_two_requests_and_locks(
     assert not (
         output_root / preflight.SUCCESS_RECEIPT_NAME
     ).exists()
+
+
+
+def _write_provider_config(
+    path: Path,
+    *,
+    api_key: object,
+) -> None:
+    path.write_text(
+        "api_key: "
+        + json.dumps(api_key)
+        + "\nmodel_name: gpt-5-nano\n"
+        + "base_url: https://api.openai.com/v1\n",
+        encoding="utf-8",
+    )
+
+
+def test_v3_environment_key_precedes_yaml_fallback(tmp_path):
+    config_path = tmp_path / "feedback.yaml"
+    _write_provider_config(
+        config_path,
+        api_key=["yaml-key-one", "yaml-key-two"],
+    )
+
+    resolved, metadata = (
+        preflight._resolve_provider_environment(
+            repo_root=ROOT,
+            source={"OPENAI_API_KEY": "environment-key"},
+            expected_model="gpt-5-nano",
+            provider_config_path=config_path,
+        )
+    )
+
+    assert resolved["OPENAI_API_KEY"] == "environment-key"
+    assert "OPENAI_BASE_URL" not in resolved
+    assert metadata["credential_source"] == "OPENAI_API_KEY"
+    assert metadata["provider_base_url"] == (
+        "https://api.openai.com/v1"
+    )
+
+
+def test_v3_yaml_list_is_deterministic_fallback(tmp_path):
+    config_path = tmp_path / "feedback.yaml"
+    _write_provider_config(
+        config_path,
+        api_key=["yaml-key-one", "yaml-key-two"],
+    )
+
+    resolved, metadata = (
+        preflight._resolve_provider_environment(
+            repo_root=ROOT,
+            source={},
+            expected_model="gpt-5-nano",
+            provider_config_path=config_path,
+        )
+    )
+
+    assert resolved["OPENAI_API_KEY"] == "yaml-key-one"
+    assert metadata["credential_source"] == (
+        "feedback.yaml:api_key[0]"
+    )
+
+
+def test_v3_failure_receipt_has_sanitised_root_cause(tmp_path):
+    class ProviderFailure(RuntimeError):
+        status_code = 401
+        code = "invalid_api_key"
+        request_id = "req-sanitised"
+
+    class FailingResponses:
+        def create(self, **kwargs):
+            raise ProviderFailure("must not be persisted")
+
+    class FailingClient:
+        responses = FailingResponses()
+
+    config_path = tmp_path / "feedback.yaml"
+    _write_provider_config(config_path, api_key=None)
+    output_root = tmp_path / "preflight"
+
+    with pytest.raises(Exception):
+        preflight.run_preflight(
+            execute=True,
+            acknowledge_paid_api_call=True,
+            repo_root=ROOT,
+            output_root=output_root,
+            environ={"OPENAI_API_KEY": "environment-key"},
+            client_factory=lambda **kwargs: FailingClient(),
+            enforce_clean_tracked_state=False,
+            provider_config_path=config_path,
+        )
+
+    failure_path = (
+        output_root / preflight.FAILURE_RECEIPT_NAME
+    )
+    failure = json.loads(
+        failure_path.read_text(encoding="utf-8")
+    )
+    assert failure["provider_diagnostic"] == {
+        "provider_error_type": "ProviderFailure",
+        "provider_status_code": 401,
+        "provider_error_code": "invalid_api_key",
+        "provider_request_id": "req-sanitised",
+    }
+    combined = (
+        (output_root / preflight.EXECUTION_LOCK_NAME)
+        .read_text(encoding="utf-8")
+        + failure_path.read_text(encoding="utf-8")
+    )
+    assert "environment-key" not in combined
+    assert "must not be persisted" not in combined
