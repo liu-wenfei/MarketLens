@@ -87,3 +87,72 @@ def test_nonformal_smoke_composition_binds_preparer(
         runtime.rounds.feedback_preparer
         is not None
     )
+
+
+def test_immutable_mapping_generation_output_detaches_only_for_persistence():
+    import json
+
+    import pytest
+
+    from marketlens.human.feedback.generation import (
+        FeedbackGenerationResult,
+    )
+    from marketlens.human.services.feedback_preparation_service import (
+        ParticipantFeedbackPreparationError,
+        _raw_generation_output,
+    )
+
+    payload = {
+        "feedback_kind": (
+            "multi_period_decision_feedback"
+        ),
+        "reflection": (
+            "Frozen fallback example."
+        ),
+    }
+
+    result = FeedbackGenerationResult(
+        output=payload,
+        metadata={
+            "fallback_used": True,
+        },
+    )
+
+    assert (
+        type(result.output).__name__
+        == "mappingproxy"
+    )
+
+    encoded = _raw_generation_output(
+        result.output
+    )
+
+    assert encoded == (
+        '{"feedback_kind":'
+        '"multi_period_decision_feedback",'
+        '"reflection":'
+        '"Frozen fallback example."}'
+    )
+
+    assert json.loads(encoded) == payload
+
+    provider_text = (
+        '{"feedback_kind":'
+        '"multi_period_decision_feedback",'
+        '"reflection":"Provider example."}'
+    )
+
+    assert (
+        _raw_generation_output(
+            provider_text
+        )
+        == provider_text
+    )
+
+    with pytest.raises(
+        ParticipantFeedbackPreparationError,
+        match="JSON text or a mapping",
+    ):
+        _raw_generation_output(
+            object()
+        )

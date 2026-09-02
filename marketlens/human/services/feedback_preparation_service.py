@@ -93,6 +93,25 @@ def _sha256_json(value: object) -> str:
     return sha256(_canonical_json(value).encode("utf-8")).hexdigest()
 
 
+def _raw_generation_output(
+    value: object,
+) -> str:
+    """Detach validated mapping output only at the persistence boundary."""
+
+    if isinstance(value, str):
+        return value
+
+    if isinstance(value, Mapping):
+        return _canonical_json(
+            dict(value)
+        )
+
+    raise ParticipantFeedbackPreparationError(
+        "validated generated feedback must be "
+        "JSON text or a mapping"
+    )
+
+
 def _feedback_kind_for_step(
     experiment_step: int,
 ) -> FeedbackKind:
@@ -420,12 +439,9 @@ class ParticipantFeedbackPreparationService:
                     "reflection-only output contract"
                 )
 
-            if isinstance(generated, str):
-                raw_output = generated
-            else:
-                raw_output = _canonical_json(
-                    generated
-                )
+            raw_output = _raw_generation_output(
+                generated
+            )
 
             metadata = dict(
                 self.generation_metadata
