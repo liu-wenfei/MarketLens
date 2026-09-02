@@ -489,15 +489,29 @@ class OpenAIResponsesFormalFeedbackGenerator:
 
             try:
                 validated = validator(output)
-            except validation_error_types:
-                attempt_history.append(
-                    self._response_record(
-                        attempt_number=attempts,
-                        outcome="validation_rejected",
-                        response=response,
-                        output=output,
-                    )
+            except validation_error_types as exc:
+                rejection = self._response_record(
+                    attempt_number=attempts,
+                    outcome="validation_rejected",
+                    response=response,
+                    output=output,
                 )
+
+                # Validation messages are backend-owned diagnostics.
+                # Never persist the provider output itself here.
+                validation_reason = " ".join(
+                    str(exc).split()
+                ).strip()
+
+                rejection["error_type"] = type(exc).__name__
+                rejection["validation_error_reason"] = (
+                    validation_reason[:240]
+                    if validation_reason
+                    else "unspecified validation rejection"
+                )
+
+                attempt_history.append(rejection)
+
                 if attempts < self.config.max_provider_attempts:
                     continue
                 return self._fallback_result(
