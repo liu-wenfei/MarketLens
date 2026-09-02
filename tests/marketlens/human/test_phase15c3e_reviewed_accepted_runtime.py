@@ -204,7 +204,7 @@ def test_runtime_rejects_validator_provenance_mismatch(tmp_path):
         )
 
 
-def test_participant_server_has_no_formal_provider_import():
+def test_reviewed_artifacts_remain_offline_only():
     source_path = Path(participant_server.__file__)
     tree = ast.parse(source_path.read_text(encoding="utf-8"))
     imported_modules = {
@@ -214,6 +214,9 @@ def test_participant_server_has_no_formal_provider_import():
         and node.module is not None
     }
 
-    assert "marketlens.human.formal_feedback_generator" not in (
+    assert "marketlens.human.formal_feedback_generator" in (
+        imported_modules
+    )
+    assert "marketlens.human.feedback.reviewed_runtime" not in (
         imported_modules
     )

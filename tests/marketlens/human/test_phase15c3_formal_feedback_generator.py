@@ -13,7 +13,6 @@ from marketlens.human.formal_feedback_generator import (
     FORMAL_GENERATOR_CONTRACT_VERSION,
     FORMAL_GENERATOR_ID,
     FormalFeedbackConfigurationError,
-    FormalFeedbackGenerationError,
     FormalFeedbackGeneratorConfig,
     OpenAIResponsesFormalFeedbackGenerator,
     create_formal_openai_feedback_generator,
@@ -91,14 +90,15 @@ def _authentication_error():
     )
 
 
-def test_frozen_configuration_matches_15c3b_contract():
+def test_frozen_configuration_matches_live_feedback_contract():
     config = FormalFeedbackGeneratorConfig()
     config.validate()
 
     assert config.model == "gpt-5-nano"
     assert config.reasoning_effort == "minimal"
     assert config.max_output_tokens == 1024
-    assert config.timeout_seconds == 45.0
+    assert config.timeout_seconds == 30.0
+    assert config.total_timeout_seconds == 45.0
     assert config.sdk_max_retries == 0
     assert config.max_provider_attempts == 2
     assert config.openai_sdk_version == "2.54.0"
@@ -109,17 +109,16 @@ def test_frozen_configuration_matches_15c3b_contract():
         config.model = "gpt-5.6"
 
 
-def test_configuration_variants_require_new_contract():
+def test_model_variant_is_allowed_by_provider_contract():
     config = replace(
         FormalFeedbackGeneratorConfig(),
         model="gpt-5.6",
     )
 
-    with pytest.raises(
-        FormalFeedbackConfigurationError,
-        match="model",
-    ):
-        config.validate()
+    config.validate()
+
+    assert config.model == "gpt-5.6"
+    assert config.static_metadata()["requested_model"] == "gpt-5.6"
 
 
 def test_request_uses_exact_frozen_shape():
@@ -142,6 +141,7 @@ def test_request_uses_exact_frozen_shape():
         "stream": False,
         "background": False,
         "truncation": "disabled",
+        "timeout": 30.0,
     }
     assert "temperature" not in request
     assert "top_p" not in request
@@ -178,7 +178,7 @@ def test_transient_failure_retries_exactly_once():
     assert result.metadata["attempt_count"] == 2
 
 
-def test_transient_failure_exhaustion_fails_closed():
+def test_transient_failure_exhaustion_uses_frozen_fallback():
     client = _FakeClient(
         [_timeout_error(), _timeout_error()]
     )
@@ -186,54 +186,75 @@ def test_transient_failure_exhaustion_fails_closed():
         client=client
     )
 
-    with pytest.raises(
-        FormalFeedbackGenerationError,
-        match="transient provider failure exhausted",
-    ):
-        generator(_prompt())
+    result = generator(_prompt())
 
     assert len(client.responses.calls) == 2
+    assert result.metadata["fallback_used"] is True
+    assert result.metadata["fallback_trigger"] == (
+        "transient_provider_failure_exhausted"
+    )
+    assert result.metadata["attempt_count"] == 2
+    assert len(result.metadata["attempt_history"]) == 2
+    assert result.output["feedback_kind"] == (
+        "multi_period_decision_feedback"
+    )
 
 
-def test_nonretryable_failure_is_not_retried():
+def test_nonretryable_failure_uses_fallback_without_retry():
     client = _FakeClient([_authentication_error()])
     generator = OpenAIResponsesFormalFeedbackGenerator(
         client=client
     )
 
-    with pytest.raises(
-        FormalFeedbackGenerationError,
-        match="non-retryable provider failure",
-    ):
-        generator(_prompt())
+    result = generator(_prompt())
 
     assert len(client.responses.calls) == 1
+    assert result.metadata["fallback_used"] is True
+    assert result.metadata["fallback_trigger"] == (
+        "nonretryable_provider_failure"
+    )
+    assert result.metadata["attempt_history"][0]["error_type"] == (
+        "AuthenticationError"
+    )
 
 
-def test_incomplete_or_empty_response_fails_closed():
+def test_incomplete_or_empty_response_uses_frozen_fallback():
     incomplete = _response()
     incomplete.status = "incomplete"
 
     generator = OpenAIResponsesFormalFeedbackGenerator(
-        client=_FakeClient([incomplete])
+        client=_FakeClient([incomplete, incomplete])
     )
-    with pytest.raises(
-        FormalFeedbackGenerationError,
-        match="not completed",
-    ):
-        generator(_prompt())
+    incomplete_result = generator(_prompt())
+    assert incomplete_result.metadata["fallback_trigger"] == (
+        "incomplete_provider_response_exhausted"
+    )
 
     generator = OpenAIResponsesFormalFeedbackGenerator(
-        client=_FakeClient([_response("  ")])
+        client=_FakeClient([_response("  "), _response("  ")])
     )
-    with pytest.raises(
-        FormalFeedbackGenerationError,
-        match="empty output",
-    ):
-        generator(_prompt())
+    empty_result = generator(_prompt())
+    assert empty_result.metadata["fallback_trigger"] == (
+        "empty_provider_output_exhausted"
+    )
 
 
-def test_explicit_environment_boundary_rejects_unsafe_config():
+def test_total_wait_budget_caps_second_request_timeout():
+    ticks = iter([0.0, 0.0, 31.0, 31.0, 31.0])
+    client = _FakeClient([_timeout_error(), _response()])
+    generator = OpenAIResponsesFormalFeedbackGenerator(
+        client=client,
+        clock=lambda: next(ticks),
+    )
+
+    result = generator(_prompt())
+
+    assert result.metadata["fallback_used"] is False
+    assert client.responses.calls[0]["timeout"] == 30.0
+    assert client.responses.calls[1]["timeout"] == 14.0
+
+
+def test_explicit_environment_boundary_requires_key_and_allows_base_url():
     called = []
 
     def factory(**kwargs):
@@ -242,26 +263,32 @@ def test_explicit_environment_boundary_rejects_unsafe_config():
 
     with pytest.raises(
         FormalFeedbackConfigurationError,
-        match="OPENAI_API_KEY",
+        match="API key",
     ):
         create_formal_openai_feedback_generator(
             environ={},
             client_factory=factory,
         )
 
-    with pytest.raises(
-        FormalFeedbackConfigurationError,
-        match="OPENAI_BASE_URL",
-    ):
-        create_formal_openai_feedback_generator(
-            environ={
-                "OPENAI_API_KEY": "not-a-real-key",
-                "OPENAI_BASE_URL": "https://example.invalid",
-            },
-            client_factory=factory,
-        )
-
     assert called == []
+
+    generator = create_formal_openai_feedback_generator(
+        environ={
+            "OPENAI_API_KEY": "not-a-real-key",
+            "OPENAI_BASE_URL": "https://example.invalid",
+        },
+        client_factory=factory,
+    )
+
+    assert called == [
+        {
+            "api_key": "not-a-real-key",
+            "base_url": "https://example.invalid",
+            "max_retries": 0,
+            "timeout": 30.0,
+        }
+    ]
+    assert "not-a-real-key" not in repr(generator.config)
 
 
 def test_explicit_factory_uses_key_without_persisting_it():
@@ -280,7 +307,7 @@ def test_explicit_factory_uses_key_without_persisting_it():
         {
             "api_key": "not-a-real-key",
             "max_retries": 0,
-            "timeout": 45.0,
+            "timeout": 30.0,
         }
     ]
     assert "not-a-real-key" not in repr(generator.config)

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -8,17 +7,15 @@ import httpx
 import openai
 import pytest
 
-from marketlens.human.feedback import FrozenFeedbackPrompt
+from marketlens.human.feedback import (
+    FORMAL_CONTEXT_LIMITS,
+    FrozenFeedbackPrompt,
+)
 from marketlens.human.formal_feedback_generator import (
+    FORMAL_GENERATION_STATUS,
+    FORMAL_GENERATOR_ID,
+    FormalFeedbackGenerationError,
     OpenAIResponsesFormalFeedbackGenerator,
-)
-from marketlens.human.feedback.review_artifacts import (
-    FeedbackReviewArtifactStore,
-)
-from marketlens.human.feedback.reviewed_runtime import (
-    REVIEWED_RUNTIME_GENERATION_STATUS,
-    REVIEWED_RUNTIME_GENERATOR_ID,
-    ReviewedAcceptedFeedbackGenerator,
 )
 from marketlens.participant_server import (
     NONFORMAL_SMOKE_CONTEXT_LIMITS,
@@ -129,7 +126,7 @@ def test_validation_rejection_uses_same_two_attempt_budget():
     assert "output_sha256" in history[0]
 
 
-def test_two_validation_rejections_fail_without_third_request():
+def test_two_validation_rejections_fallback_without_third_request():
     client = _FakeClient(
         [
             _response("REJECT", "first"),
@@ -140,17 +137,22 @@ def test_two_validation_rejections_fail_without_third_request():
         client=client
     )
 
-    with pytest.raises(_RejectedOutput):
-        generator.generate_validated(
-            _prompt(),
-            validator=_validator,
-            validation_error_types=(_RejectedOutput,),
-        )
+    result, validated = generator.generate_validated(
+        _prompt(),
+        validator=_validator,
+        validation_error_types=(_RejectedOutput,),
+    )
 
     assert len(client.responses.calls) == 2
+    assert result.metadata["fallback_used"] is True
+    assert result.metadata["fallback_trigger"] == (
+        "output_validation_exhausted"
+    )
+    assert validated == {"accepted": result.output}
+    assert len(result.metadata["attempt_history"]) == 2
 
 
-def test_transient_failure_consumes_shared_attempt_budget():
+def test_transient_and_rejection_share_budget_then_fallback():
     client = _FakeClient(
         [
             _timeout_error(),
@@ -161,13 +163,45 @@ def test_transient_failure_consumes_shared_attempt_budget():
         client=client
     )
 
-    with pytest.raises(_RejectedOutput):
+    result, _ = generator.generate_validated(
+        _prompt(),
+        validator=_validator,
+        validation_error_types=(_RejectedOutput,),
+    )
+
+    assert len(client.responses.calls) == 2
+    assert result.metadata["fallback_trigger"] == (
+        "output_validation_exhausted"
+    )
+    assert [
+        item["outcome"]
+        for item in result.metadata["attempt_history"]
+    ] == ["transient_provider_error", "validation_rejected"]
+
+
+def test_failed_local_fallback_validation_retains_attempt_history():
+    client = _FakeClient(
+        [
+            _response("REJECT", "first"),
+            _response("REJECT", "second"),
+        ]
+    )
+    generator = OpenAIResponsesFormalFeedbackGenerator(client=client)
+
+    def reject_everything(_output):
+        raise _RejectedOutput("reject provider and fallback")
+
+    with pytest.raises(FormalFeedbackGenerationError) as captured:
         generator.generate_validated(
             _prompt(),
-            validator=_validator,
+            validator=reject_everything,
             validation_error_types=(_RejectedOutput,),
         )
 
+    assert len(captured.value.attempt_history) == 2
+    assert captured.value.fallback_trigger == (
+        "output_validation_exhausted"
+    )
     assert len(client.responses.calls) == 2
 
 
@@ -176,7 +210,7 @@ def test_formal_factory_rejects_nonformal_smoke_generator(
 ):
     with pytest.raises(
         FormalParticipantServerConfigurationError,
-        match="reviewed accepted artifact generator",
+        match="frozen live formal provider generator",
     ):
         create_formal_participant_app(
             repo_root=ROOT,
@@ -203,7 +237,7 @@ def test_formal_factory_rejects_nonformal_smoke_generator(
     assert not (tmp_path / "rejected-events.db").exists()
 
 
-def test_formal_factory_rejects_provider_generator_at_runtime(
+def test_formal_factory_accepts_live_provider_generator_at_runtime(
     tmp_path,
 ):
     client = _FakeClient(
@@ -212,78 +246,55 @@ def test_formal_factory_rejects_provider_generator_at_runtime(
     generator = OpenAIResponsesFormalFeedbackGenerator(
         client=client
     )
-    with pytest.raises(
-        FormalParticipantServerConfigurationError,
-        match="provider generation is prohibited",
-    ):
-        create_formal_participant_app(
-            repo_root=ROOT,
-            db_path=tmp_path / "formal-human.db",
-            participant_event_db_path=(
-                tmp_path / "formal-events.db"
-            ),
-            feedback_generator=generator,
-            feedback_context_limits=(
-                NONFORMAL_SMOKE_CONTEXT_LIMITS
-            ),
-        )
-
-    assert client.responses.calls == []
-    assert not (tmp_path / "formal-human.db").exists()
-    assert not (tmp_path / "formal-events.db").exists()
-
-
-def test_formal_factory_derives_reviewed_runtime_identity(
-    tmp_path,
-):
-    artifact_root = tmp_path / "review-artifacts"
-    artifact_root.mkdir()
-    limits = replace(
-        NONFORMAL_SMOKE_CONTEXT_LIMITS,
-        policy_version=(
-            "marketlens-formal-feedback-context-test-v1"
-        ),
-    )
-
     app = create_formal_participant_app(
         repo_root=ROOT,
-        db_path=tmp_path / "reviewed-human.db",
+        db_path=tmp_path / "formal-human.db",
         participant_event_db_path=(
-            tmp_path / "reviewed-events.db"
+            tmp_path / "formal-events.db"
         ),
-        accepted_feedback_root=artifact_root,
-        feedback_context_limits=limits,
+        feedback_generator=generator,
     )
 
     try:
         preparation = app.state.feedback_preparation_service
-        assert preparation is not None
-        assert isinstance(
-            preparation.generator,
-            ReviewedAcceptedFeedbackGenerator,
-        )
-        assert preparation.generator.store.root == artifact_root
-        assert preparation.generator_id == (
-            REVIEWED_RUNTIME_GENERATOR_ID
-        )
-        assert preparation.generation_status == (
-            REVIEWED_RUNTIME_GENERATION_STATUS
-        )
-        assert preparation.generation_metadata == (
-            preparation.generator.static_metadata()
-        )
+        assert preparation.generator is generator
+        assert preparation.generator_id == FORMAL_GENERATOR_ID
+        assert preparation.generation_status == FORMAL_GENERATION_STATUS
+        assert preparation.limits == FORMAL_CONTEXT_LIMITS
+        assert app.state.formal_feedback_runtime_policy[
+            "policy_version"
+        ] == "marketlens-formal-live-adaptive-feedback-v1"
+        assert client.responses.calls == []
     finally:
         app.state.formal_participant_event_store.dispose()
         app.state.db.dispose()
 
 
+def test_formal_factory_rejects_review_artifacts_at_live_runtime(
+    tmp_path,
+):
+    artifact_root = tmp_path / "review-artifacts"
+    artifact_root.mkdir()
+
+    with pytest.raises(
+        FormalParticipantServerConfigurationError,
+        match="offline review-tool input",
+    ):
+        create_formal_participant_app(
+            repo_root=ROOT,
+            db_path=tmp_path / "reviewed-human.db",
+            participant_event_db_path=(
+                tmp_path / "reviewed-events.db"
+            ),
+            accepted_feedback_root=artifact_root,
+        )
+
+
 def test_formal_factory_rejects_manual_metadata_override(
     tmp_path,
 ):
-    artifact_root = tmp_path / "metadata-artifacts"
-    artifact_root.mkdir()
-    generator = ReviewedAcceptedFeedbackGenerator(
-        store=FeedbackReviewArtifactStore(artifact_root)
+    generator = OpenAIResponsesFormalFeedbackGenerator(
+        client=_FakeClient([_response("NOT CALLED", "unused")])
     )
 
     with pytest.raises(
@@ -297,9 +308,7 @@ def test_formal_factory_rejects_manual_metadata_override(
                 tmp_path / "metadata-events.db"
             ),
             feedback_generator=generator,
-            feedback_context_limits=(
-                NONFORMAL_SMOKE_CONTEXT_LIMITS
-            ),
+            feedback_context_limits=FORMAL_CONTEXT_LIMITS,
             feedback_generation_metadata={
                 "provider": "overridden",
             },

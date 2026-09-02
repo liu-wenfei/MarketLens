@@ -274,6 +274,10 @@ def test_final_word_limit_fails_closed():
         "episode_id was hidden",
         "Agent holdings changed",
         "This caused you to change",
+        "I noticed a change",
+        "Moving forward, aim to remain consistent",
+        "This trading strategy created a potential edge",
+        "A disciplined approach produced a better decision",
     ],
 )
 def test_forbidden_reflection_language_fails(

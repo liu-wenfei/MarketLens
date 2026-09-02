@@ -61,3 +61,5 @@ config/feedback.yaml
 # *.yml
 
 logs*/data/guba_data.csv
+config/feedback.local.env
+config/feedback.local.yaml

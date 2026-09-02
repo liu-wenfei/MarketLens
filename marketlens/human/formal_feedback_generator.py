@@ -7,9 +7,18 @@ No client is instantiated and no environment variable is read at import time.
 
 from __future__ import annotations
 
+from marketlens.human.feedback.provider_config import (
+    DEFAULT_MODEL,
+    FormalProviderConfigError,
+    resolve_formal_provider_config,
+)
+
+from dataclasses import replace
+
 from dataclasses import dataclass
 from hashlib import sha256
 import os
+from time import monotonic
 from typing import Any, Callable, Mapping, Protocol
 
 import openai
@@ -18,23 +27,35 @@ from marketlens.human.feedback import (
     FeedbackGenerationResult,
     FrozenFeedbackPrompt,
 )
+from marketlens.human.feedback.formal_policy import (
+    FORMAL_FALLBACK_POLICY_VERSION,
+    FORMAL_FALLBACK_STATUS,
+    FORMAL_FALLBACK_TRIGGER_CATEGORIES,
+    FORMAL_LIVE_FEEDBACK_POLICY_VERSION,
+    FORMAL_MAX_PROVIDER_ATTEMPTS,
+    FORMAL_PROVIDER_SUCCESS_STATUS,
+    FORMAL_REQUEST_TIMEOUT_SECONDS,
+    FORMAL_TOTAL_WAIT_SECONDS,
+    formal_fallback_output,
+    formal_fallback_sha256_by_kind,
+)
 
 
 FORMAL_GENERATOR_CONTRACT_VERSION = (
-    "marketlens-formal-feedback-generator-v2"
+    "marketlens-formal-feedback-generator-v4"
 )
 FORMAL_GENERATOR_ID = (
-    "marketlens-openai-responses-gpt-5-nano-v2"
+    "marketlens-openai-compatible-responses-v4"
 )
-FORMAL_GENERATION_STATUS = "formal_provider_validated"
-FORMAL_PROVIDER = "openai"
+FORMAL_GENERATION_STATUS = "formal_live_adaptive"
+FORMAL_PROVIDER = "openai_compatible"
 FORMAL_API_SURFACE = "responses"
-FORMAL_MODEL = "gpt-5-nano"
+FORMAL_MODEL = DEFAULT_MODEL
 FORMAL_REASONING_EFFORT = "minimal"
 FORMAL_MAX_OUTPUT_TOKENS = 1024
-FORMAL_TIMEOUT_SECONDS = 45.0
+FORMAL_TIMEOUT_SECONDS = FORMAL_REQUEST_TIMEOUT_SECONDS
+FORMAL_TOTAL_TIMEOUT_SECONDS = FORMAL_TOTAL_WAIT_SECONDS
 FORMAL_SDK_MAX_RETRIES = 0
-FORMAL_MAX_PROVIDER_ATTEMPTS = 2
 FORMAL_OPENAI_SDK_VERSION = "2.54.0"
 
 
@@ -43,7 +64,18 @@ class FormalFeedbackConfigurationError(ValueError):
 
 
 class FormalFeedbackGenerationError(RuntimeError):
-    """Raised when bounded formal provider generation fails closed."""
+    """Raised when the frozen live-generation contract cannot complete."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        attempt_history: list[dict[str, object]] | None = None,
+        fallback_trigger: str | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.attempt_history = list(attempt_history or [])
+        self.fallback_trigger = fallback_trigger
 
 
 class ResponsesClient(Protocol):
@@ -68,6 +100,7 @@ class FormalFeedbackGeneratorConfig:
     reasoning_effort: str = FORMAL_REASONING_EFFORT
     max_output_tokens: int = FORMAL_MAX_OUTPUT_TOKENS
     timeout_seconds: float = FORMAL_TIMEOUT_SECONDS
+    total_timeout_seconds: float = FORMAL_TOTAL_TIMEOUT_SECONDS
     sdk_max_retries: int = FORMAL_SDK_MAX_RETRIES
     max_provider_attempts: int = FORMAL_MAX_PROVIDER_ATTEMPTS
     openai_sdk_version: str = FORMAL_OPENAI_SDK_VERSION
@@ -79,10 +112,10 @@ class FormalFeedbackGeneratorConfig:
             "generation_status": FORMAL_GENERATION_STATUS,
             "provider": FORMAL_PROVIDER,
             "api_surface": FORMAL_API_SURFACE,
-            "model": FORMAL_MODEL,
             "reasoning_effort": FORMAL_REASONING_EFFORT,
             "max_output_tokens": FORMAL_MAX_OUTPUT_TOKENS,
             "timeout_seconds": FORMAL_TIMEOUT_SECONDS,
+            "total_timeout_seconds": FORMAL_TOTAL_TIMEOUT_SECONDS,
             "sdk_max_retries": FORMAL_SDK_MAX_RETRIES,
             "max_provider_attempts": FORMAL_MAX_PROVIDER_ATTEMPTS,
             "openai_sdk_version": FORMAL_OPENAI_SDK_VERSION,
@@ -93,6 +126,14 @@ class FormalFeedbackGeneratorConfig:
                 raise FormalFeedbackConfigurationError(
                     f"formal generator {name} must equal {required!r}"
                 )
+
+        if (
+            not isinstance(self.model, str)
+            or not self.model.strip()
+        ):
+            raise FormalFeedbackConfigurationError(
+                "formal generator model must be a non-empty string"
+            )
 
         installed = str(openai.__version__)
         if installed != self.openai_sdk_version:
@@ -110,10 +151,16 @@ class FormalFeedbackGeneratorConfig:
             "reasoning_effort": self.reasoning_effort,
             "max_output_tokens": self.max_output_tokens,
             "timeout_seconds": self.timeout_seconds,
+            "total_timeout_seconds": self.total_timeout_seconds,
             "sdk_max_retries": self.sdk_max_retries,
             "formal_max_attempts": self.max_provider_attempts,
             "openai_sdk_version": self.openai_sdk_version,
             "generator_contract_version": self.contract_version,
+            "live_feedback_policy_version": FORMAL_LIVE_FEEDBACK_POLICY_VERSION,
+            "fallback_policy_version": FORMAL_FALLBACK_POLICY_VERSION,
+            "fallback_output_sha256_by_kind": (
+                formal_fallback_sha256_by_kind()
+            ),
         }
 
 
@@ -135,6 +182,22 @@ def _retryable_provider_error(exc: BaseException) -> bool:
         return status in {408, 409, 429} or status >= 500
 
     return False
+
+
+def _provider_error_metadata(exc: BaseException) -> dict[str, object]:
+    """Return a credential-safe diagnostic for immutable provenance."""
+
+    result: dict[str, object] = {"error_type": type(exc).__name__}
+    status_code = getattr(exc, "status_code", None)
+    if isinstance(status_code, int) and not isinstance(status_code, bool):
+        result["provider_status_code"] = status_code
+    error_code = getattr(exc, "code", None)
+    if isinstance(error_code, (str, int)):
+        result["provider_error_code"] = str(error_code)
+    request_id = getattr(exc, "request_id", None)
+    if isinstance(request_id, str) and request_id.strip():
+        result["provider_request_id"] = request_id.strip()
+    return result
 
 
 def _usage_metadata(response: object) -> dict[str, int]:
@@ -162,6 +225,7 @@ class OpenAIResponsesFormalFeedbackGenerator:
         *,
         client: OpenAIClient,
         config: FormalFeedbackGeneratorConfig | None = None,
+        clock: Callable[[], float] = monotonic,
     ) -> None:
         resolved = config or FormalFeedbackGeneratorConfig()
         resolved.validate()
@@ -173,6 +237,7 @@ class OpenAIResponsesFormalFeedbackGenerator:
 
         self._client = client
         self.config = resolved
+        self._clock = clock
 
     @property
     def generator_id(self) -> str:
@@ -186,9 +251,16 @@ class OpenAIResponsesFormalFeedbackGenerator:
     def formal_contract_version(self) -> str:
         return self.config.contract_version
 
+    def static_metadata(self) -> dict[str, object]:
+        """Return frozen non-secret runtime metadata for persistence."""
+
+        return self.config.static_metadata()
+
     def _request_once(
         self,
         prompt: FrozenFeedbackPrompt,
+        *,
+        timeout_seconds: float,
     ) -> object:
         return self._client.responses.create(
             model=self.config.model,
@@ -204,7 +276,49 @@ class OpenAIResponsesFormalFeedbackGenerator:
             stream=False,
             background=False,
             truncation="disabled",
+            timeout=timeout_seconds,
         )
+
+    def _fallback_result(
+        self,
+        *,
+        prompt: FrozenFeedbackPrompt,
+        validator: Callable[[object], object],
+        trigger: str,
+        attempt_history: list[dict[str, object]],
+        started_at: float,
+    ) -> tuple[FeedbackGenerationResult, object]:
+        if trigger not in FORMAL_FALLBACK_TRIGGER_CATEGORIES:
+            raise FormalFeedbackGenerationError(
+                "unsupported formal fallback trigger"
+            )
+        try:
+            fallback = formal_fallback_output(prompt)
+            validated = validator(fallback)
+        except Exception as exc:
+            raise FormalFeedbackGenerationError(
+                "frozen formal fallback failed local validation",
+                attempt_history=attempt_history,
+                fallback_trigger=trigger,
+            ) from exc
+        metadata = self.config.static_metadata()
+        metadata.update(
+            {
+                "attempt_count": len(attempt_history),
+                "attempt_history": attempt_history,
+                "fallback_used": True,
+                "fallback_trigger": trigger,
+                "effective_generation_status": FORMAL_FALLBACK_STATUS,
+                "elapsed_ms": round(
+                    max(0.0, self._clock() - started_at) * 1000.0,
+                    3,
+                ),
+            }
+        )
+        return FeedbackGenerationResult(
+            output=fallback,
+            metadata=metadata,
+        ), validated
 
     @staticmethod
     def _response_record(
@@ -257,13 +371,32 @@ class OpenAIResponsesFormalFeedbackGenerator:
                 "validation_error_types must be exception classes"
             )
 
+        started_at = self._clock()
+        deadline = started_at + self.config.total_timeout_seconds
         attempts = 0
         attempt_history: list[dict[str, object]] = []
 
         while attempts < self.config.max_provider_attempts:
+            remaining = deadline - self._clock()
+            if remaining <= 0:
+                return self._fallback_result(
+                    prompt=prompt,
+                    validator=validator,
+                    trigger="total_wait_budget_exhausted",
+                    attempt_history=attempt_history,
+                    started_at=started_at,
+                )
+
             attempts += 1
+            request_timeout = min(
+                self.config.timeout_seconds,
+                max(0.001, remaining),
+            )
             try:
-                response = self._request_once(prompt)
+                response = self._request_once(
+                    prompt,
+                    timeout_seconds=request_timeout,
+                )
             except Exception as exc:
                 retryable = _retryable_provider_error(exc)
                 attempt_history.append(
@@ -274,7 +407,8 @@ class OpenAIResponsesFormalFeedbackGenerator:
                             if retryable
                             else "nonretryable_provider_error"
                         ),
-                        "error_type": type(exc).__name__,
+                        **_provider_error_metadata(exc),
+                        "request_timeout_seconds": request_timeout,
                     }
                 )
                 if (
@@ -283,25 +417,74 @@ class OpenAIResponsesFormalFeedbackGenerator:
                     < self.config.max_provider_attempts
                 ):
                     continue
-                category = (
-                    "transient provider failure exhausted"
+                trigger = (
+                    "transient_provider_failure_exhausted"
                     if retryable
-                    else "non-retryable provider failure"
+                    else "nonretryable_provider_failure"
                 )
-                raise FormalFeedbackGenerationError(
-                    f"formal feedback generation failed: {category}"
-                ) from exc
+                return self._fallback_result(
+                    prompt=prompt,
+                    validator=validator,
+                    trigger=trigger,
+                    attempt_history=attempt_history,
+                    started_at=started_at,
+                )
 
             status = getattr(response, "status", None)
             if status != "completed":
-                raise FormalFeedbackGenerationError(
-                    "formal provider response was not completed"
+                attempt_history.append(
+                    {
+                        "attempt_number": attempts,
+                        "outcome": "incomplete_provider_response",
+                        "provider_response_id": str(
+                            getattr(response, "id", "")
+                        ),
+                        "provider_request_id": str(
+                            getattr(response, "_request_id", "")
+                        ),
+                        "resolved_model": str(
+                            getattr(response, "model", "")
+                        ),
+                        "provider_response_status": str(status),
+                        "request_timeout_seconds": request_timeout,
+                    }
+                )
+                if attempts < self.config.max_provider_attempts:
+                    continue
+                return self._fallback_result(
+                    prompt=prompt,
+                    validator=validator,
+                    trigger="incomplete_provider_response_exhausted",
+                    attempt_history=attempt_history,
+                    started_at=started_at,
                 )
 
             output = getattr(response, "output_text", None)
             if not isinstance(output, str) or not output.strip():
-                raise FormalFeedbackGenerationError(
-                    "formal provider returned empty output"
+                attempt_history.append(
+                    {
+                        "attempt_number": attempts,
+                        "outcome": "empty_provider_output",
+                        "provider_response_id": str(
+                            getattr(response, "id", "")
+                        ),
+                        "provider_request_id": str(
+                            getattr(response, "_request_id", "")
+                        ),
+                        "resolved_model": str(
+                            getattr(response, "model", "")
+                        ),
+                        "request_timeout_seconds": request_timeout,
+                    }
+                )
+                if attempts < self.config.max_provider_attempts:
+                    continue
+                return self._fallback_result(
+                    prompt=prompt,
+                    validator=validator,
+                    trigger="empty_provider_output_exhausted",
+                    attempt_history=attempt_history,
+                    started_at=started_at,
                 )
 
             try:
@@ -317,7 +500,13 @@ class OpenAIResponsesFormalFeedbackGenerator:
                 )
                 if attempts < self.config.max_provider_attempts:
                     continue
-                raise
+                return self._fallback_result(
+                    prompt=prompt,
+                    validator=validator,
+                    trigger="output_validation_exhausted",
+                    attempt_history=attempt_history,
+                    started_at=started_at,
+                )
 
             attempt_history.append(
                 self._response_record(
@@ -343,6 +532,15 @@ class OpenAIResponsesFormalFeedbackGenerator:
                         getattr(response, "model", "")
                     ),
                     "provider_response_status": status,
+                    "fallback_used": False,
+                    "fallback_trigger": None,
+                    "effective_generation_status": (
+                        FORMAL_PROVIDER_SUCCESS_STATUS
+                    ),
+                    "elapsed_ms": round(
+                        max(0.0, self._clock() - started_at) * 1000.0,
+                        3,
+                    ),
                 }
             )
             metadata.update(_usage_metadata(response))
@@ -355,8 +553,12 @@ class OpenAIResponsesFormalFeedbackGenerator:
                 validated,
             )
 
-        raise FormalFeedbackGenerationError(
-            "formal feedback attempt budget was exhausted"
+        return self._fallback_result(
+            prompt=prompt,
+            validator=validator,
+            trigger="total_wait_budget_exhausted",
+            attempt_history=attempt_history,
+            started_at=started_at,
         )
 
     def __call__(
@@ -399,28 +601,36 @@ def create_formal_openai_feedback_generator(
 
     source = os.environ if environ is None else environ
 
-    if str(source.get("OPENAI_BASE_URL", "")).strip():
-        raise FormalFeedbackConfigurationError(
-            "OPENAI_BASE_URL is prohibited in formal mode"
+    try:
+        provider_config = resolve_formal_provider_config(
+            environ=source,
+            allow_local_file=(environ is None),
+            default_model=FORMAL_MODEL,
         )
+    except FormalProviderConfigError as exc:
+        raise FormalFeedbackConfigurationError(str(exc)) from exc
 
-    api_key = str(source.get("OPENAI_API_KEY", "")).strip()
-    if not api_key:
-        raise FormalFeedbackConfigurationError(
-            "OPENAI_API_KEY is required in formal mode"
-        )
+    base_config = config or FormalFeedbackGeneratorConfig()
 
-    resolved = config or FormalFeedbackGeneratorConfig()
+    resolved = replace(
+        base_config,
+        model=provider_config.model_name,
+    )
     resolved.validate()
 
     if client_factory is None:
         client_factory = openai.OpenAI
 
-    client = client_factory(
-        api_key=api_key,
-        max_retries=resolved.sdk_max_retries,
-        timeout=resolved.timeout_seconds,
-    )
+    client_kwargs = {
+        "api_key": provider_config.api_key,
+        "max_retries": resolved.sdk_max_retries,
+        "timeout": resolved.timeout_seconds,
+    }
+
+    if provider_config.base_url_explicit:
+        client_kwargs["base_url"] = provider_config.base_url
+
+    client = client_factory(**client_kwargs)
 
     return OpenAIResponsesFormalFeedbackGenerator(
         client=client,

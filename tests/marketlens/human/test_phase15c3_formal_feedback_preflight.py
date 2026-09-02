@@ -96,14 +96,14 @@ def test_execute_requires_explicit_paid_acknowledgement(
     assert not (tmp_path / "preflight").exists()
 
 
-def test_missing_key_or_custom_base_url_does_not_lock(
+def test_missing_key_does_not_lock(
     tmp_path,
 ):
     output_root = tmp_path / "preflight"
 
     with pytest.raises(
         preflight.FormalFeedbackPreflightError,
-        match="OPENAI_API_KEY",
+        match="API key",
     ):
         preflight.run_preflight(
             execute=True,
@@ -111,22 +111,6 @@ def test_missing_key_or_custom_base_url_does_not_lock(
             repo_root=ROOT,
             output_root=output_root,
             environ={},
-            enforce_clean_tracked_state=False,
-        )
-
-    with pytest.raises(
-        preflight.FormalFeedbackPreflightError,
-        match="OPENAI_BASE_URL",
-    ):
-        preflight.run_preflight(
-            execute=True,
-            acknowledge_paid_api_call=True,
-            repo_root=ROOT,
-            output_root=output_root,
-            environ={
-                "OPENAI_API_KEY": "not-a-real-key",
-                "OPENAI_BASE_URL": "https://example.invalid",
-            },
             enforce_clean_tracked_state=False,
         )
 
@@ -166,7 +150,7 @@ def test_fake_execute_writes_lock_and_validated_receipt(
         {
             "api_key": "not-a-real-key",
             "max_retries": 0,
-            "timeout": 45.0,
+            "timeout": 30.0,
         }
     ]
     assert len(client.responses.calls) == 1
@@ -234,7 +218,8 @@ def test_validation_failure_uses_two_requests_and_locks(
         failure_path.read_text(encoding="utf-8")
     )
     assert failure["status"] == "FAILED_CLOSED"
-    assert failure["fallback_used"] is False
+    assert failure["fallback_used"] is True
+    assert failure["generation_metadata"]["attempt_count"] == 2
     assert failure["participant_db_touched"] is False
     assert not (
         output_root / preflight.SUCCESS_RECEIPT_NAME
@@ -242,49 +227,51 @@ def test_validation_failure_uses_two_requests_and_locks(
 
 
 
-def _write_provider_config(
-    path: Path,
-    *,
-    api_key: object,
-) -> None:
-    path.write_text(
-        "api_key: "
-        + json.dumps(api_key)
-        + "\nmodel_name: gpt-5-nano\n"
-        + "base_url: https://api.openai.com/v1\n",
-        encoding="utf-8",
-    )
-
-
-def test_v3_environment_key_precedes_yaml_fallback(tmp_path):
-    config_path = tmp_path / "feedback.yaml"
-    _write_provider_config(
-        config_path,
-        api_key=["yaml-key-one", "yaml-key-two"],
-    )
-
-    resolved, metadata = (
-        preflight._resolve_provider_environment(
-            repo_root=ROOT,
-            source={"OPENAI_API_KEY": "environment-key"},
-            expected_model="gpt-5-nano",
-            provider_config_path=config_path,
-        )
+def test_v3_environment_key_is_required(tmp_path):
+    resolved, metadata = preflight._resolve_provider_environment(
+        repo_root=ROOT,
+        source={"OPENAI_API_KEY": "environment-key"},
+        expected_model="gpt-5-nano",
+        provider_config_path=tmp_path / "ignored-feedback.yaml",
     )
 
     assert resolved["OPENAI_API_KEY"] == "environment-key"
     assert "OPENAI_BASE_URL" not in resolved
     assert metadata["credential_source"] == "OPENAI_API_KEY"
-    assert metadata["provider_base_url"] == (
-        "https://api.openai.com/v1"
+    assert metadata["config_present"] is False
+
+
+def test_v3_custom_compatible_base_url_is_allowed(tmp_path):
+    resolved, metadata = preflight._resolve_provider_environment(
+        repo_root=ROOT,
+        source={
+            "OPENAI_API_KEY": "environment-key",
+            "OPENAI_BASE_URL": "https://compatible.example/v1",
+        },
+        expected_model="gpt-5-nano",
+        provider_config_path=tmp_path / "ignored-feedback.yaml",
     )
 
+    assert resolved["OPENAI_API_KEY"] == "environment-key"
+    assert (
+        resolved["OPENAI_BASE_URL"]
+        == "https://compatible.example/v1"
+    )
+    assert (
+        metadata["provider_base_url"]
+        == "https://compatible.example/v1"
+    )
+    assert metadata["credential_source"] == "OPENAI_API_KEY"
 
-def test_v3_yaml_list_is_deterministic_fallback(tmp_path):
-    config_path = tmp_path / "feedback.yaml"
-    _write_provider_config(
-        config_path,
-        api_key=["yaml-key-one", "yaml-key-two"],
+
+def test_v4_local_yaml_provider_config_is_loaded(tmp_path):
+    config_path = tmp_path / "feedback.local.yaml"
+    config_path.write_text(
+        'provider: "openai_compatible"\n'
+        'api_key: "yaml-local-key"\n'
+        'base_url: "https://compatible.example/v1"\n'
+        'model_name: "compatible-model"\n',
+        encoding="utf-8",
     )
 
     resolved, metadata = (
@@ -296,10 +283,18 @@ def test_v3_yaml_list_is_deterministic_fallback(tmp_path):
         )
     )
 
-    assert resolved["OPENAI_API_KEY"] == "yaml-key-one"
-    assert metadata["credential_source"] == (
-        "feedback.yaml:api_key[0]"
+    assert resolved["OPENAI_API_KEY"] == "yaml-local-key"
+    assert (
+        resolved["OPENAI_BASE_URL"]
+        == "https://compatible.example/v1"
     )
+    assert resolved["OPENAI_MODEL"] == "compatible-model"
+
+    assert metadata["credential_source"] == (
+        "feedback.local.yaml:api_key"
+    )
+    assert metadata["requested_model"] == "compatible-model"
+    assert metadata["config_present"] is True
 
 
 def test_v3_failure_receipt_has_sanitised_root_cause(tmp_path):
@@ -315,8 +310,6 @@ def test_v3_failure_receipt_has_sanitised_root_cause(tmp_path):
     class FailingClient:
         responses = FailingResponses()
 
-    config_path = tmp_path / "feedback.yaml"
-    _write_provider_config(config_path, api_key=None)
     output_root = tmp_path / "preflight"
 
     with pytest.raises(Exception):
@@ -328,7 +321,6 @@ def test_v3_failure_receipt_has_sanitised_root_cause(tmp_path):
             environ={"OPENAI_API_KEY": "environment-key"},
             client_factory=lambda **kwargs: FailingClient(),
             enforce_clean_tracked_state=False,
-            provider_config_path=config_path,
         )
 
     failure_path = (

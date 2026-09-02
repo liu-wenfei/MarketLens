@@ -31,14 +31,17 @@ from marketlens.episode.contract_v2 import (
 )
 from marketlens.human.feedback import (
     ContextLimits,
+    FORMAL_CONTEXT_LIMITS,
+    FORMAL_LIVE_FEEDBACK_POLICY_VERSION,
     FrozenFeedbackPrompt,
+    formal_context_limits_payload,
+    formal_fallback_sha256_by_kind,
+    formal_live_feedback_policy_payload,
 )
-from marketlens.human.feedback.reviewed_runtime import (
-    REVIEWED_RUNTIME_GENERATION_STATUS,
-    REVIEWED_RUNTIME_GENERATOR_ID,
-    ReviewedAcceptedFeedbackRuntimeError,
-    create_reviewed_accepted_feedback_generator,
-    is_reviewed_accepted_feedback_generator,
+from marketlens.human.formal_feedback_generator import (
+    FORMAL_GENERATION_STATUS,
+    FORMAL_GENERATOR_ID,
+    is_formal_feedback_generator,
 )
 from marketlens.human.measurement.event_store import ParticipantEventStore
 from marketlens.human.services.feedback_preparation_service import (
@@ -339,72 +342,59 @@ def create_formal_participant_app(
     )
 
     if accepted_feedback_root is not None:
-        if _allow_nonformal_feedback:
-            raise FormalParticipantServerConfigurationError(
-                "NON-FORMAL smoke mode cannot use accepted "
-                "formal artifacts"
-            )
-        if feedback_generator is not None:
-            raise FormalParticipantServerConfigurationError(
-                "provide accepted_feedback_root or "
-                "feedback_generator, not both"
-            )
-        resolved_feedback_root = Path(accepted_feedback_root)
-        if not resolved_feedback_root.is_absolute():
-            resolved_feedback_root = root / resolved_feedback_root
-        try:
-            feedback_generator = (
-                create_reviewed_accepted_feedback_generator(
-                    resolved_feedback_root
-                )
-            )
-        except ReviewedAcceptedFeedbackRuntimeError as exc:
-            raise FormalParticipantServerConfigurationError(
-                "cannot compose reviewed accepted feedback runtime"
-            ) from exc
+        raise FormalParticipantServerConfigurationError(
+            "accepted_feedback_root is an offline review-tool input and "
+            "cannot be used by the formal live participant runtime"
+        )
 
     if (
         feedback_generator is not None
         and not _allow_nonformal_feedback
     ):
-        if not is_reviewed_accepted_feedback_generator(
+        if not is_formal_feedback_generator(
             feedback_generator
         ):
             raise FormalParticipantServerConfigurationError(
                 "formal participant feedback requires the "
-                "reviewed accepted artifact generator; provider "
-                "generation is prohibited at participant runtime"
+                "frozen live formal provider generator"
             )
 
         if feedback_generator_id not in (
             None,
-            REVIEWED_RUNTIME_GENERATOR_ID,
+            FORMAL_GENERATOR_ID,
         ):
             raise FormalParticipantServerConfigurationError(
                 "formal feedback generator_id conflicts "
-                "with the reviewed runtime identity"
+                "with the live formal generator identity"
             )
         if feedback_generation_status not in (
             None,
-            REVIEWED_RUNTIME_GENERATION_STATUS,
+            FORMAL_GENERATION_STATUS,
         ):
             raise FormalParticipantServerConfigurationError(
                 "formal feedback generation_status conflicts "
-                "with the reviewed runtime identity"
+                "with the live formal generator identity"
             )
         if feedback_generation_metadata:
             raise FormalParticipantServerConfigurationError(
                 "formal feedback generation metadata is derived "
-                "from the reviewed runtime configuration"
+                "from the live formal generator configuration"
             )
 
-        feedback_generator_id = REVIEWED_RUNTIME_GENERATOR_ID
+        feedback_generator_id = FORMAL_GENERATOR_ID
         feedback_generation_status = (
-            REVIEWED_RUNTIME_GENERATION_STATUS
+            FORMAL_GENERATION_STATUS
         )
         feedback_generation_metadata = (
             feedback_generator.static_metadata()
         )
+        if feedback_context_limits is None:
+            feedback_context_limits = FORMAL_CONTEXT_LIMITS
+        elif feedback_context_limits != FORMAL_CONTEXT_LIMITS:
+            raise FormalParticipantServerConfigurationError(
+                "formal live feedback requires the exact frozen "
+                "FORMAL_CONTEXT_LIMITS policy"
+            )
 
     _load_formal_v2_pool(root)
 
@@ -505,6 +495,14 @@ def create_formal_participant_app(
         app.state.feedback_preparation_service = (
             preparation
         )
+        app.state.formal_feedback_runtime_policy = {
+            "policy_version": FORMAL_LIVE_FEEDBACK_POLICY_VERSION,
+            "policy": formal_live_feedback_policy_payload(),
+            "context_limits": formal_context_limits_payload(),
+            "fallback_output_sha256_by_kind": (
+                formal_fallback_sha256_by_kind()
+            ),
+        }
     else:
         if any(
             value is not None
@@ -521,6 +519,7 @@ def create_formal_participant_app(
             )
 
         app.state.feedback_preparation_service = None
+        app.state.formal_feedback_runtime_policy = None
 
     app.state.formal_participant_event_store = events
     app.state.formal_participant_text_pack = text_pack

@@ -6,6 +6,13 @@ NON-FORMAL preflight evidence only and never reads or writes participant DBs.
 
 from __future__ import annotations
 
+from marketlens.human.feedback.provider_config import (
+    FormalProviderConfigError,
+    resolve_formal_provider_config,
+)
+
+from dataclasses import replace
+
 import argparse
 from datetime import datetime, timezone
 from hashlib import sha256
@@ -51,6 +58,18 @@ class FormalFeedbackPreflightError(RuntimeError):
     pass
 
 
+class FormalFeedbackPreflightFallbackError(
+    FormalFeedbackPreflightError
+):
+    """The live runtime fallback is not real-provider acceptance evidence."""
+
+    def __init__(self, generation_metadata: Mapping[str, object]) -> None:
+        super().__init__(
+            "formal provider preflight resolved to runtime fallback"
+        )
+        self.generation_metadata = dict(generation_metadata)
+
+
 def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -73,147 +92,55 @@ def _sha256_json(value: object) -> str:
 
 
 
-FORMAL_PROVIDER_CONFIG_RELATIVE = Path("config/feedback.yaml")
-FORMAL_OFFICIAL_BASE_URL = "https://api.openai.com/v1"
-
-
-def _normalise_base_url(value: object) -> str:
-    if value is None:
-        return ""
-    if not isinstance(value, str):
-        raise FormalFeedbackPreflightError(
-            "feedback provider base_url must be a string or null"
-        )
-    return value.strip().rstrip("/")
-
-
-def _usable_yaml_keys(value: object) -> list[str]:
-    if value is None:
-        candidates: list[object] = []
-    elif isinstance(value, str):
-        candidates = [value]
-    elif isinstance(value, list):
-        candidates = list(value)
-    else:
-        raise FormalFeedbackPreflightError(
-            "feedback provider api_key must be a string, list, or null"
-        )
-
-    keys = [
-        item.strip()
-        for item in candidates
-        if isinstance(item, str) and item.strip()
-    ]
-    if any(any(char.isspace() for char in key) for key in keys):
-        raise FormalFeedbackPreflightError(
-            "feedback provider api_key contains whitespace"
-        )
-    return keys
-
-
 def _resolve_provider_environment(
     *,
     repo_root: Path,
     source: Mapping[str, str],
     expected_model: str,
     provider_config_path: Path | None = None,
+    allow_local_file: bool = True,
 ) -> tuple[dict[str, str], dict[str, object]]:
-    config_path = (
-        provider_config_path
-        if provider_config_path is not None
-        else repo_root / FORMAL_PROVIDER_CONFIG_RELATIVE
+    try:
+        provider_config = resolve_formal_provider_config(
+            repo_root=repo_root,
+            environ=source,
+            provider_config_path=provider_config_path,
+            allow_local_file=allow_local_file,
+            default_model=expected_model,
+        )
+    except FormalProviderConfigError as exc:
+        raise FormalFeedbackPreflightError(str(exc)) from exc
+
+    return (
+        provider_config.environment(),
+        provider_config.metadata(),
     )
-
-    environment_base_url = _normalise_base_url(
-        source.get("OPENAI_BASE_URL")
-    )
-    if environment_base_url not in (
-        "",
-        FORMAL_OFFICIAL_BASE_URL,
-    ):
-        raise FormalFeedbackPreflightError(
-            "formal preflight prohibits a custom OPENAI_BASE_URL"
-        )
-
-    yaml_keys: list[str] = []
-    resolved_base_url = FORMAL_OFFICIAL_BASE_URL
-    config_present = config_path.is_file()
-
-    if config_present:
-        try:
-            payload = yaml.safe_load(
-                config_path.read_text(encoding="utf-8")
-            )
-        except (OSError, yaml.YAMLError) as exc:
-            raise FormalFeedbackPreflightError(
-                "unable to read feedback provider configuration"
-            ) from exc
-
-        if not isinstance(payload, Mapping):
-            raise FormalFeedbackPreflightError(
-                "feedback provider configuration must be a mapping"
-            )
-
-        if payload.get("model_name") != expected_model:
-            raise FormalFeedbackPreflightError(
-                "feedback provider model_name does not match "
-                "the frozen formal model"
-            )
-
-        configured_base_url = _normalise_base_url(
-            payload.get("base_url")
-        )
-        if configured_base_url not in (
-            "",
-            FORMAL_OFFICIAL_BASE_URL,
-        ):
-            raise FormalFeedbackPreflightError(
-                "feedback provider configuration must use "
-                "the official OpenAI base URL"
-            )
-        if configured_base_url:
-            resolved_base_url = configured_base_url
-
-        yaml_keys = _usable_yaml_keys(payload.get("api_key"))
-
-    environment_key = str(
-        source.get("OPENAI_API_KEY", "")
-    ).strip()
-    if environment_key and any(
-        char.isspace() for char in environment_key
-    ):
-        raise FormalFeedbackPreflightError(
-            "OPENAI_API_KEY contains whitespace"
-        )
-
-    if environment_key:
-        selected_key = environment_key
-        credential_source = "OPENAI_API_KEY"
-    elif yaml_keys:
-        selected_key = yaml_keys[0]
-        credential_source = "feedback.yaml:api_key[0]"
-    else:
-        raise FormalFeedbackPreflightError(
-            "OPENAI_API_KEY is required; feedback.yaml fallback is empty"
-        )
-
-    resolved = dict(source)
-    resolved["OPENAI_API_KEY"] = selected_key
-    resolved.pop("OPENAI_BASE_URL", None)
-
-    metadata: dict[str, object] = {
-        "credential_source": credential_source,
-        "config_present": config_present,
-        "config_path": str(config_path),
-        "provider_base_url": resolved_base_url,
-        "requested_model": expected_model,
-    }
-    return resolved, metadata
 
 
 def _sanitised_failure_diagnostic(
     exc: BaseException,
 ) -> dict[str, object]:
+    generation_metadata = getattr(exc, "generation_metadata", None)
+    if isinstance(generation_metadata, Mapping):
+        history = generation_metadata.get("attempt_history")
+        if isinstance(history, list) and history:
+            last = history[-1]
+            if isinstance(last, Mapping):
+                diagnostic = {
+                    "provider_error_type": str(
+                        last.get("error_type", type(exc).__name__)
+                    )
+                }
+                for source, target in (
+                    ("provider_status_code", "provider_status_code"),
+                    ("provider_error_code", "provider_error_code"),
+                    ("provider_request_id", "provider_request_id"),
+                ):
+                    value = last.get(source)
+                    if value is not None and str(value).strip():
+                        diagnostic[target] = value
+                return diagnostic
+
     current = exc
     seen: set[int] = set()
     while (
@@ -407,8 +334,8 @@ def _dry_run_report(
             "--execute",
             "--acknowledge-paid-api-call",
             "clean tracked git state",
-            "OPENAI_API_KEY or feedback.yaml api_key",
-            "official OpenAI base URL",
+            "config/feedback.local.yaml or OPENAI_API_KEY override",
+            "local YAML or environment provider/model configuration",
             "no previous execution lock",
         ],
     }
@@ -451,8 +378,18 @@ def run_preflight(
             source=raw_source,
             expected_model=config.model,
             provider_config_path=provider_config_path,
+            allow_local_file=(
+                environ is None
+                or provider_config_path is not None
+            ),
         )
     )
+
+    config = replace(
+        config,
+        model=str(provider_configuration["requested_model"]),
+    )
+    config.validate()
 
     state = _repo_state(repo_root)
     lock_path = output_root / EXECUTION_LOCK_NAME
@@ -503,7 +440,14 @@ def run_preflight(
                 FeedbackOutputValidationError,
             ),
         )
+        if result.metadata.get("fallback_used") is not False:
+            raise FormalFeedbackPreflightFallbackError(result.metadata)
     except BaseException as exc:
+        failure_generation_metadata = getattr(
+            exc,
+            "generation_metadata",
+            {},
+        )
         failure = {
             "status": "FAILED_CLOSED",
             "label": PREFLIGHT_LABEL,
@@ -522,9 +466,17 @@ def run_preflight(
             "provider_configuration": (
                 provider_configuration
             ),
-            "fallback_used": False,
+            "fallback_used": bool(
+                failure_generation_metadata.get("fallback_used", False)
+            )
+            if isinstance(failure_generation_metadata, Mapping)
+            else False,
             "participant_db_touched": False,
         }
+        if isinstance(failure_generation_metadata, Mapping):
+            failure["generation_metadata"] = dict(
+                failure_generation_metadata
+            )
         _write_exclusive(failure_path, failure)
         raise
 

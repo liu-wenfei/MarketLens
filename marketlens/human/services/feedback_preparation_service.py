@@ -11,9 +11,11 @@ The generator is injected. This module contains no provider/API client.
 from __future__ import annotations
 
 import json
+from hashlib import sha256
 from collections.abc import Callable, Mapping
 from datetime import datetime, timezone
 from threading import Lock
+from uuid import NAMESPACE_URL, uuid5
 
 from marketlens.human.feedback.generation import (
     BoundedValidatedFeedbackGenerator,
@@ -56,6 +58,18 @@ class ParticipantFeedbackPreparationError(ValueError):
     pass
 
 
+class ParticipantFeedbackGenerationInProgressError(
+    ParticipantFeedbackPreparationError
+):
+    pass
+
+
+class ParticipantFeedbackGenerationFailedError(
+    ParticipantFeedbackPreparationError
+):
+    pass
+
+
 def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -73,6 +87,10 @@ def _canonical_json(value: object) -> str:
         raise ParticipantFeedbackPreparationError(
             "generated feedback is not canonical JSON"
         ) from exc
+
+
+def _sha256_json(value: object) -> str:
+    return sha256(_canonical_json(value).encode("utf-8")).hexdigest()
 
 
 def _feedback_kind_for_step(
@@ -95,12 +113,9 @@ def _feedback_kind_for_step(
 class ParticipantFeedbackPreparationService:
     """Prepare at most one feedback artifact per session/checkpoint.
 
-    The process-local lock prevents duplicate generation within one
-    participant-server process. Immutable DB persistence remains the
-    authoritative duplicate/conflict guard.
-
-    No real-provider concurrency policy is implied by this development
-    wiring.
+    The process-local lock avoids duplicate work inside one process. A
+    database-backed generation claim is the cross-worker authority: only the
+    request that creates the claim may call the provider.
     """
 
     def __init__(
@@ -277,57 +292,120 @@ class ParticipantFeedbackPreparationService:
                 context_pack
             )
 
+            generation_id = str(
+                uuid5(
+                    NAMESPACE_URL,
+                    "marketlens:participant-feedback-generation:"
+                    f"{session_id}:{step}",
+                )
+            )
+            generation_row, claimed = (
+                self.delivery.store.claim_generation_once(
+                    generation_id=generation_id,
+                    session_id=session_id,
+                    participant_id=state.participant_id,
+                    experiment_step=step,
+                    agent_world_date=state.agent_world_date,
+                    prompt_sha256=_sha256_json(prompt.to_dict()),
+                    generator_id=self.generator_id,
+                    status="GENERATING",
+                    claimed_at=_utc_now(),
+                )
+            )
+            if not claimed:
+                if generation_row["status"] == "GENERATING":
+                    raise ParticipantFeedbackGenerationInProgressError(
+                        "feedback generation is already in progress"
+                    )
+                if generation_row["status"] == "FAILED":
+                    raise ParticipantFeedbackGenerationFailedError(
+                        "feedback generation previously failed and "
+                        "requires researcher review"
+                    )
+                raise ParticipantFeedbackPreparationError(
+                    "feedback generation completed without a persisted "
+                    "feedback artifact"
+                )
+
             dynamic_generation_metadata: dict[
                 str, object
             ] = {}
 
-            if isinstance(
-                self.generator,
-                BoundedValidatedFeedbackGenerator,
-            ):
-                result, validated_candidate = (
-                    self.generator.generate_validated(
-                        prompt,
-                        validator=lambda output: (
-                            validate_feedback_output(
-                                output,
-                                context_pack=context_pack,
-                            )
-                        ),
-                        validation_error_types=(
-                            FeedbackOutputValidationError,
-                        ),
-                    )
-                )
-
-                if not isinstance(
-                    result,
-                    FeedbackGenerationResult,
+            try:
+                if isinstance(
+                    self.generator,
+                    BoundedValidatedFeedbackGenerator,
                 ):
-                    raise ParticipantFeedbackPreparationError(
-                        "bounded feedback generator returned "
-                        "an invalid result envelope"
-                    )
-                if not isinstance(
-                    validated_candidate,
-                    ValidatedFeedbackOutput,
-                ):
-                    raise ParticipantFeedbackPreparationError(
-                        "bounded feedback generator returned "
-                        "an invalid validation result"
+                    result, validated_candidate = (
+                        self.generator.generate_validated(
+                            prompt,
+                            validator=lambda output: (
+                                validate_feedback_output(
+                                    output,
+                                    context_pack=context_pack,
+                                )
+                            ),
+                            validation_error_types=(
+                                FeedbackOutputValidationError,
+                            ),
+                        )
                     )
 
-                generated = result.output
-                dynamic_generation_metadata = dict(
-                    result.metadata
+                    if not isinstance(
+                        result,
+                        FeedbackGenerationResult,
+                    ):
+                        raise ParticipantFeedbackPreparationError(
+                            "bounded feedback generator returned "
+                            "an invalid result envelope"
+                        )
+                    if not isinstance(
+                        validated_candidate,
+                        ValidatedFeedbackOutput,
+                    ):
+                        raise ParticipantFeedbackPreparationError(
+                            "bounded feedback generator returned "
+                            "an invalid validation result"
+                        )
+
+                    generated = result.output
+                    dynamic_generation_metadata = dict(
+                        result.metadata
+                    )
+                    validated = validated_candidate
+                else:
+                    generated = self.generator(prompt)
+                    validated = validate_feedback_output(
+                        generated,
+                        context_pack=context_pack,
+                    )
+            except Exception as exc:
+                failed_history = getattr(
+                    exc,
+                    "attempt_history",
+                    [],
                 )
-                validated = validated_candidate
-            else:
-                generated = self.generator(prompt)
-                validated = validate_feedback_output(
-                    generated,
-                    context_pack=context_pack,
+                failed_trigger = getattr(
+                    exc,
+                    "fallback_trigger",
+                    None,
                 )
+                failed_provenance = {
+                    "attempt_count": len(failed_history),
+                    "attempt_history": failed_history,
+                    "fallback_used": False,
+                    "fallback_trigger": failed_trigger,
+                }
+                self.delivery.store.fail_generation(
+                    session_id=session_id,
+                    experiment_step=step,
+                    finished_at=_utc_now(),
+                    failure_type=type(exc).__name__,
+                    attempt_provenance_json=_canonical_json(
+                        failed_provenance
+                    ),
+                )
+                raise
 
             validated_payload = dict(
                 validated.payload
@@ -383,6 +461,20 @@ class ParticipantFeedbackPreparationService:
                 }
             )
 
+            effective_generation_status = self.generation_status
+            dynamic_status = metadata.get(
+                "effective_generation_status"
+            )
+            if dynamic_status is not None:
+                if (
+                    not isinstance(dynamic_status, str)
+                    or not dynamic_status.strip()
+                ):
+                    raise ParticipantFeedbackPreparationError(
+                        "effective generation status is invalid"
+                    )
+                effective_generation_status = dynamic_status.strip()
+
             artifact = PreparedFeedbackArtifact(
                 participant_id=(
                     state.participant_id
@@ -402,7 +494,7 @@ class ParticipantFeedbackPreparationService:
                     + prompt.user_prompt
                 ),
                 generation_status=(
-                    self.generation_status
+                    effective_generation_status
                 ),
                 generator_id=(
                     self.generator_id
@@ -415,9 +507,40 @@ class ParticipantFeedbackPreparationService:
                 generated_at=_utc_now(),
             )
 
-            self.delivery.persist_once(
-                session_id,
-                artifact,
-            )
+            attempt_provenance = {
+                "attempt_count": metadata.get("attempt_count", 0),
+                "attempt_history": metadata.get("attempt_history", []),
+                "fallback_used": metadata.get("fallback_used", False),
+                "fallback_trigger": metadata.get("fallback_trigger"),
+            }
+
+            try:
+                self.delivery.persist_once(
+                    session_id,
+                    artifact,
+                )
+                self.delivery.store.finish_generation(
+                    session_id=session_id,
+                    experiment_step=step,
+                    finished_at=_utc_now(),
+                    effective_generation_status=(
+                        effective_generation_status
+                    ),
+                    attempt_provenance_json=_canonical_json(
+                        attempt_provenance
+                    ),
+                    output_sha256=validated.output_sha256,
+                )
+            except Exception as exc:
+                self.delivery.store.fail_generation(
+                    session_id=session_id,
+                    experiment_step=step,
+                    finished_at=_utc_now(),
+                    failure_type=type(exc).__name__,
+                    attempt_provenance_json=_canonical_json(
+                        attempt_provenance
+                    ),
+                )
+                raise
 
             return True

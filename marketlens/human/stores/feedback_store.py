@@ -91,6 +91,38 @@ participant_feedback = Table(
     ),
 )
 
+participant_feedback_generation = Table(
+    "participant_feedback_generation",
+    feedback_metadata,
+    Column("generation_id", String, primary_key=True),
+    Column("session_id", String, nullable=False),
+    Column("participant_id", String, nullable=False),
+    Column("experiment_step", Integer, nullable=False),
+    Column("agent_world_date", String, nullable=False),
+    Column("prompt_sha256", String, nullable=False),
+    Column("generator_id", String, nullable=False),
+    Column("status", String, nullable=False),
+    Column("claimed_at", String, nullable=False),
+    Column("finished_at", String, nullable=True),
+    Column("effective_generation_status", String, nullable=True),
+    Column("attempt_provenance_json", Text, nullable=True),
+    Column("output_sha256", String, nullable=True),
+    Column("failure_type", String, nullable=True),
+    CheckConstraint(
+        "experiment_step >= 0",
+        name="ck_participant_feedback_generation_step_nonnegative",
+    ),
+    CheckConstraint(
+        "status IN ('GENERATING', 'COMPLETED', 'FAILED')",
+        name="ck_participant_feedback_generation_status",
+    ),
+    UniqueConstraint(
+        "session_id",
+        "experiment_step",
+        name="uq_participant_feedback_generation_session_step",
+    ),
+)
+
 
 _IMMUTABLE_FIELDS = (
     "feedback_id",
@@ -144,6 +176,167 @@ class FeedbackStore:
                     == int(experiment_step),
                 )
             ).mappings().first()
+
+    def get_generation(
+        self,
+        session_id: str,
+        experiment_step: int,
+    ) -> RowMapping | None:
+        with self.db.connect() as connection:
+            return connection.execute(
+                select(participant_feedback_generation).where(
+                    participant_feedback_generation.c.session_id
+                    == session_id,
+                    participant_feedback_generation.c.experiment_step
+                    == int(experiment_step),
+                )
+            ).mappings().first()
+
+    @staticmethod
+    def _require_generation_identity(
+        existing: RowMapping,
+        values: Mapping[str, Any],
+    ) -> None:
+        for field in (
+            "generation_id",
+            "session_id",
+            "participant_id",
+            "experiment_step",
+            "agent_world_date",
+            "prompt_sha256",
+            "generator_id",
+        ):
+            if existing[field] != values[field]:
+                raise StoreFeedbackConflictError(
+                    "feedback generation claim identity conflict: "
+                    f"{field}"
+                )
+
+    def claim_generation_once(
+        self,
+        **values: Any,
+    ) -> tuple[RowMapping, bool]:
+        expected = {
+            "generation_id",
+            "session_id",
+            "participant_id",
+            "experiment_step",
+            "agent_world_date",
+            "prompt_sha256",
+            "generator_id",
+            "status",
+            "claimed_at",
+        }
+        if set(values) != expected or values["status"] != "GENERATING":
+            raise StoreFeedbackConflictError(
+                "feedback generation claim fields are invalid"
+            )
+
+        existing = self.get_generation(
+            values["session_id"],
+            int(values["experiment_step"]),
+        )
+        if existing is not None:
+            self._require_generation_identity(existing, values)
+            return existing, False
+
+        try:
+            with self.db.engine.begin() as connection:
+                connection.execute(
+                    insert(participant_feedback_generation).values(**values)
+                )
+        except IntegrityError as exc:
+            existing = self.get_generation(
+                values["session_id"],
+                int(values["experiment_step"]),
+            )
+            if existing is None:
+                raise StoreFeedbackConflictError(
+                    "feedback generation claim uniqueness conflict"
+                ) from exc
+            self._require_generation_identity(existing, values)
+            return existing, False
+
+        created = self.get_generation(
+            values["session_id"],
+            int(values["experiment_step"]),
+        )
+        if created is None:
+            raise StoreFeedbackError(
+                "feedback generation claim was not readable after insertion"
+            )
+        return created, True
+
+    def finish_generation(
+        self,
+        *,
+        session_id: str,
+        experiment_step: int,
+        finished_at: str,
+        effective_generation_status: str,
+        attempt_provenance_json: str,
+        output_sha256: str,
+    ) -> RowMapping:
+        with self.db.engine.begin() as connection:
+            connection.execute(
+                update(participant_feedback_generation)
+                .where(
+                    participant_feedback_generation.c.session_id
+                    == session_id,
+                    participant_feedback_generation.c.experiment_step
+                    == int(experiment_step),
+                    participant_feedback_generation.c.status
+                    == "GENERATING",
+                )
+                .values(
+                    status="COMPLETED",
+                    finished_at=finished_at,
+                    effective_generation_status=effective_generation_status,
+                    attempt_provenance_json=attempt_provenance_json,
+                    output_sha256=output_sha256,
+                    failure_type=None,
+                )
+            )
+        row = self.get_generation(session_id, experiment_step)
+        if row is None or row["status"] != "COMPLETED":
+            raise StoreFeedbackConflictError(
+                "feedback generation could not be marked completed"
+            )
+        return row
+
+    def fail_generation(
+        self,
+        *,
+        session_id: str,
+        experiment_step: int,
+        finished_at: str,
+        failure_type: str,
+        attempt_provenance_json: str | None,
+    ) -> RowMapping:
+        with self.db.engine.begin() as connection:
+            connection.execute(
+                update(participant_feedback_generation)
+                .where(
+                    participant_feedback_generation.c.session_id
+                    == session_id,
+                    participant_feedback_generation.c.experiment_step
+                    == int(experiment_step),
+                    participant_feedback_generation.c.status
+                    == "GENERATING",
+                )
+                .values(
+                    status="FAILED",
+                    finished_at=finished_at,
+                    failure_type=failure_type,
+                    attempt_provenance_json=attempt_provenance_json,
+                )
+            )
+        row = self.get_generation(session_id, experiment_step)
+        if row is None or row["status"] != "FAILED":
+            raise StoreFeedbackConflictError(
+                "feedback generation could not be marked failed"
+            )
+        return row
 
     def get_by_continue_request(
         self,

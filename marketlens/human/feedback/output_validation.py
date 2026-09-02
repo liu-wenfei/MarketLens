@@ -45,6 +45,13 @@ _NUMERIC_LITERAL_RE = re.compile(
 
 _FORBIDDEN_PATTERNS = (
     (
+        "first-person participant impersonation",
+        re.compile(
+            r"\b(?:I|me|my|mine|myself)\b",
+            re.IGNORECASE,
+        ),
+    ),
+    (
         "internal judgement label",
         re.compile(
             r"\bJ[0-4]\b",
@@ -95,6 +102,27 @@ _FORBIDDEN_PATTERNS = (
             r"we recommend|financial advice|"
             r"consider buying|consider selling|"
             r"consider holding)\b",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "prescriptive or optimisation language",
+        re.compile(
+            r"\b(?:moving forward|going forward|"
+            r"aim to|aiming to|try to|trying to|"
+            r"potential edge|risk management|"
+            r"investment strategy|trading strategy|"
+            r"disciplined|discipline)\b",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "evaluative decision-quality language",
+        re.compile(
+            r"\b(?:better decision|worse decision|"
+            r"good decision|poor decision|"
+            r"effective decision|successful decision|"
+            r"high-quality|low-quality)\b",
             re.IGNORECASE,
         ),
     ),
