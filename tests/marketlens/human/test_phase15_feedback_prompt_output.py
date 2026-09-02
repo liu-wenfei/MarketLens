@@ -403,3 +403,37 @@ def test_markdown_fence_fails():
             raw,
             context_pack=pack,
         )
+
+
+def test_prompt_v3_explicitly_forbids_first_person_participant_voice():
+    prompt = build_feedback_prompt(_context())
+
+    assert (
+        prompt.prompt_contract_version
+        == "marketlens-feedback-reflection-prompt-v3"
+    )
+
+    assert (
+        "Never write from the participant's first-person perspective."
+        in prompt.system_prompt
+    )
+
+    assert (
+        '"I", "me", "my", "mine", or'
+        in prompt.system_prompt
+    )
+
+    assert (
+        'When referring directly to the participant, use "you" or "your".'
+        in prompt.system_prompt
+    )
+
+    assert (
+        "Never use I, me, my, mine, or myself in the reflection."
+        in prompt.user_prompt
+    )
+
+    assert (
+        "Use you or your when referring directly to the participant."
+        in prompt.user_prompt
+    )

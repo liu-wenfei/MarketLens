@@ -111,10 +111,25 @@ def test_validation_rejection_uses_same_two_attempt_budget():
     )
 
     assert len(client.responses.calls) == 2
-    assert (
-        client.responses.calls[0]
-        == client.responses.calls[1]
+
+    first_request = client.responses.calls[0]
+    second_request = client.responses.calls[1]
+
+    assert {
+        key: value
+        for key, value in first_request.items()
+        if key != "input"
+    } == {
+        key: value
+        for key, value in second_request.items()
+        if key != "input"
+    }
+
+    assert second_request["input"].startswith(
+        first_request["input"]
     )
+    assert "CORRECTION REQUIRED" in second_request["input"]
+    assert "<validation_reason>" in second_request["input"]
     assert result.output == "ACCEPT"
     assert validated == {"accepted": "ACCEPT"}
     assert result.metadata["attempt_count"] == 2
@@ -345,3 +360,61 @@ def test_nonformal_smoke_factory_remains_available(
     finally:
         app.state.formal_participant_event_store.dispose()
         app.state.db.dispose()
+
+
+def test_corrective_retry_uses_validator_reason_without_rejected_output():
+    rejected_output = "RAW_REJECTED_OUTPUT_SENTINEL"
+
+    client = _FakeClient(
+        [
+            _response(rejected_output, "first"),
+            _response("ACCEPT", "second"),
+        ]
+    )
+
+    generator = OpenAIResponsesFormalFeedbackGenerator(
+        client=client
+    )
+
+    def validator(output):
+        if output == rejected_output:
+            raise _RejectedOutput(
+                "backend-owned validator reason"
+            )
+        return {"accepted": output}
+
+    result, validated = generator.generate_validated(
+        _prompt(),
+        validator=validator,
+        validation_error_types=(_RejectedOutput,),
+    )
+
+    assert len(client.responses.calls) == 2
+
+    first_input = client.responses.calls[0]["input"]
+    second_input = client.responses.calls[1]["input"]
+
+    assert second_input.startswith(first_input)
+    assert "CORRECTION REQUIRED" in second_input
+    assert (
+        "backend-owned validator reason"
+        in second_input
+    )
+
+    assert rejected_output not in second_input
+
+    history = result.metadata["attempt_history"]
+
+    assert history[0]["request_mode"] == "base"
+    assert (
+        history[1]["request_mode"]
+        == "corrective_retry"
+    )
+    assert (
+        history[1]["corrective_retry_reason"]
+        == "backend-owned validator reason"
+    )
+
+    assert result.metadata["corrective_retry_used"] is True
+    assert result.metadata["fallback_used"] is False
+    assert validated == {"accepted": "ACCEPT"}
