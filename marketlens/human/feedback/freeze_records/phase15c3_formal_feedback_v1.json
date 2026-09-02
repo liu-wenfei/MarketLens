@@ -1,0 +1,108 @@
+{
+  "accepted_runtime_outcomes": [
+    "formal_live_provider_validated",
+    "formal_live_fallback_validated"
+  ],
+  "component": "live_adaptive_feedback_runtime",
+  "contracts": {
+    "corrective_retry_policy_version": "marketlens-formal-feedback-corrective-retry-v2",
+    "fallback_policy_version": "marketlens-formal-feedback-fallback-v1",
+    "generator_contract_version": "marketlens-formal-feedback-generator-v7",
+    "live_feedback_policy_version": "marketlens-formal-live-adaptive-feedback-v1",
+    "output_contract_version": "marketlens-feedback-reflection-output-v3",
+    "preflight_contract_version": "marketlens-formal-feedback-provider-preflight-v11",
+    "prompt_contract_version": "marketlens-feedback-reflection-prompt-v4"
+  },
+  "fallback_outputs": {
+    "final_session_summary_sha256": "9a9df3e3e900f4f61705a28a78d97599e22b17b58d0b3ef0f72f1781c716b206",
+    "multi_period_decision_feedback_sha256": "99d63d151c042ffc33f253f35b7e7ad96364ccf0a4714104075151e38edb5b48"
+  },
+  "final_contract_evidence_interpretation": {
+    "final_output_v3_fail_closed_observed": true,
+    "final_output_v3_rejection_observed": true,
+    "freeze_basis": "bounded live provider generation, deterministic output validation, prohibited unvalidated exposure, and validated fallback on bounded provider failure",
+    "participant_db_side_effect_during_preflight": false,
+    "provider_success_under_final_output_v3_observed": false,
+    "v11_must_not_be_retried": true,
+    "v12_created": false,
+    "validated_fallback_under_final_runtime_observed": true
+  },
+  "freeze_record_version": "marketlens-phase15c3-formal-feedback-freeze-v1",
+  "frozen_at_utc": "2026-09-02T14:54:51.283099+00:00",
+  "git": {
+    "branch": "phase15-participant-ui",
+    "commit": "c4f8f38a56141bb65ff7e061469d0b5dfd1a1647"
+  },
+  "last_known_zero_api_validation": {
+    "full_human_tests_passed": 374,
+    "targeted_tests_passed": 80,
+    "validation_stage": "15C3Q"
+  },
+  "participant_feedback_contract": {
+    "fallback_after_bounded_failure": true,
+    "fixed_checkpoints": [
+      "F1_after_P4_behaviour_lock",
+      "F2_after_P11_behaviour_lock",
+      "Final_after_P15_J4_and_final_trade_or_no_trade"
+    ],
+    "future_information_exposure": false,
+    "generation_basis": "participant-specific recorded behaviour, participant-reported rationale/evidence, participant-visible information, and deterministic backend statistics",
+    "hidden_agent_state_exposure": false,
+    "other_participant_comparison": false,
+    "overall_scalar_score": false,
+    "provider_output_requires_deterministic_validation": true,
+    "rejected_provider_output_persisted": false,
+    "rejected_provider_output_reused_in_retry": false,
+    "truth_or_correctness_feedback": false,
+    "unsupported_hidden_state_attribution": false,
+    "unvalidated_provider_output_exposure": false
+  },
+  "phase": "15C3",
+  "preflight_evidence": {
+    "v10": {
+      "attempt_count": 1,
+      "classification": "provider_validated_under_output_v2",
+      "fallback_used": false,
+      "formal_experimental_evidence": false,
+      "git_commit": "88b9146f688415b03c7e2825907668d6ce3516ed",
+      "output_contract_version": "marketlens-feedback-reflection-output-v2",
+      "participant_db_touched": false,
+      "receipt_sha256": "14187f6bed3f39c7707f9739020fa8e4959b1a2613f723a5e01f448906cb212f",
+      "status": "PREFLIGHT_VALIDATED"
+    },
+    "v11": {
+      "attempt_count": 2,
+      "classification": "final_output_v3_fail_closed_to_validated_fallback",
+      "corrective_retry_used": true,
+      "effective_generation_status": "formal_live_fallback_validated",
+      "fallback_trigger": "output_validation_exhausted",
+      "fallback_used": true,
+      "formal_experimental_evidence": false,
+      "git_commit": "c4f8f38a56141bb65ff7e061469d0b5dfd1a1647",
+      "output_contract_version": "marketlens-feedback-reflection-output-v3",
+      "participant_db_touched": false,
+      "receipt_sha256": "5e34078998b8af168e928ea3822e32ccbfe387675e11d0022f54ced31c15fb89",
+      "status": "FAILED_CLOSED"
+    }
+  },
+  "provider_runtime": {
+    "api_surface": "responses",
+    "formal_max_attempts": 2,
+    "max_output_tokens": 1024,
+    "provider": "openai_compatible",
+    "reasoning_effort": "minimal",
+    "requested_model": "gpt-5-nano",
+    "resolved_model_in_v11": null,
+    "sdk_max_retries": 0,
+    "timeout_seconds": 30.0,
+    "total_timeout_seconds": 45.0
+  },
+  "source_sha256": {
+    "formal_generator": "3fba16ac0a7c4d948df2b8882ae1f01c4a185793bdb4e1c8b02a8692d7cd38a8",
+    "formal_policy": "a3c36a8450fe997249b63317135fb4f2a225455f182586aa08f8db707fc36fc8",
+    "formal_preflight": "e910c72fb3365550d4ca81c92c872e45a9ab499f28e3a93e18e70665666657cf",
+    "output_validation": "87f3119b5f02dfc3f43b38e0918d83bcaeb1cc63a9162f16f2aca64e43e77555",
+    "prompt": "aa8bafd0e849ce9493abda5950f114855e1bfb70a2ee9e638579a11763227800"
+  },
+  "status": "formal_runtime_frozen_with_validated_fallback"
+}
