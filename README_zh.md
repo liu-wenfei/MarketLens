@@ -1,3 +1,91 @@
+# MarketLens
+
+**基于 TwinMarket 构建的人类金融判断与判断修正研究环境**
+
+MarketLens 在继承的 TwinMarket LLM-Agent 金融市场环境之上增加了受控的人类参与者实验层，用于研究参与者在接触实验控制的 misinformation 与 authoritative correction 后，如何形成并修正金融判断。
+
+> **TwinMarket 提供继承的 LLM-Agent 市场环境；MarketLens 控制参与者看到什么、记录参与者如何反应，并保证参与者行为不会改变 Agent world。**
+
+## 实验环境
+
+正式参与者实验包括：
+
+- 15 个 Market Period；
+- 一个固定正式判断对象：**MEI — Manufacturing Index**；
+- 10 个参与者可见、可交易资产；
+- J0–J4 五次正式判断；
+- P1 的 controlled misinformation 与 P8 的 authoritative correction；
+- 仅影响参与者自身的模拟 Portfolio；
+- P4 后 **F1**、P11 后 **F2**、P15 后 **Final Session Summary**；
+- 由后端唯一控制的实验状态机与 participant-safe information boundary。
+
+参与者判断和交易永远不会改变继承的 Agent world。
+
+## 当前正式验证版本
+
+Release branch：
+
+```text
+phase15-participant-ui
+```
+
+Validated runtime release HEAD：
+
+```text
+92e7a12bfdce502f680238d8becc7e490227b608
+```
+
+该版本已通过完整 deterministic P1–P15 formal participant E2E，包括判断时序、受控信息暴露、Portfolio continuity、F1/F2/Final Feedback 边界、validated fail-closed fallback、Debrief gating、参与者隔离以及 canonical episode byte identity。
+
+**证据边界：**已经验证 deterministic formal-runtime fallback path；不能据此声称最终 provider preflight contract 下的 live-provider output 已正式通过 acceptance。
+
+## 正式参与者数据与分析目录
+
+参与者正式实验数据必须保持 **local-only**，不得提交到 GitHub。
+
+推荐本地结构：
+
+```text
+data/marketlens/human/
+├── admin/
+│   └── participant_credentials.xlsx
+├── formal/
+│   ├── participant_runtime.db
+│   └── participant_events.db
+├── exports/
+│   ├── participants.csv
+│   ├── judgements_long.csv
+│   ├── trades_long.csv
+│   ├── portfolio_long.csv
+│   ├── feedback_long.csv
+│   └── exposures_long.csv
+└── preflight/
+    └── formal_feedback_provider_v*/
+```
+
+数据 source of truth：
+
+| 数据 | Authoritative source |
+| --- | --- |
+| participant/session state | `participant_runtime.db` |
+| J0–J4 judgement、confidence、rationale/evidence | `participant_runtime.db` |
+| participant trades、holdings、cash、portfolio | `participant_runtime.db` |
+| 参与者实际看到的 F1/F2/Final Feedback | `participant_runtime.db` → `participant_feedback` |
+| Feedback generation/fallback provenance | `participant_runtime.db` → `participant_feedback_generation` |
+| exposure/event provenance | `participant_events.db` → `participant_events` |
+| 账号/密码行政管理 | `admin/participant_credentials.xlsx` |
+| provider preflight 工程证据 | `preflight/` — **不是 participant-study observations** |
+
+`participant_events.db` 是 append-only exposure/provenance ledger，**不是** judgement、trade 或 portfolio 的第二份 source of truth。
+
+后续 analysis-ready exports 主要通过 `participant_id`、`session_id`、`experiment_step` 和 `agent_world_date` 关联。密码和参与者联系方式不得进入分析导出文件。
+
+## 继承的 TwinMarket 基础
+
+下面保留原 TwinMarket 项目信息与引用，因为 MarketLens 建立在该技术基础之上。
+
+---
+
 # TwinMarket - A股市场模拟系统（1.0版本）
 
 <p align="center">[ <a href="README.md">English</a> | <a href="README_zh.md">中文</a> ]</p>

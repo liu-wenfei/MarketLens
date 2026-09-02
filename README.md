@@ -1,3 +1,91 @@
+# MarketLens
+
+**Human financial judgement and judgement-revision research environment built on TwinMarket**
+
+MarketLens extends the inherited TwinMarket LLM-agent financial-market environment with a controlled human-participant layer for studying how people form and revise financial judgements when exposed to experimentally controlled misinformation and authoritative correction.
+
+> **TwinMarket provides the inherited LLM-agent market environment. MarketLens controls what the participant experiences, records how the participant responds, and prevents participant behaviour from changing the Agent world.**
+
+## Research environment
+
+The formal participant study uses:
+
+- a 15-period participant journey;
+- one fixed focal assessment asset: **MEI — Manufacturing Index**;
+- a 10-asset participant-visible market;
+- repeated formal judgements **J0–J4**;
+- controlled misinformation at P1 and authoritative correction at P8;
+- participant-only simulated portfolio trading;
+- reflective feedback checkpoints after **P4 (F1)**, **P11 (F2)**, and **P15 (Final Session Summary)**;
+- a backend-owned experiment state machine and participant-safe information boundary.
+
+Participant decisions and trades never alter the inherited Agent world.
+
+## Current validated release
+
+Release branch:
+
+```text
+phase15-participant-ui
+```
+
+Validated runtime release HEAD:
+
+```text
+92e7a12bfdce502f680238d8becc7e490227b608
+```
+
+The release passed the complete deterministic P1–P15 formal participant end-to-end journey, including judgement timing, controlled information exposure, portfolio continuity, F1/F2/Final feedback boundaries, validated fail-closed fallback delivery, debrief gating, participant isolation, and canonical episode byte-identity checks.
+
+**Important evidence boundary:** the deterministic formal-runtime fallback path is validated; this does not claim accepted live-provider output under the final provider preflight contract.
+
+## Formal participant data and analysis
+
+Participant-study data are intentionally kept **local-only** and must not be committed to GitHub.
+
+Recommended local structure:
+
+```text
+data/marketlens/human/
+├── admin/
+│   └── participant_credentials.xlsx
+├── formal/
+│   ├── participant_runtime.db
+│   └── participant_events.db
+├── exports/
+│   ├── participants.csv
+│   ├── judgements_long.csv
+│   ├── trades_long.csv
+│   ├── portfolio_long.csv
+│   ├── feedback_long.csv
+│   └── exposures_long.csv
+└── preflight/
+    └── formal_feedback_provider_v*/
+```
+
+Data ownership:
+
+| Data | Authoritative source |
+| --- | --- |
+| participant/session state | `participant_runtime.db` |
+| J0–J4 judgement, confidence, rationale/evidence | `participant_runtime.db` |
+| participant trades, holdings, cash, portfolio state | `participant_runtime.db` |
+| F1/F2/Final feedback shown to participant | `participant_runtime.db` → `participant_feedback` |
+| feedback generation/fallback provenance | `participant_runtime.db` → `participant_feedback_generation` |
+| exposure/event provenance | `participant_events.db` → `participant_events` |
+| account/password administration | `admin/participant_credentials.xlsx` |
+| engineering provider preflight evidence | `preflight/` — **not participant-study observations** |
+
+`participant_events.db` is an append-only exposure/provenance ledger. It is **not** a second source of truth for judgement, trade, or portfolio values.
+
+The intended analysis exports use `participant_id`, `session_id`, `experiment_step`, and `agent_world_date` as the core linking identifiers. Passwords and participant contact information must never be included in analysis exports.
+
+## Inherited foundation
+
+The original TwinMarket project and citation are retained below because MarketLens is built on that technical foundation.
+
+---
+
 # TwinMarket: A Scalable Behavioral and Social Simulation for Financial Markets
 
 
