@@ -314,6 +314,7 @@ def test_market_overview_exposes_only_current_visible_checkpoint_prices(
                 "current_price",
                 "previous_visible_close",
                 "change_from_previous_visible_pct",
+                "historical_price_context",
                 "price_history",
             }
 
@@ -327,6 +328,44 @@ def test_market_overview_exposes_only_current_visible_checkpoint_prices(
                     "change_from_previous_visible_pct"
                 ]
                 is None
+            )
+
+            historical = asset[
+                "historical_price_context"
+            ]
+
+            assert len(
+                historical
+            ) == 108
+
+            assert historical[0][
+                "price_date"
+            ] == "2023-01-03"
+
+            assert historical[-1][
+                "price_date"
+            ] == "2023-06-14"
+
+            historical_dates = {
+                item["price_date"]
+                for item in historical
+            }
+
+            assert "2023-06-15" not in (
+                historical_dates
+            )
+
+            assert "2023-06-16" not in (
+                historical_dates
+            )
+
+            assert all(
+                set(item)
+                == {
+                    "price_date",
+                    "close",
+                }
+                for item in historical
             )
 
             assert len(
@@ -358,16 +397,39 @@ def test_market_overview_exposes_only_current_visible_checkpoint_prices(
                 == asset["current_price"]
             )
 
-        assert {
+        called_dates = {
             date
             for _stock_id, date
             in provider.calls
-        } == {
-            "2023-06-19"
         }
 
-        assert len(provider.calls) == len(
-            expected_ids
+        assert "2023-01-03" in (
+            called_dates
+        )
+
+        assert "2023-06-14" in (
+            called_dates
+        )
+
+        assert "2023-06-15" not in (
+            called_dates
+        )
+
+        assert "2023-06-16" not in (
+            called_dates
+        )
+
+        assert "2023-06-19" in (
+            called_dates
+        )
+
+        assert max(
+            called_dates
+        ) == "2023-06-19"
+
+        assert len(provider.calls) == (
+            len(expected_ids)
+            * 109
         )
 
         serialised = str(body)

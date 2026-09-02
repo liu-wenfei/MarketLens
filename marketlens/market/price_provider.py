@@ -28,6 +28,13 @@ class ClosePriceProvider(Protocol):
 
     def get_close(self, stock_id: str, trading_date: str | date) -> "MarketClose": ...
 
+    def get_close_history(
+        self,
+        stock_id: str,
+        start_date: str | date,
+        end_date: str | date,
+    ) -> tuple["MarketClose", ...]: ...
+
 
 @dataclass(frozen=True)
 class MarketClose:
@@ -104,6 +111,55 @@ class CsvClosePriceProvider:
             return self._prices[(stock_id, resolved_date)]
         except KeyError as exc:
             raise PriceNotFoundError(f"{stock_id} @ {resolved_date.isoformat()}") from exc
+
+    def get_close_history(
+        self,
+        stock_id: str,
+        start_date: str | date,
+        end_date: str | date,
+    ) -> tuple[MarketClose, ...]:
+        resolved_start = (
+            date.fromisoformat(start_date)
+            if isinstance(start_date, str)
+            else start_date
+        )
+        resolved_end = (
+            date.fromisoformat(end_date)
+            if isinstance(end_date, str)
+            else end_date
+        )
+
+        if resolved_start > resolved_end:
+            raise PriceSourceError(
+                "historical price start date is after end date"
+            )
+
+        history = [
+            market_close
+            for (
+                candidate_stock_id,
+                candidate_date,
+            ), market_close in self._prices.items()
+            if (
+                candidate_stock_id == str(stock_id)
+                and resolved_start
+                <= candidate_date
+                <= resolved_end
+            )
+        ]
+
+        history.sort(
+            key=lambda record: record.date
+        )
+
+        if not history:
+            raise PriceNotFoundError(
+                f"{stock_id} @ "
+                f"{resolved_start.isoformat()}.."
+                f"{resolved_end.isoformat()}"
+            )
+
+        return tuple(history)
 
 
 class CanonicalStockDataClosePriceProvider:
@@ -187,3 +243,135 @@ class CanonicalStockDataClosePriceProvider:
                 f"Invalid canonical close_price for {stock_id} @ {resolved_date.isoformat()}"
             )
         return MarketClose(str(stock_id), resolved_date, close)
+
+
+    def get_close_history(
+        self,
+        stock_id: str,
+        start_date: str | date,
+        end_date: str | date,
+    ) -> tuple[MarketClose, ...]:
+        resolved_start = (
+            date.fromisoformat(start_date)
+            if isinstance(start_date, str)
+            else start_date
+        )
+        resolved_end = (
+            date.fromisoformat(end_date)
+            if isinstance(end_date, str)
+            else end_date
+        )
+
+        if resolved_start > resolved_end:
+            raise PriceSourceError(
+                "historical price start date is after end date"
+            )
+
+        try:
+            with self._connect() as connection:
+                rows = connection.execute(
+                    """
+                    SELECT
+                        CAST(stock_id AS TEXT) AS stock_id,
+                        CAST(date AS TEXT) AS date,
+                        close_price
+                    FROM StockData
+                    WHERE CAST(stock_id AS TEXT) = ?
+                      AND substr(
+                            CAST(date AS TEXT),
+                            1,
+                            10
+                          ) >= ?
+                      AND substr(
+                            CAST(date AS TEXT),
+                            1,
+                            10
+                          ) <= ?
+                    ORDER BY substr(
+                        CAST(date AS TEXT),
+                        1,
+                        10
+                    ) ASC
+                    """,
+                    (
+                        str(stock_id),
+                        resolved_start.isoformat(),
+                        resolved_end.isoformat(),
+                    ),
+                ).fetchall()
+        except sqlite3.Error as exc:
+            raise PriceSourceError(
+                "Cannot read canonical StockData history"
+            ) from exc
+
+        if not rows:
+            raise PriceNotFoundError(
+                f"{stock_id} @ "
+                f"{resolved_start.isoformat()}.."
+                f"{resolved_end.isoformat()}"
+            )
+
+        history: list[MarketClose] = []
+        seen_dates: set[date] = set()
+
+        for row in rows:
+            raw_date = str(
+                row["date"]
+            )[:10]
+
+            try:
+                resolved_date = date.fromisoformat(
+                    raw_date
+                )
+            except ValueError as exc:
+                raise PriceSourceError(
+                    "Invalid canonical historical date "
+                    f"for {stock_id}: {raw_date!r}"
+                ) from exc
+
+            if resolved_date in seen_dates:
+                raise PriceSourceError(
+                    "Canonical StockData contains duplicate "
+                    "historical rows for "
+                    f"{stock_id} @ "
+                    f"{resolved_date.isoformat()}"
+                )
+
+            seen_dates.add(
+                resolved_date
+            )
+
+            raw_close = row[
+                "close_price"
+            ]
+
+            try:
+                close = float(
+                    raw_close
+                )
+            except (
+                TypeError,
+                ValueError,
+            ) as exc:
+                raise PriceSourceError(
+                    "Invalid canonical historical "
+                    f"close_price for {stock_id} @ "
+                    f"{resolved_date.isoformat()}"
+                ) from exc
+
+            if close <= 0:
+                raise PriceSourceError(
+                    "Invalid canonical historical "
+                    f"close_price for {stock_id} @ "
+                    f"{resolved_date.isoformat()}"
+                )
+
+            history.append(
+                MarketClose(
+                    str(stock_id),
+                    resolved_date,
+                    close,
+                )
+            )
+
+        return tuple(history)

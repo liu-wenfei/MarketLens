@@ -4,10 +4,14 @@ This service is read-only. It never advances the participant session,
 changes a portfolio, invokes TwinMarket matching, or exposes future
 canonical market state.
 
-Price history is bounded by participant-visible experiment checkpoints,
-not by every historical row present in the canonical Agent-world DB.
+The participant chart contains a fixed common pre-experiment historical
+price context plus participant-visible experiment checkpoints. Historical
+context is observational only and remains separate from experimental
+checkpoint history and portfolio/feedback calculations.
 """
 from __future__ import annotations
+
+from datetime import date, timedelta
 
 from marketlens.human.participant_asset_labels import (
     participant_asset_display_name,
@@ -21,12 +25,29 @@ from typing import Mapping
 
 from marketlens.human.orchestration import ParticipantStage
 from marketlens.human.schemas import (
+    ParticipantHistoricalMarketPricePointRead,
     ParticipantMarketAssetRead,
     ParticipantMarketOverviewRead,
     ParticipantMarketPricePointRead,
 )
 from marketlens.market.price_provider import PriceNotFoundError
 from marketlens.market.status import TradingCalendarError
+
+
+HISTORICAL_PRICE_CONTEXT_VERSION = (
+    "marketlens-historical-price-context-v1"
+)
+HISTORICAL_PRICE_CONTEXT_START = date(
+    2023,
+    1,
+    3,
+)
+HISTORICAL_PRICE_CONTEXT_END = date(
+    2023,
+    6,
+    14,
+)
+HISTORICAL_PRICE_CONTEXT_EXPECTED_POINTS = 108
 
 
 class ParticipantMarketOverviewUnavailableError(ValueError):
@@ -52,6 +73,110 @@ class ParticipantMarketOverviewService:
         self.assets = assets
         self.price_providers = dict(price_providers)
         self.calendar = calendar
+
+    def _historical_price_dates(
+        self,
+    ) -> tuple[str, ...]:
+        """Resolve the frozen common market-close dates from the calendar."""
+
+        resolved_dates: list[str] = []
+        seen: set[str] = set()
+
+        cursor = (
+            HISTORICAL_PRICE_CONTEXT_START
+        )
+
+        while (
+            cursor
+            <= HISTORICAL_PRICE_CONTEXT_END
+        ):
+            try:
+                market = self.calendar.status(
+                    cursor.isoformat()
+                )
+            except TradingCalendarError as exc:
+                raise ParticipantMarketOverviewUnavailableError(
+                    str(exc)
+                ) from exc
+
+            raw_price_date = (
+                None
+                if market.market_state_date is None
+                else str(
+                    market.market_state_date
+                )
+            )
+
+            if raw_price_date:
+                try:
+                    price_date = (
+                        date.fromisoformat(
+                            raw_price_date
+                        )
+                    )
+                except ValueError as exc:
+                    raise ParticipantMarketOverviewInvariantError(
+                        "historical market-state date "
+                        "is malformed"
+                    ) from exc
+
+                if price_date > cursor:
+                    raise ParticipantMarketOverviewInvariantError(
+                        "historical market-state date "
+                        "cannot point into the future"
+                    )
+
+                if (
+                    HISTORICAL_PRICE_CONTEXT_START
+                    <= price_date
+                    <= HISTORICAL_PRICE_CONTEXT_END
+                    and raw_price_date not in seen
+                ):
+                    seen.add(
+                        raw_price_date
+                    )
+                    resolved_dates.append(
+                        raw_price_date
+                    )
+
+            cursor += timedelta(
+                days=1
+            )
+
+        expected = (
+            HISTORICAL_PRICE_CONTEXT_EXPECTED_POINTS
+        )
+
+        if len(resolved_dates) != expected:
+            raise ParticipantMarketOverviewInvariantError(
+                "frozen historical price context "
+                f"expected {expected} market closes "
+                f"but resolved {len(resolved_dates)}"
+            )
+
+        if (
+            resolved_dates[0]
+            != HISTORICAL_PRICE_CONTEXT_START.isoformat()
+            or resolved_dates[-1]
+            != HISTORICAL_PRICE_CONTEXT_END.isoformat()
+        ):
+            raise ParticipantMarketOverviewInvariantError(
+                "frozen historical price context "
+                "has unexpected date boundaries"
+            )
+
+        if (
+            "2023-06-15" in seen
+            or "2023-06-16" in seen
+        ):
+            raise ParticipantMarketOverviewInvariantError(
+                "episode-specific pre-roll dates "
+                "must not enter common historical context"
+            )
+
+        return tuple(
+            resolved_dates
+        )
 
     def get(
         self,
@@ -216,6 +341,10 @@ class ParticipantMarketOverviewService:
                 "with trusted participant market state"
             )
 
+        historical_price_dates = (
+            self._historical_price_dates()
+        )
+
         stock_ids = tuple(
             self.assets.ids()
         )
@@ -237,6 +366,104 @@ class ParticipantMarketOverviewService:
             asset = self.assets.get(
                 stock_id
             )
+
+            historical_context: list[
+                ParticipantHistoricalMarketPricePointRead
+            ] = []
+
+            history_reader = getattr(
+                provider,
+                "get_close_history",
+                None,
+            )
+
+            try:
+                if callable(
+                    history_reader
+                ):
+                    raw_historical_records = tuple(
+                        history_reader(
+                            stock_id,
+                            HISTORICAL_PRICE_CONTEXT_START,
+                            HISTORICAL_PRICE_CONTEXT_END,
+                        )
+                    )
+
+                    historical_rows = tuple(
+                        (
+                            record.date.isoformat(),
+                            record,
+                        )
+                        for record
+                        in raw_historical_records
+                    )
+                else:
+                    # Compatibility path for lightweight test doubles.
+                    # The requested exact price date remains server-owned.
+                    # Formal canonical providers implement get_close_history.
+                    historical_rows = tuple(
+                        (
+                            price_date,
+                            provider.get_close(
+                                stock_id,
+                                price_date,
+                            ),
+                        )
+                        for price_date
+                        in historical_price_dates
+                    )
+            except PriceNotFoundError as exc:
+                raise ParticipantMarketOverviewUnavailableError(
+                    "frozen historical close-price context "
+                    f"is unavailable for {stock_id}"
+                ) from exc
+
+            historical_record_dates = tuple(
+                price_date
+                for (
+                    price_date,
+                    _record,
+                )
+                in historical_rows
+            )
+
+            if (
+                historical_record_dates
+                != historical_price_dates
+            ):
+                raise ParticipantMarketOverviewInvariantError(
+                    "canonical historical close-price "
+                    "dates disagree with the frozen "
+                    "historical context"
+                )
+
+            for (
+                historical_price_date,
+                record,
+            ) in historical_rows:
+                historical_close = float(
+                    record.close
+                )
+
+                if (
+                    not isfinite(
+                        historical_close
+                    )
+                    or historical_close <= 0.0
+                ):
+                    raise ParticipantMarketOverviewInvariantError(
+                        "historical canonical close must "
+                        "be finite and positive"
+                    )
+
+                historical_context.append(
+                    ParticipantHistoricalMarketPricePointRead(
+                        price_date=(
+                            historical_price_date
+                        ),
+                        close=historical_close,
+                    )
+                )
 
             history: list[
                 ParticipantMarketPricePointRead
@@ -320,6 +547,9 @@ class ParticipantMarketOverviewService:
                     ),
                     change_from_previous_visible_pct=(
                         change_pct
+                    ),
+                    historical_price_context=(
+                        historical_context
                     ),
                     price_history=history,
                 )

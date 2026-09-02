@@ -1,11 +1,12 @@
 import {
-  useCallback,
+  useCallback, useEffect,
   useMemo,
   useState,
 } from "react";
 
 import {
   createRequestId,
+  getPortfolio,
   submitAssessment,
 } from "../api/participantApi";
 import { MarketContext } from "../components/MarketContext";
@@ -14,6 +15,7 @@ import type {
   ParticipantBackgroundRead,
   ParticipantInformationUpdateRead,
   ParticipantMarketOverviewRead,
+  PortfolioRead,
   ParticipantViewState,
 } from "../types/participant";
 
@@ -53,6 +55,63 @@ export function AssessmentScreen({
 
   const [assessmentAssetName, setAssessmentAssetName] =
     useState<string | null>(null);
+
+  const portfolioKey =
+    view.allowed_actions.view_portfolio
+      ? `${view.session_id}:${view.current_date}`
+      : null;
+
+  const [portfolioState, setPortfolioState] =
+    useState<{
+      key: string;
+      portfolio: PortfolioRead | null;
+    } | null>(null);
+
+  const currentPortfolioState =
+    portfolioKey !== null &&
+    portfolioState?.key === portfolioKey
+      ? portfolioState
+      : null;
+
+  const portfolio =
+    currentPortfolioState?.portfolio ?? null;
+
+  const portfolioLoading =
+    portfolioKey !== null &&
+    currentPortfolioState === null;
+
+  useEffect(() => {
+    if (portfolioKey === null) {
+      return;
+    }
+
+    let cancelled = false;
+
+    void getPortfolio(view.session_id)
+      .then((payload) => {
+        if (!cancelled) {
+          setPortfolioState({
+            key: portfolioKey,
+            portfolio: payload,
+          });
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setPortfolioState({
+            key: portfolioKey,
+            portfolio: null,
+          });
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    portfolioKey,
+    view.session_id,
+  ]);
 
   const handleMarketOverviewLoaded = useCallback(
     (
@@ -157,6 +216,8 @@ export function AssessmentScreen({
       <MarketContext
         view={view}
         background={background}
+        portfolio={portfolio}
+        portfolioLoading={portfolioLoading}
         informationUpdate={informationUpdate}
         onMarketOverviewLoaded={
           handleMarketOverviewLoaded

@@ -45,10 +45,19 @@ function trendClass(
     : "market-trend--down";
 }
 
+function marketChartHistory(
+  asset: ParticipantMarketAssetRead,
+) {
+  return [
+    ...asset.historical_price_context,
+    ...asset.price_history,
+  ];
+}
+
 function chartPoints(
   asset: ParticipantMarketAssetRead,
 ): string {
-  const values = asset.price_history.map(
+  const values = marketChartHistory(asset).map(
     (point) => point.close,
   );
 
@@ -83,7 +92,7 @@ function MiniPriceChart({
   const points = chartPoints(asset);
   const trend = trendClass(asset);
 
-  if (asset.price_history.length <= 1) {
+  if (marketChartHistory(asset).length <= 1) {
     return (
       <svg
         className={`terminal-price-chart ${trend}`}
@@ -168,10 +177,15 @@ export function MarketOverview({
           const isTarget =
             asset.stock_id === targetStockId;
 
-          const firstPoint = asset.price_history[0];
+          const chartHistory =
+            marketChartHistory(asset);
+
+          const firstPoint =
+            chartHistory[0];
+
           const lastPoint =
-            asset.price_history[
-              asset.price_history.length - 1
+            chartHistory[
+              chartHistory.length - 1
             ];
 
           return (
@@ -220,13 +234,13 @@ export function MarketOverview({
 
               <div className="terminal-quote-card__footer">
                 <span>
-                  {firstPoint?.participant_date ?? "—"}
+                  {firstPoint?.price_date ?? "—"}
                 </span>
                 <span>
-                  {asset.price_history.length} periods
+                  {chartHistory.length} points
                 </span>
                 <span>
-                  {lastPoint?.participant_date ?? "—"}
+                  {lastPoint?.price_date ?? "—"}
                 </span>
               </div>
             </article>

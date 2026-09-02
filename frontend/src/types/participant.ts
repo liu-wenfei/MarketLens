@@ -46,6 +46,11 @@ export interface ParticipantMarketView {
   trading_enabled_by_market: boolean;
 }
 
+export interface ParticipantHistoricalMarketPricePointRead {
+  price_date: string;
+  close: number;
+}
+
 export interface ParticipantMarketPricePointRead {
   participant_date: string;
   price_date: string;
@@ -59,6 +64,7 @@ export interface ParticipantMarketAssetRead {
   current_price: number;
   previous_visible_close: number | null;
   change_from_previous_visible_pct: number | null;
+  historical_price_context: ParticipantHistoricalMarketPricePointRead[];
   price_history: ParticipantMarketPricePointRead[];
 }
 

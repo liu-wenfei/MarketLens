@@ -242,8 +242,15 @@ class RoundCompletionRead(BaseModel):
     completed_at: datetime
 
 
+class ParticipantHistoricalMarketPricePointRead(BaseModel):
+    """One fixed pre-experiment historical close shown as market context."""
+
+    price_date: str
+    close: float
+
+
 class ParticipantMarketPricePointRead(BaseModel):
-    """One participant-visible canonical market-state price point."""
+    """One participant-visible experimental checkpoint price point."""
 
     participant_date: str
     price_date: str
@@ -259,6 +266,9 @@ class ParticipantMarketAssetRead(BaseModel):
     current_price: float
     previous_visible_close: float | None
     change_from_previous_visible_pct: float | None
+    historical_price_context: list[
+        ParticipantHistoricalMarketPricePointRead
+    ] = Field(default_factory=list)
     price_history: list[ParticipantMarketPricePointRead]
 
 
