@@ -135,6 +135,33 @@ def test_request_uses_exact_frozen_shape():
         "model": "gpt-5-nano",
         "instructions": "SYSTEM PROMPT",
         "input": "USER PROMPT",
+        "text": {
+            "format": {
+                "type": "json_schema",
+                "name": "marketlens_feedback_reflection",
+                "strict": True,
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "feedback_kind": {
+                            "type": "string",
+                            "enum": [
+                                "multi_period_decision_feedback",
+                                "final_session_summary",
+                            ],
+                        },
+                        "reflection": {
+                            "type": "string",
+                        },
+                    },
+                    "required": [
+                        "feedback_kind",
+                        "reflection",
+                    ],
+                    "additionalProperties": False,
+                },
+            },
+        },
         "reasoning": {"effort": "minimal"},
         "max_output_tokens": 1024,
         "store": False,

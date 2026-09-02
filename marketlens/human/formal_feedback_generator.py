@@ -42,10 +42,10 @@ from marketlens.human.feedback.formal_policy import (
 
 
 FORMAL_GENERATOR_CONTRACT_VERSION = (
-    "marketlens-formal-feedback-generator-v4"
+    "marketlens-formal-feedback-generator-v5"
 )
 FORMAL_GENERATOR_ID = (
-    "marketlens-openai-compatible-responses-v4"
+    "marketlens-openai-compatible-responses-v5"
 )
 FORMAL_GENERATION_STATUS = "formal_live_adaptive"
 FORMAL_PROVIDER = "openai_compatible"
@@ -266,6 +266,33 @@ class OpenAIResponsesFormalFeedbackGenerator:
             model=self.config.model,
             instructions=prompt.system_prompt,
             input=prompt.user_prompt,
+            text={
+                "format": {
+                    "type": "json_schema",
+                    "name": "marketlens_feedback_reflection",
+                    "strict": True,
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "feedback_kind": {
+                                "type": "string",
+                                "enum": [
+                                    "multi_period_decision_feedback",
+                                    "final_session_summary",
+                                ],
+                            },
+                            "reflection": {
+                                "type": "string",
+                            },
+                        },
+                        "required": [
+                            "feedback_kind",
+                            "reflection",
+                        ],
+                        "additionalProperties": False,
+                    },
+                },
+            },
             reasoning={
                 "effort": self.config.reasoning_effort,
             },
