@@ -19,7 +19,7 @@ from .context import FeedbackContextPack
 
 
 OUTPUT_CONTRACT_VERSION = (
-    "marketlens-feedback-reflection-output-v2"
+    "marketlens-feedback-reflection-output-v3"
 )
 
 
@@ -44,22 +44,23 @@ _NUMERIC_LITERAL_RE = re.compile(
 
 
 _UNSUPPORTED_ATTRIBUTION_INFERENCE_RE = re.compile(
-    r"\b(?:suggests?|suggesting|"
-    r"indicates?|indicating|"
-    r"implies?|implying|"
-    r"reflects?|reflecting|"
-    r"shows?|showing|"
-    r"reveals?|revealing|"
-    r"points?\s+to|"
-    r"hints?\s+at|"
-    r"appears?\s+to|"
+    r"\b(?:suggest(?:s|ed|ing)?|"
+    r"indicat(?:e|es|ed|ing)|"
+    r"impl(?:y|ies|ied|ying)|"
+    r"reflect(?:s|ed|ing)?|"
+    r"show(?:s|ed|ing)?|"
+    r"reveal(?:s|ed|ing)?|"
+    r"point(?:s|ed|ing)?\s+to|"
+    r"hint(?:s|ed|ing)?\s+at|"
+    r"appear(?:s|ed|ing)?\s+to|"
     r"may\s+(?:reflect|indicate|suggest|imply))\b"
     r"[\s\S]{0,120}?"
     r"\b(?:preference|reliance|emphasis|"
-    r"motivation|intent(?:ion)?|attention|"
+    r"patience|motivation|intent(?:ion)?|attention|"
     r"strategy|risk posture|risk containment|"
     r"monitoring process|methodical approach|"
-    r"cautious stance|deliberate pacing|"
+    r"measured engagement|cautious stance|"
+    r"cautious progression|deliberate pacing|"
     r"validation of signals)\b",
     re.IGNORECASE,
 )
@@ -74,7 +75,7 @@ _DIRECT_PARTICIPANT_STATE_RE = re.compile(
     r"believ(?:e|ed|es|ing)|"
     r"focus(?:ed|es|ing)?|"
     r"prioriti[sz](?:e|ed|es|ing)|"
-    r"(?:were|was)\s+(?:cautious|methodical|deliberate)"
+    r"(?:were|was)\s+(?:cautious|methodical|deliberate|patient)"
     r")\b",
     re.IGNORECASE,
 )

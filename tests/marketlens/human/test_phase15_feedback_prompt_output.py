@@ -286,6 +286,13 @@ def test_final_word_limit_fails_closed():
         "The confidence record shows a cautious stance",
         "You preferred to wait before acting",
         "The participant relied on internal assessment",
+        "This pattern suggests a pace of action that included patience",
+        "The overall arc points to a measured engagement with the material",
+        "The overall arc points to a cautious progression in confidence",
+        "The activity showed a methodical approach",
+        "The pattern indicated a preference for waiting",
+        "The behaviour suggested a reliance on internal assessment",
+        "You were patient before acting",
     ],
 )
 def test_forbidden_reflection_language_fails(
