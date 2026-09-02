@@ -278,6 +278,14 @@ def test_final_word_limit_fails_closed():
         "Moving forward, aim to remain consistent",
         "This trading strategy created a potential edge",
         "A disciplined approach produced a better decision",
+        "The holding periods indicate a preference for waiting before acting",
+        "The pattern points to a reliance on internal assessment",
+        "This suggests an emphasis on risk containment",
+        "The activity indicates a steady monitoring process",
+        "The pattern hints at a methodical approach",
+        "The confidence record shows a cautious stance",
+        "You preferred to wait before acting",
+        "The participant relied on internal assessment",
     ],
 )
 def test_forbidden_reflection_language_fails(
@@ -405,12 +413,12 @@ def test_markdown_fence_fails():
         )
 
 
-def test_prompt_v3_explicitly_forbids_first_person_participant_voice():
+def test_prompt_v4_explicitly_forbids_first_person_participant_voice():
     prompt = build_feedback_prompt(_context())
 
     assert (
         prompt.prompt_contract_version
-        == "marketlens-feedback-reflection-prompt-v3"
+        == "marketlens-feedback-reflection-prompt-v4"
     )
 
     assert (
@@ -436,4 +444,42 @@ def test_prompt_v3_explicitly_forbids_first_person_participant_voice():
     assert (
         "Use you or your when referring directly to the participant."
         in prompt.user_prompt
+    )
+
+    assert (
+        "EVIDENCE ATTRIBUTION RULE"
+        in prompt.system_prompt
+    )
+
+    assert (
+        "Do not infer unreported psychological, attentional, intentional, or strategic"
+        in prompt.system_prompt
+    )
+
+    assert (
+        "Only describe such a state when it was explicitly participant-reported"
+        in prompt.user_prompt
+    )
+
+
+def test_explicitly_reported_state_language_remains_allowed():
+    pack = _context()
+
+    validated = validate_feedback_output(
+        {
+            "feedback_kind": (
+                "multi_period_decision_feedback"
+            ),
+            "reflection": (
+                "Your rationale reported that you preferred "
+                "to wait before acting. "
+                + _words(112)
+            ),
+        },
+        context_pack=pack,
+    )
+
+    assert (
+        validated.feedback_kind
+        == "multi_period_decision_feedback"
     )

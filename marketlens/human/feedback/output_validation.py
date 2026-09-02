@@ -19,7 +19,7 @@ from .context import FeedbackContextPack
 
 
 OUTPUT_CONTRACT_VERSION = (
-    "marketlens-feedback-reflection-output-v1"
+    "marketlens-feedback-reflection-output-v2"
 )
 
 
@@ -40,6 +40,58 @@ _NUMERIC_LITERAL_RE = re.compile(
     r"(?:\.\d+)?"
     r"%?"
     r"(?![A-Za-z0-9_])"
+)
+
+
+_UNSUPPORTED_ATTRIBUTION_INFERENCE_RE = re.compile(
+    r"\b(?:suggests?|suggesting|"
+    r"indicates?|indicating|"
+    r"implies?|implying|"
+    r"reflects?|reflecting|"
+    r"shows?|showing|"
+    r"reveals?|revealing|"
+    r"points?\s+to|"
+    r"hints?\s+at|"
+    r"appears?\s+to|"
+    r"may\s+(?:reflect|indicate|suggest|imply))\b"
+    r"[\s\S]{0,120}?"
+    r"\b(?:preference|reliance|emphasis|"
+    r"motivation|intent(?:ion)?|attention|"
+    r"strategy|risk posture|risk containment|"
+    r"monitoring process|methodical approach|"
+    r"cautious stance|deliberate pacing|"
+    r"validation of signals)\b",
+    re.IGNORECASE,
+)
+
+
+_DIRECT_PARTICIPANT_STATE_RE = re.compile(
+    r"\b(?:you|the participant)\s+(?:"
+    r"prefer(?:red|s)?|"
+    r"rely|relies|relied|relying|"
+    r"intend(?:ed|s)?|"
+    r"monitor(?:ed|s|ing)?|"
+    r"believ(?:e|ed|es|ing)|"
+    r"focus(?:ed|es|ing)?|"
+    r"prioriti[sz](?:e|ed|es|ing)|"
+    r"(?:were|was)\s+(?:cautious|methodical|deliberate)"
+    r")\b",
+    re.IGNORECASE,
+)
+
+
+_PARTICIPANT_REPORTING_CUE_RE = re.compile(
+    r"\b(?:participant-reported|"
+    r"participant reported|"
+    r"reported|stated|"
+    r"rationale\s+(?:reported|stated|described)|"
+    r"evidence selection\s+(?:reported|stated|described))\b",
+    re.IGNORECASE,
+)
+
+
+_SENTENCE_SPLIT_RE = re.compile(
+    r"(?<=[.!?])\s+"
 )
 
 
@@ -268,6 +320,37 @@ def _word_count(
     )
 
 
+def _validate_evidence_attribution(
+    text: str,
+) -> None:
+    """Reject unsupported inference about unobserved participant states."""
+
+    for sentence in _SENTENCE_SPLIT_RE.split(text):
+        sentence = sentence.strip()
+
+        if not sentence:
+            continue
+
+        if _UNSUPPORTED_ATTRIBUTION_INFERENCE_RE.search(
+            sentence
+        ):
+            raise FeedbackOutputValidationError(
+                "reflection contains unsupported psychological, "
+                "attentional, intentional, or strategic attribution"
+            )
+
+        if (
+            _DIRECT_PARTICIPANT_STATE_RE.search(sentence)
+            and not _PARTICIPANT_REPORTING_CUE_RE.search(
+                sentence
+            )
+        ):
+            raise FeedbackOutputValidationError(
+                "reflection contains unsupported psychological, "
+                "attentional, intentional, or strategic attribution"
+            )
+
+
 def _validate_language(
     text: str,
 ) -> None:
@@ -277,6 +360,10 @@ def _validate_language(
                 "reflection contains forbidden "
                 f"{label}"
             )
+
+    _validate_evidence_attribution(
+        text
+    )
 
     if _NUMERIC_LITERAL_RE.search(text):
         raise FeedbackOutputValidationError(
