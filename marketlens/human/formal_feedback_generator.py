@@ -42,10 +42,10 @@ from marketlens.human.feedback.formal_policy import (
 
 
 FORMAL_GENERATOR_CONTRACT_VERSION = (
-    "marketlens-formal-feedback-generator-v6"
+    "marketlens-formal-feedback-generator-v7"
 )
 FORMAL_GENERATOR_ID = (
-    "marketlens-openai-compatible-responses-v6"
+    "marketlens-openai-compatible-responses-v7"
 )
 FORMAL_GENERATION_STATUS = "formal_live_adaptive"
 FORMAL_PROVIDER = "openai_compatible"
@@ -58,7 +58,7 @@ FORMAL_TOTAL_TIMEOUT_SECONDS = FORMAL_TOTAL_WAIT_SECONDS
 FORMAL_SDK_MAX_RETRIES = 0
 FORMAL_OPENAI_SDK_VERSION = "2.54.0"
 FORMAL_CORRECTIVE_RETRY_POLICY_VERSION = (
-    "marketlens-formal-feedback-corrective-retry-v1"
+    "marketlens-formal-feedback-corrective-retry-v2"
 )
 
 
@@ -280,6 +280,11 @@ def _corrective_retry_user_prompt(
         + "request.\n"
         + "Correct the stated validation issue while preserving "
         + "every original MarketLens constraint.\n"
+        + "The original word-count requirement remains mandatory. "
+        + "Do not shorten the reflection in order to repair the "
+        + "rejected language.\n"
+        + "Before returning, check that the reflection remains within "
+        + "the exact word-count range stated in the original request.\n"
         + "Return only the complete JSON object required by the "
         + "original schema."
     )

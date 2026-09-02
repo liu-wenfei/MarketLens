@@ -401,6 +401,22 @@ def test_corrective_retry_uses_validator_reason_without_rejected_output():
         in second_input
     )
 
+    assert (
+        "The original word-count requirement remains mandatory."
+        in second_input
+    )
+
+    assert (
+        "Do not shorten the reflection in order to repair the "
+        "rejected language."
+        in second_input
+    )
+
+    assert (
+        "the exact word-count range stated in the original request."
+        in second_input
+    )
+
     assert rejected_output not in second_input
 
     history = result.metadata["attempt_history"]
