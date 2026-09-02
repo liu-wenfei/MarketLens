@@ -1,4 +1,8 @@
-import { useMemo, useState } from "react";
+import {
+  useCallback,
+  useMemo,
+  useState,
+} from "react";
 
 import {
   createRequestId,
@@ -9,6 +13,7 @@ import type {
   DecisionAction,
   ParticipantBackgroundRead,
   ParticipantInformationUpdateRead,
+  ParticipantMarketOverviewRead,
   ParticipantViewState,
 } from "../types/participant";
 
@@ -45,6 +50,31 @@ export function AssessmentScreen({
   const [rationale, setRationale] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [assessmentAssetName, setAssessmentAssetName] =
+    useState<string | null>(null);
+
+  const handleMarketOverviewLoaded = useCallback(
+    (
+      overview: ParticipantMarketOverviewRead,
+    ) => {
+      const target = overview.assets.find(
+        (asset) =>
+          asset.stock_id ===
+          view.assessment_target_stock_id,
+      );
+
+      setAssessmentAssetName(
+        target?.display_name ?? null,
+      );
+    },
+    [view.assessment_target_stock_id],
+  );
+
+  const assessmentAssetLabel =
+    assessmentAssetName === null
+      ? view.assessment_target_stock_id
+      : `${view.assessment_target_stock_id} — ${assessmentAssetName}`;
 
   const evidenceOptions = useMemo(() => {
     const options = [
@@ -109,10 +139,10 @@ export function AssessmentScreen({
         <span className="eyebrow">Think · Market judgement</span>
         <h1>{assessmentTitle(view)}</h1>
         <p>
-          Record your current view of{" "}
-          <strong>{view.assessment_target_stock_id}</strong>. This
-          records your judgement only and does not change your
-          simulated portfolio.
+          Formal market assessments in this study focus on{" "}
+          <strong>{assessmentAssetLabel}</strong>. Your judgement is
+          recorded separately from any portfolio trade you may choose
+          to make.
         </p>
 
         <div className="participant-progress" aria-label="Session progress">
@@ -128,18 +158,19 @@ export function AssessmentScreen({
         view={view}
         background={background}
         informationUpdate={informationUpdate}
+        onMarketOverviewLoaded={
+          handleMarketOverviewLoaded
+        }
       />
 
       <section className="panel assessment-panel">
         <div className="assessment-question">
-          <span className="eyebrow">Your market judgement</span>
-          <h2>
-            What is your current view on{" "}
-            {view.assessment_target_stock_id}?
-          </h2>
+          <span className="eyebrow">Assessment asset</span>
+          <h2>{assessmentAssetLabel}</h2>
           <p className="interaction-note">
-            Your BUY, HOLD or SELL judgement is recorded separately
-            from any portfolio trade you may choose to make.
+            What is your current BUY, HOLD or SELL judgement for this
+            asset? This formal assessment does not execute a trade or
+            change your simulated portfolio.
           </p>
         </div>
 

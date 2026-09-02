@@ -11,6 +11,7 @@ import { MarketContext } from "../components/MarketContext";
 import type {
   ParticipantBackgroundRead,
   ParticipantInformationUpdateRead,
+  ParticipantMarketOverviewRead,
   ParticipantViewState,
   PortfolioAction,
   PortfolioOrderPreviewRead,
@@ -39,9 +40,9 @@ export function TradingScreen({
   onChanged,
 }: Props) {
   const [portfolio, setPortfolio] = useState<PortfolioRead | null>(null);
-  const [stockId, setStockId] = useState(
-    view.assessment_target_stock_id,
-  );
+  const [marketOverview, setMarketOverview] =
+    useState<ParticipantMarketOverviewRead | null>(null);
+  const [stockId, setStockId] = useState("");
   const [action, setAction] = useState<PortfolioAction>("BUY");
   const [amount, setAmount] = useState("");
   const [preview, setPreview] =
@@ -79,17 +80,19 @@ export function TradingScreen({
     void loadPortfolio();
   }, [loadPortfolio]);
 
-  const stockOptions = useMemo(() => {
-    const values = new Set<string>([
-      view.assessment_target_stock_id,
-    ]);
+  const handleMarketOverviewLoaded = useCallback(
+    (
+      overview: ParticipantMarketOverviewRead,
+    ) => {
+      setMarketOverview(overview);
+    },
+    [],
+  );
 
-    portfolio?.holdings.forEach((holding) => {
-      values.add(holding.stock_id);
-    });
-
-    return Array.from(values);
-  }, [portfolio, view.assessment_target_stock_id]);
+  const stockOptions = useMemo(
+    () => marketOverview?.assets ?? [],
+    [marketOverview],
+  );
 
   function invalidatePreview() {
     setPreview(null);
@@ -97,6 +100,13 @@ export function TradingScreen({
   }
 
   async function handlePreview() {
+    if (!stockId) {
+      setError(
+        "Select an asset before previewing an order.",
+      );
+      return;
+    }
+
     const numericAmount = Number(amount);
 
     if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
@@ -199,7 +209,7 @@ export function TradingScreen({
   }
 
   return (
-    <main className="screen-shell">
+    <main className="screen-shell trading-screen">
       <div className="screen-title">
         <span className="eyebrow">Decide · Portfolio action</span>
         <h1>Portfolio & Trading</h1>
@@ -209,90 +219,18 @@ export function TradingScreen({
           period.
         </p>
 
-        <div className="participant-progress" aria-label="Session progress">
-          <span>
-            Market period {view.period_number} of {view.period_count}
-          </span>
-          <span>{view.market.current_market_date}</span>
-          <span>Current task: Portfolio decision</span>
-        </div>
       </div>
 
       <MarketContext
         view={view}
         background={background}
         informationUpdate={informationUpdate}
+        portfolio={portfolio}
+        portfolioLoading={portfolioBusy}
+        onMarketOverviewLoaded={
+          handleMarketOverviewLoaded
+        }
       />
-
-      <section className="panel portfolio-panel">
-        <div className="panel-heading">
-          <div>
-            <span className="eyebrow">Your portfolio</span>
-            <h2>Portfolio summary</h2>
-          </div>
-          {portfolio?.price_date && (
-            <span className="small-meta">
-              Prices: {portfolio.price_date}
-            </span>
-          )}
-        </div>
-
-        {portfolioBusy && (
-          <p className="empty-copy">Loading portfolio…</p>
-        )}
-
-        {portfolio && (
-          <>
-            <div className="portfolio-summary">
-              <div>
-                <span>Cash</span>
-                <strong>{formatNumber(portfolio.cash)}</strong>
-              </div>
-              <div>
-                <span>Total portfolio value</span>
-                <strong>{formatNumber(portfolio.total_value)}</strong>
-              </div>
-              <div>
-                <span>Starting cash</span>
-                <strong>{formatNumber(portfolio.initial_cash)}</strong>
-              </div>
-            </div>
-
-            <div className="holdings-table-wrap">
-              <table className="holdings-table">
-                <thead>
-                  <tr>
-                    <th>Asset</th>
-                    <th>Quantity</th>
-                    <th>Current price</th>
-                    <th>Market value</th>
-                    <th>Weight</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {portfolio.holdings.map((holding) => (
-                    <tr key={holding.stock_id}>
-                      <td>
-                        <strong>{holding.stock_id}</strong>
-                        <span>{holding.name}</span>
-                      </td>
-                      <td>{holding.quantity}</td>
-                      <td>{formatNumber(holding.current_price)}</td>
-                      <td>{formatNumber(holding.market_value)}</td>
-                      <td>
-                        {formatNumber(
-                          holding.portfolio_weight * 100,
-                        )}
-                        %
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
-        )}
-      </section>
 
       {!view.market.market_open && (
         <section className="panel market-closed-panel">
@@ -344,10 +282,20 @@ export function TradingScreen({
                   setStockId(event.target.value);
                   invalidatePreview();
                 }}
+                disabled={stockOptions.length === 0}
               >
-                {stockOptions.map((value) => (
-                  <option value={value} key={value}>
-                    {value}
+                <option value="" disabled>
+                  {stockOptions.length === 0
+                    ? "Loading assets…"
+                    : "Select an asset"}
+                </option>
+
+                {stockOptions.map((asset) => (
+                  <option
+                    value={asset.stock_id}
+                    key={asset.stock_id}
+                  >
+                    {asset.stock_id} — {asset.display_name}
                   </option>
                 ))}
               </select>

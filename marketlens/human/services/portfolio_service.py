@@ -1,5 +1,12 @@
 from __future__ import annotations
 
+from marketlens.human.participant_asset_labels import (
+    participant_asset_display_name,
+    participant_asset_short_name,
+    validate_participant_asset_labels,
+)
+
+
 from datetime import datetime, timezone
 from uuid import uuid4
 
@@ -297,6 +304,9 @@ class PortfolioService:
         )
         total = snapshot.account.total_value(price_map)
         holdings: list[PortfolioHoldingRead] = []
+        validate_participant_asset_labels(
+            self.assets.ids()
+        )
         for stock_id, quantity in sorted(snapshot.account.positions.items()):
             asset = self.assets.get(stock_id)
             current_price = price_map[stock_id]
@@ -304,7 +314,12 @@ class PortfolioService:
             holdings.append(
                 PortfolioHoldingRead(
                     stock_id=stock_id,
-                    name=asset.name,
+                    name=participant_asset_display_name(
+                        asset.stock_id
+                    ),
+                    short_name=participant_asset_short_name(
+                        asset.stock_id
+                    ),
                     quantity=quantity,
                     current_price=current_price,
                     market_value=round(market_value, 2),

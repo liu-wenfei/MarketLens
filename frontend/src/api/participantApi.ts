@@ -5,6 +5,7 @@ import type {
   ParticipantDecisionJourneyRead,
   ParticipantFeedbackRead,
   ParticipantInformationUpdateRead,
+  ParticipantMarketOverviewRead,
   ParticipantViewState,
   PortfolioOrderCreate,
   PortfolioOrderPreviewCreate,
@@ -87,6 +88,14 @@ export function getParticipantView(
 ): Promise<ParticipantViewState> {
   return requestJson<ParticipantViewState>(
     `${sessionPath(sessionId)}/view`,
+  );
+}
+
+export function getMarketOverview(
+  sessionId: string,
+): Promise<ParticipantMarketOverviewRead> {
+  return requestJson<ParticipantMarketOverviewRead>(
+    `${sessionPath(sessionId)}/market-overview`,
   );
 }
 

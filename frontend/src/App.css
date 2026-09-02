@@ -1006,3 +1006,1156 @@ fieldset {
   max-width: 60ch;
   line-height: 1.55;
 }
+
+/* MarketLens financial dashboard visual fidelity v2 */
+
+.trading-screen {
+  padding-top: 30px;
+}
+
+.trading-screen .screen-title {
+  margin-bottom: 18px;
+}
+
+.trading-screen .screen-title h1 {
+  margin-bottom: 7px;
+  font-size: clamp(2rem, 3vw, 2.55rem);
+}
+
+.trading-screen .screen-title > p {
+  max-width: 760px;
+  font-size: 0.96rem;
+  line-height: 1.55;
+}
+
+.market-context--terminal {
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+
+/* ============================================================
+   MARKET TICKER
+   ============================================================ */
+
+.market-terminal-ticker {
+  display: flex;
+  align-items: stretch;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border: 1px solid #d9e0e6;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 2px 10px rgba(23, 39, 57, 0.035);
+  scrollbar-width: thin;
+}
+
+.market-terminal-ticker__item {
+  position: relative;
+  display: inline-flex;
+  flex: 1 0 122px;
+  align-items: baseline;
+  justify-content: center;
+  gap: 6px;
+  min-width: 122px;
+  padding: 10px 11px;
+  border-right: 1px solid #e9edf1;
+  white-space: nowrap;
+}
+
+.market-terminal-ticker__item:last-child {
+  border-right: 0;
+}
+
+.market-terminal-ticker__item--target {
+  background: #f1f5f8;
+}
+
+.market-terminal-ticker__item--target::after {
+  content: "";
+  position: absolute;
+  right: 7px;
+  bottom: 3px;
+  left: 7px;
+  height: 2px;
+  border-radius: 99px;
+  background: #48677d;
+}
+
+.market-terminal-ticker__item > strong {
+  color: #172c3f;
+  font-size: 0.76rem;
+  letter-spacing: 0.025em;
+}
+
+.market-terminal-ticker__price {
+  color: #45576a;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.market-terminal-ticker__change {
+  font-size: 0.67rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.market-trend--up {
+  color: #34745d;
+}
+
+.market-trend--down {
+  color: #9b5050;
+}
+
+.market-trend--flat {
+  color: #7d8893;
+}
+
+
+/* ============================================================
+   PORTFOLIO + MARKET
+   ============================================================ */
+
+.terminal-dashboard-top {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 14px;
+  align-items: stretch;
+}
+
+.terminal-dashboard-top--market-only {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.terminal-dashboard-market {
+  min-width: 0;
+}
+
+.terminal-dashboard-market > .panel {
+  height: 100%;
+}
+
+.terminal-card-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.terminal-card-heading h2 {
+  margin: 3px 0 0;
+  color: #142a3e;
+  font-size: 1.05rem;
+}
+
+.terminal-asof {
+  padding-top: 2px;
+  color: #808b96;
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+}
+
+
+/* ============================================================
+   PORTFOLIO SNAPSHOT
+   ============================================================ */
+
+.terminal-portfolio-card {
+  display: flex;
+  min-height: 100%;
+  flex-direction: column;
+  padding: 17px;
+}
+
+.terminal-portfolio-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  overflow: hidden;
+  margin-bottom: 16px;
+  border: 1px solid #e1e6ea;
+  border-radius: 8px;
+  background: #e1e6ea;
+}
+
+.terminal-portfolio-metrics > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+  padding: 9px;
+  background: #fff;
+}
+
+.terminal-portfolio-metrics .terminal-primary-metric {
+  grid-column: 1 / -1;
+  padding: 12px 9px;
+}
+
+.terminal-portfolio-metrics span {
+  color: #7c8792;
+  font-size: 0.63rem;
+  font-weight: 600;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+}
+
+.terminal-portfolio-metrics strong {
+  color: #172d40;
+  font-size: 0.84rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.terminal-primary-metric strong {
+  font-size: 1.34rem;
+}
+
+.terminal-holdings-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e7ebee;
+  color: #34495c;
+  font-size: 0.7rem;
+}
+
+.terminal-holdings-heading > span {
+  color: #8d97a1;
+}
+
+.terminal-holdings {
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.terminal-holding-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 9px;
+  padding: 9px 0;
+  border-bottom: 1px solid #edf0f2;
+}
+
+.terminal-holding-row > div:first-child,
+.terminal-holding-row__numbers {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.terminal-holding-row > div:first-child strong {
+  color: #233a4d;
+  font-size: 0.74rem;
+}
+
+.terminal-holding-row > div:first-child span {
+  overflow: hidden;
+  max-width: 120px;
+  color: #8d96a0;
+  font-size: 0.61rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.terminal-holding-row__numbers {
+  align-items: flex-end;
+}
+
+.terminal-holding-row__numbers strong {
+  color: #3a4e60;
+  font-size: 0.71rem;
+}
+
+.terminal-holding-row__numbers span {
+  color: #89939d;
+  font-size: 0.61rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.terminal-empty-holdings {
+  margin: 14px 0 0;
+  color: #89939d;
+  font-size: 0.74rem;
+}
+
+
+/* ============================================================
+   MARKET OVERVIEW
+   ============================================================ */
+
+.terminal-market-overview {
+  padding: 17px;
+}
+
+.terminal-market-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.terminal-quote-card {
+  min-width: 0;
+  padding: 10px 11px 8px;
+  border: 1px solid #e1e6ea;
+  border-radius: 8px;
+  background: #fbfcfd;
+}
+
+.terminal-quote-card--target {
+  border-color: #8da5b6;
+  background: #f6f9fb;
+  box-shadow: inset 3px 0 0 #607f95;
+}
+
+.terminal-quote-card__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.terminal-quote-card__identity {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+}
+
+.terminal-ticker-icon {
+  display: inline-flex;
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #36566d;
+  color: #fff;
+  font-size: 0.54rem;
+  font-weight: 800;
+}
+
+.terminal-quote-card__identity > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.terminal-quote-card__identity strong {
+  color: #1a3348;
+  font-size: 0.74rem;
+  letter-spacing: 0.025em;
+}
+
+.terminal-quote-card__identity span:not(.terminal-ticker-icon) {
+  overflow: hidden;
+  max-width: 180px;
+  color: #85909a;
+  font-size: 0.6rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.terminal-target-badge {
+  flex: 0 0 auto;
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: #e7eef3;
+  color: #49677d;
+  font-size: 0.5rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.terminal-quote-card__quote {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  margin-top: 8px;
+}
+
+.terminal-quote-card__quote > strong {
+  color: #172d41;
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.terminal-quote-card__quote > span {
+  font-size: 0.65rem;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+
+.terminal-price-chart {
+  display: block;
+  width: 100%;
+  height: 62px;
+  margin-top: 3px;
+  overflow: visible;
+}
+
+.terminal-price-chart__grid {
+  stroke: #e8ecef;
+  stroke-width: 0.65;
+}
+
+.terminal-price-chart__line {
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.terminal-price-chart__point {
+  fill: currentColor;
+}
+
+.terminal-quote-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 5px;
+  color: #929ba4;
+  font-size: 0.53rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.terminal-market-loading {
+  min-height: 250px;
+  padding: 17px;
+}
+
+
+/* ============================================================
+   CONTROLLED INFORMATION UPDATE
+   ============================================================ */
+
+.terminal-market-update {
+  display: grid;
+  grid-template-columns: 5px minmax(0, 1fr);
+  gap: 16px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.terminal-update-marker {
+  width: 5px;
+  overflow: hidden;
+  background: #60788b;
+  color: transparent;
+  font-size: 0;
+}
+
+.terminal-market-update__body {
+  padding: 17px 20px 17px 0;
+}
+
+
+/* ============================================================
+   COMMUNITY + NEWS
+   ============================================================ */
+
+.terminal-information-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 14px;
+  align-items: start;
+}
+
+.terminal-community-panel,
+.terminal-news-panel {
+  min-width: 0;
+  padding: 17px;
+}
+
+.terminal-community-feed {
+  display: flex;
+  max-height: 550px;
+  flex-direction: column;
+  gap: 7px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.terminal-post-card {
+  padding: 11px 12px;
+  border: 1px solid #e3e7ea;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.terminal-post-card__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 7px;
+}
+
+.terminal-post-card__avatar {
+  display: inline-flex;
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #526e82;
+  color: #fff;
+  font-size: 0.55rem;
+  font-weight: 800;
+}
+
+.terminal-post-card__identity {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.terminal-post-card__identity strong {
+  overflow: hidden;
+  color: #243a4d;
+  font-size: 0.73rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.terminal-post-card__identity span {
+  overflow: hidden;
+  color: #929ba4;
+  font-size: 0.58rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.terminal-post-card time {
+  color: #929ba4;
+  font-size: 0.59rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.terminal-post-card p {
+  margin: 0;
+  color: #344759;
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.terminal-news-feed {
+  display: flex;
+  max-height: 550px;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.terminal-news-item {
+  display: grid;
+  grid-template-columns: 25px minmax(0, 1fr);
+  gap: 7px;
+  padding: 10px 0;
+  border-top: 1px solid #ebeff2;
+}
+
+.terminal-news-item:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.terminal-news-item > span {
+  color: #9aa3ac;
+  font-size: 0.61rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.terminal-news-item p {
+  margin: 0;
+  color: #344759;
+  font-size: 0.74rem;
+  line-height: 1.47;
+}
+
+
+/* ============================================================
+   TRADING CONTROLS
+   ============================================================ */
+
+.trading-screen .market-closed-panel,
+.trading-screen .trading-panel {
+  margin-top: 14px;
+}
+
+.trading-screen .trading-panel > .panel-heading {
+  margin-bottom: 12px;
+}
+
+.error-copy {
+  color: #8e5050;
+}
+
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+
+@media (max-width: 1080px) {
+  .terminal-dashboard-top {
+    grid-template-columns: 245px minmax(0, 1fr);
+  }
+
+  .terminal-market-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 820px) {
+  .terminal-dashboard-top,
+  .terminal-information-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .terminal-market-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .terminal-news-panel {
+    order: -1;
+  }
+}
+
+@media (max-width: 620px) {
+  .trading-screen {
+    padding-top: 22px;
+  }
+
+  .terminal-market-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .market-terminal-ticker__item {
+    flex: 0 0 122px;
+  }
+
+  .terminal-information-layout {
+    gap: 10px;
+  }
+}
+
+
+
+/* MarketLens financial dashboard final density polish v1 */
+
+
+/* ------------------------------------------------------------
+   1. Portfolio should size to its own content.
+   Do not stretch it to the height of Market Overview.
+   ------------------------------------------------------------ */
+
+.terminal-dashboard-top {
+  align-items: start;
+}
+
+.terminal-portfolio-card {
+  align-self: start;
+  min-height: 0;
+  height: auto;
+}
+
+.terminal-dashboard-market > .panel {
+  height: auto;
+}
+
+
+/* ------------------------------------------------------------
+   2. Desktop ticker = one balanced market tape.
+   All ten assets remain visible at wide desktop widths.
+   ------------------------------------------------------------ */
+
+@media (min-width: 1181px) {
+  .market-terminal-ticker {
+    display: grid;
+    grid-template-columns: repeat(10, minmax(0, 1fr));
+    overflow: hidden;
+  }
+
+  .market-terminal-ticker__item {
+    min-width: 0;
+    width: auto;
+    padding: 9px 7px;
+    gap: 5px;
+    overflow: hidden;
+  }
+
+  .market-terminal-ticker__item > strong,
+  .market-terminal-ticker__price,
+  .market-terminal-ticker__change {
+    flex: 0 0 auto;
+  }
+
+  .market-terminal-ticker__item > strong {
+    font-size: 0.72rem;
+  }
+
+  .market-terminal-ticker__price {
+    font-size: 0.7rem;
+  }
+
+  .market-terminal-ticker__change {
+    font-size: 0.61rem;
+  }
+}
+
+
+/* ------------------------------------------------------------
+   3. Wider desktop = three-column quote board.
+   ------------------------------------------------------------ */
+
+@media (min-width: 1280px) {
+  .terminal-dashboard-top {
+    grid-template-columns: 265px minmax(0, 1fr);
+  }
+
+  .terminal-market-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .terminal-quote-card {
+    padding: 10px 10px 8px;
+  }
+
+  .terminal-quote-card__identity span:not(.terminal-ticker-icon) {
+    max-width: 125px;
+  }
+
+  .terminal-price-chart {
+    height: 52px;
+  }
+
+  .terminal-quote-card__footer {
+    font-size: 0.5rem;
+  }
+}
+
+
+/* ------------------------------------------------------------
+   4. Medium desktop keeps two-column readability.
+   ------------------------------------------------------------ */
+
+@media (min-width: 821px) and (max-width: 1279px) {
+  .terminal-market-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+
+/* ------------------------------------------------------------
+   5. Slightly denser headings / cards.
+   ------------------------------------------------------------ */
+
+.terminal-market-overview,
+.terminal-community-panel,
+.terminal-news-panel {
+  padding: 15px;
+}
+
+.terminal-card-heading {
+  margin-bottom: 11px;
+}
+
+.terminal-market-overview .terminal-card-heading h2,
+.terminal-community-panel .terminal-card-heading h2,
+.terminal-news-panel .terminal-card-heading h2 {
+  font-size: 1rem;
+}
+
+.terminal-quote-card__quote {
+  margin-top: 6px;
+}
+
+.terminal-community-feed,
+.terminal-news-feed {
+  max-height: 500px;
+}
+
+
+/* ------------------------------------------------------------
+   6. Trading zone stays clearly separate from market data.
+   ------------------------------------------------------------ */
+
+.trading-screen .trading-panel {
+  margin-top: 16px;
+}
+
+.trading-screen .trading-panel,
+.trading-screen .round-complete-panel {
+  padding-top: 20px;
+  padding-bottom: 20px;
+}
+
+
+/* ============================================================
+   MarketLens financial dashboard final alignment polish v2
+   Presentation only. No participant information contract change.
+   ============================================================ */
+
+
+/* ------------------------------------------------------------
+   1. Shared panel geometry.
+   Keep the primary dashboard surfaces on the same visual grid.
+   ------------------------------------------------------------ */
+
+.terminal-dashboard-top {
+  align-items: start;
+  gap: 16px;
+}
+
+.terminal-portfolio-card,
+.terminal-market-overview,
+.terminal-community-panel,
+.terminal-news-panel,
+.trading-screen .trading-panel,
+.trading-screen .period-complete-panel {
+  border-radius: 14px;
+}
+
+.terminal-portfolio-card,
+.terminal-market-overview {
+  padding: 16px;
+}
+
+.terminal-portfolio-card .terminal-card-heading,
+.terminal-market-overview .terminal-card-heading {
+  min-height: 42px;
+  margin-bottom: 12px;
+  align-items: flex-start;
+}
+
+
+/* ------------------------------------------------------------
+   2. Wide desktop market board.
+   Ten investable assets = five balanced columns × two rows.
+   ------------------------------------------------------------ */
+
+@media (min-width: 1440px) {
+  .terminal-dashboard-top {
+    grid-template-columns: 265px minmax(0, 1fr);
+  }
+
+  .terminal-market-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 9px;
+  }
+
+  .terminal-quote-card {
+    min-width: 0;
+    min-height: 150px;
+    padding: 11px 11px 9px;
+  }
+
+  .terminal-quote-card__identity {
+    min-width: 0;
+  }
+
+  .terminal-quote-card__identity span:not(.terminal-ticker-icon) {
+    max-width: 118px;
+  }
+
+  .terminal-price-chart {
+    height: 52px;
+  }
+}
+
+
+/* ------------------------------------------------------------
+   3. Standard desktop remains readable.
+   Do not force five narrow columns below wide-desktop size.
+   ------------------------------------------------------------ */
+
+@media (min-width: 1280px) and (max-width: 1439px) {
+  .terminal-market-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 9px;
+  }
+}
+
+
+/* ------------------------------------------------------------
+   4. Community + News.
+   Give News more readable width and align both outer panels.
+   ------------------------------------------------------------ */
+
+.terminal-information-layout {
+  grid-template-columns:
+    minmax(0, 2.55fr)
+    minmax(320px, 1fr);
+  gap: 16px;
+  align-items: stretch;
+}
+
+.terminal-community-panel,
+.terminal-news-panel {
+  display: flex;
+  min-width: 0;
+  height: 100%;
+  flex-direction: column;
+  padding: 16px;
+}
+
+.terminal-community-panel .terminal-card-heading,
+.terminal-news-panel .terminal-card-heading {
+  min-height: 42px;
+  margin-bottom: 12px;
+  align-items: flex-start;
+}
+
+.terminal-community-feed,
+.terminal-news-feed {
+  flex: 1 1 auto;
+  max-height: 500px;
+}
+
+.terminal-news-feed {
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+
+/* ------------------------------------------------------------
+   5. Trading form alignment.
+   Labels, selects, action buttons and numeric input share one
+   baseline and one control height.
+   ------------------------------------------------------------ */
+
+.trading-screen .trading-panel {
+  padding: 22px;
+}
+
+.trading-screen .trading-panel .trade-grid {
+  grid-template-columns:
+    minmax(0, 1fr)
+    minmax(0, 1fr)
+    minmax(0, 1fr);
+  gap: 18px;
+  align-items: end;
+  margin-top: 20px;
+}
+
+.trading-screen .trade-grid .form-section {
+  display: flex;
+  min-width: 0;
+  margin: 0;
+  flex-direction: column;
+}
+
+.trading-screen .trade-grid .form-section > label,
+.trading-screen .trade-grid .field-label {
+  min-height: 22px;
+  margin-bottom: 8px;
+  line-height: 22px;
+}
+
+.trading-screen .trade-grid select,
+.trading-screen .trade-grid input {
+  box-sizing: border-box;
+  height: 48px;
+  min-height: 48px;
+}
+
+.trading-screen .trade-actions {
+  height: 48px;
+  gap: 8px;
+}
+
+.trading-screen .trade-action {
+  height: 48px;
+  min-height: 48px;
+}
+
+.trading-screen .trading-panel > .secondary-button {
+  min-height: 46px;
+  margin-top: 18px;
+}
+
+
+/* ------------------------------------------------------------
+   6. Finish-period panel.
+   Match the trading panel geometry and vertical rhythm.
+   ------------------------------------------------------------ */
+
+.trading-screen .period-complete-panel {
+  min-height: 132px;
+  padding: 22px;
+  align-items: center;
+}
+
+.trading-screen .period-complete-panel > div {
+  min-width: 0;
+}
+
+
+/* ------------------------------------------------------------
+   7. Medium / narrow layouts.
+   Preserve usability instead of forcing desktop alignment.
+   ------------------------------------------------------------ */
+
+@media (max-width: 1100px) {
+  .terminal-information-layout {
+    grid-template-columns:
+      minmax(0, 2fr)
+      minmax(280px, 1fr);
+  }
+}
+
+@media (max-width: 820px) {
+  .terminal-information-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .terminal-community-panel,
+  .terminal-news-panel {
+    height: auto;
+  }
+
+  .trading-screen .trading-panel .trade-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
+
+/* ============================================================
+   MarketLens portfolio Period P/L presentation v1
+   Descriptive portfolio movement only.
+   ============================================================ */
+
+.terminal-portfolio-metrics strong.market-trend--up {
+  color: #34745d;
+}
+
+.terminal-portfolio-metrics strong.market-trend--down {
+  color: #9b5050;
+}
+
+.terminal-portfolio-metrics strong.market-trend--flat {
+  color: #7d8893;
+}
+
+.terminal-holding-row > div:first-child {
+  min-width: 0;
+}
+
+.terminal-holding-row > div:first-child > span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ============================================================
+   MarketLens community interaction polish v1
+   Presentation only. No reply data is invented or inferred.
+   ============================================================ */
+
+
+/* ------------------------------------------------------------
+   Assessment badge:
+   keep the badge on the ticker row while allowing the compact
+   asset name below it to use the full identity width.
+   ------------------------------------------------------------ */
+
+.terminal-quote-card--target {
+  position: relative;
+}
+
+.terminal-quote-card--target .terminal-quote-card__top {
+  display: block;
+}
+
+.terminal-quote-card--target .terminal-quote-card__identity {
+  width: 100%;
+}
+
+.terminal-quote-card--target
+  .terminal-quote-card__identity > div {
+  min-width: 0;
+  flex: 1;
+}
+
+.terminal-quote-card--target
+  .terminal-quote-card__identity > div > strong {
+  display: block;
+  padding-right: 82px;
+}
+
+.terminal-quote-card--target
+  .terminal-quote-card__identity
+  span:not(.terminal-ticker-icon) {
+  max-width: none;
+}
+
+.terminal-quote-card--target .terminal-target-badge {
+  position: absolute;
+  top: 11px;
+  right: 11px;
+  z-index: 2;
+}
+
+
+/* ------------------------------------------------------------
+   Community:
+   borrow TwinMarket's compact Read more / Show less interaction
+   without adding likes, reposts, comments or participant actions.
+   ------------------------------------------------------------ */
+
+.terminal-community-feed {
+  padding-right: 4px;
+}
+
+.terminal-post-card__body {
+  white-space: pre-line;
+}
+
+.terminal-post-card__body--collapsed {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+}
+
+.terminal-post-card__expand {
+  align-self: flex-start;
+  margin: 7px 0 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #405f78;
+  font: inherit;
+  font-size: 0.66rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.terminal-post-card__expand:hover {
+  opacity: 0.72;
+}
+
+.terminal-post-card__expand:focus-visible {
+  border-radius: 4px;
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+}
+
+
+/* ------------------------------------------------------------
+   Explicitly preserve flat canonical discussion semantics.
+   These styles are visual only; no synthetic reply container.
+   ------------------------------------------------------------ */
+
+.terminal-post-card + .terminal-post-card {
+  margin-top: 8px;
+}

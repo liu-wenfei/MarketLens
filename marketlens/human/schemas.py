@@ -242,6 +242,35 @@ class RoundCompletionRead(BaseModel):
     completed_at: datetime
 
 
+class ParticipantMarketPricePointRead(BaseModel):
+    """One participant-visible canonical market-state price point."""
+
+    participant_date: str
+    price_date: str
+    close: float
+
+
+class ParticipantMarketAssetRead(BaseModel):
+    """Participant-safe market overview for one investable asset."""
+
+    stock_id: str
+    display_name: str
+    short_display_name: str
+    current_price: float
+    previous_visible_close: float | None
+    change_from_previous_visible_pct: float | None
+    price_history: list[ParticipantMarketPricePointRead]
+
+
+class ParticipantMarketOverviewRead(BaseModel):
+    """Read-only market overview bounded to participant-visible checkpoints."""
+
+    session_id: str
+    current_date: str
+    price_date: str
+    assets: list[ParticipantMarketAssetRead]
+
+
 class PortfolioAction(str, Enum):
     BUY = "BUY"
     SELL = "SELL"
@@ -314,6 +343,7 @@ class PortfolioTransactionRead(BaseModel):
 class PortfolioHoldingRead(BaseModel):
     stock_id: str
     name: str
+    short_name: str | None = None
     quantity: int
     current_price: float
     market_value: float
@@ -327,6 +357,8 @@ class PortfolioRead(BaseModel):
     initial_cash: float
     cash: float
     total_value: float
+    period_pnl: float | None = None
+    period_pnl_pct: float | None = None
     holdings: list[PortfolioHoldingRead]
 
 

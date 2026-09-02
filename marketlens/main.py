@@ -20,6 +20,7 @@ from marketlens.human.routers.decision import router as decision_router
 from marketlens.human.routers.exposure import router as exposure_router
 from marketlens.human.routers.judgement import router as judgement_router
 from marketlens.human.routers.portfolio import router as portfolio_router
+from marketlens.human.routers.market_overview import router as market_overview_router
 from marketlens.human.routers.round import router as round_router
 from marketlens.human.routers.session import router as session_router
 from marketlens.human.runtime import build_participant_runtime
@@ -116,6 +117,7 @@ def create_app(
     app.include_router(decision_router)
     app.include_router(judgement_router)
     app.include_router(portfolio_router)
+    app.include_router(market_overview_router)
     app.include_router(round_router)
     app.include_router(feedback_router)
     app.include_router(journey_router)

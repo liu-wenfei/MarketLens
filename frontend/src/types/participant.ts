@@ -46,6 +46,29 @@ export interface ParticipantMarketView {
   trading_enabled_by_market: boolean;
 }
 
+export interface ParticipantMarketPricePointRead {
+  participant_date: string;
+  price_date: string;
+  close: number;
+}
+
+export interface ParticipantMarketAssetRead {
+  stock_id: string;
+  display_name: string;
+  short_display_name: string;
+  current_price: number;
+  previous_visible_close: number | null;
+  change_from_previous_visible_pct: number | null;
+  price_history: ParticipantMarketPricePointRead[];
+}
+
+export interface ParticipantMarketOverviewRead {
+  session_id: string;
+  current_date: string;
+  price_date: string;
+  assets: ParticipantMarketAssetRead[];
+}
+
 export interface ParticipantViewState {
   contract_version: string;
   session_id: string;
@@ -110,6 +133,7 @@ export interface ParticipantAssessmentRead {
 export interface PortfolioHoldingRead {
   stock_id: string;
   name: string;
+  short_name: string | null;
   quantity: number;
   current_price: number;
   market_value: number;
@@ -123,6 +147,8 @@ export interface PortfolioRead {
   initial_cash: number;
   cash: number;
   total_value: number;
+  period_pnl: number | null;
+  period_pnl_pct: number | null;
   holdings: PortfolioHoldingRead[];
 }
 
