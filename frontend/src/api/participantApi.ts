@@ -1,5 +1,7 @@
 import type {
   ParticipantAssessmentCreate,
+  ParticipantAuthLoginRead,
+  ParticipantAuthSession,
   ParticipantAssessmentRead,
   ParticipantBackgroundRead,
   ParticipantDecisionJourneyRead,
@@ -19,6 +21,68 @@ const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL?.replace(/\/+$/, "") ??
   "http://localhost:8000";
 
+const AUTH_STORAGE_KEY = "marketlens:formal-auth:v1";
+
+export const AUTH_REQUIRED_EVENT =
+  "marketlens:formal-auth-required";
+
+export function readParticipantAuthSession():
+  | ParticipantAuthSession
+  | null {
+  try {
+    const raw = sessionStorage.getItem(AUTH_STORAGE_KEY);
+
+    if (!raw) {
+      return null;
+    }
+
+    const parsed = JSON.parse(raw) as Partial<ParticipantAuthSession>;
+
+    if (
+      typeof parsed.participant_id !== "string" ||
+      typeof parsed.session_id !== "string" ||
+      typeof parsed.access_token !== "string" ||
+      typeof parsed.expires_at !== "string"
+    ) {
+      sessionStorage.removeItem(AUTH_STORAGE_KEY);
+      return null;
+    }
+
+    const expiresAt = Date.parse(parsed.expires_at);
+
+    if (
+      !Number.isFinite(expiresAt) ||
+      expiresAt <= Date.now()
+    ) {
+      sessionStorage.removeItem(AUTH_STORAGE_KEY);
+      return null;
+    }
+
+    return {
+      participant_id: parsed.participant_id,
+      session_id: parsed.session_id,
+      access_token: parsed.access_token,
+      expires_at: parsed.expires_at,
+    };
+  } catch {
+    sessionStorage.removeItem(AUTH_STORAGE_KEY);
+    return null;
+  }
+}
+
+export function writeParticipantAuthSession(
+  auth: ParticipantAuthSession,
+): void {
+  sessionStorage.setItem(
+    AUTH_STORAGE_KEY,
+    JSON.stringify(auth),
+  );
+}
+
+export function clearParticipantAuthSession(): void {
+  sessionStorage.removeItem(AUTH_STORAGE_KEY);
+}
+
 export class ParticipantApiError extends Error {
   status: number;
 
@@ -33,15 +97,30 @@ async function requestJson<T>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {
+  const auth = readParticipantAuthSession();
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
     headers: {
       ...(options.body ? { "Content-Type": "application/json" } : {}),
+      ...(auth
+        ? { Authorization: `Bearer ${auth.access_token}` }
+        : {}),
       ...options.headers,
     },
   });
 
   if (!response.ok) {
+    if (
+      response.status === 401 &&
+      path !== "/auth/login"
+    ) {
+      clearParticipantAuthSession();
+      window.dispatchEvent(
+        new Event(AUTH_REQUIRED_EVENT),
+      );
+    }
+
     let message = `Request failed with status ${response.status}`;
 
     try {
@@ -68,6 +147,22 @@ function sessionPath(sessionId: string): string {
 
 export function createRequestId(): string {
   return crypto.randomUUID();
+}
+
+export function loginParticipant(
+  participantId: string,
+  password: string,
+): Promise<ParticipantAuthLoginRead> {
+  return requestJson<ParticipantAuthLoginRead>(
+    "/auth/login",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        participant_id: participantId,
+        password,
+      }),
+    },
+  );
 }
 
 export function createParticipantSession(

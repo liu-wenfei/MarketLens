@@ -1,34 +1,56 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
-  createParticipantSession,
-  createRequestId,
+  AUTH_REQUIRED_EVENT,
+  clearParticipantAuthSession,
+  loginParticipant,
+  readParticipantAuthSession,
+  writeParticipantAuthSession,
 } from "./api/participantApi";
 import { ParticipantSession } from "./session/ParticipantSession";
+import type {
+  ParticipantAuthSession,
+} from "./types/participant";
 import "./App.css";
 
-function sessionFromUrl(): string | null {
-  const value = new URLSearchParams(window.location.search).get(
-    "session_id",
-  );
+function removeLegacySessionIdFromUrl(): void {
+  const url = new URL(window.location.href);
 
-  return value?.trim() || null;
+  if (!url.searchParams.has("session_id")) {
+    return;
+  }
+
+  url.searchParams.delete("session_id");
+  window.history.replaceState({}, "", url);
 }
 
 function ParticipantStart({
-  onStarted,
+  onAuthenticated,
 }: {
-  onStarted: (sessionId: string) => void;
+  onAuthenticated: (
+    auth: ParticipantAuthSession,
+  ) => void;
 }) {
   const [participantId, setParticipantId] = useState("");
+  const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleStart() {
-    const value = participantId.trim();
+    const idValue = participantId.trim();
+    const passwordValue = password.trim();
 
-    if (!value) {
-      setError("Enter the participant ID provided by the researcher.");
+    if (!idValue) {
+      setError(
+        "Enter the participant ID provided by the researcher.",
+      );
+      return;
+    }
+
+    if (!passwordValue) {
+      setError(
+        "Enter the password provided by the researcher.",
+      );
       return;
     }
 
@@ -36,16 +58,26 @@ function ParticipantStart({
     setError(null);
 
     try {
-      const session = await createParticipantSession(
-        value,
-        createRequestId(),
+      const login = await loginParticipant(
+        idValue,
+        passwordValue,
       );
-      onStarted(session.session_id);
+
+      const auth: ParticipantAuthSession = {
+        participant_id: login.session.participant_id,
+        session_id: login.session.session_id,
+        access_token: login.access_token,
+        expires_at: login.expires_at,
+      };
+
+      writeParticipantAuthSession(auth);
+      setPassword("");
+      onAuthenticated(auth);
     } catch (caught) {
       setError(
         caught instanceof Error
           ? caught.message
-          : "Unable to start the participant session.",
+          : "Unable to open the participant session.",
       );
     } finally {
       setBusy(false);
@@ -70,9 +102,9 @@ function ParticipantStart({
         </p>
 
         <div className="start-note">
-          Your participant ID is used only to open your assigned study
-          session. Market conditions and study progression are controlled
-          by the study server.
+          Use the participant ID and password provided by the
+          researcher. If you return later, sign in again with the same
+          details to resume the same study session.
         </div>
 
         <div className="form-section">
@@ -80,16 +112,31 @@ function ParticipantStart({
           <input
             id="participant-id"
             value={participantId}
-            autoComplete="off"
+            autoComplete="username"
+            autoCapitalize="characters"
             onChange={(event) =>
               setParticipantId(event.target.value)
+            }
+            placeholder="Enter participant ID"
+          />
+        </div>
+
+        <div className="form-section">
+          <label htmlFor="participant-password">Password</label>
+          <input
+            id="participant-password"
+            type="password"
+            value={password}
+            autoComplete="current-password"
+            onChange={(event) =>
+              setPassword(event.target.value)
             }
             onKeyDown={(event) => {
               if (event.key === "Enter") {
                 void handleStart();
               }
             }}
-            placeholder="Enter participant ID"
+            placeholder="Enter password"
           />
         </div>
 
@@ -101,7 +148,7 @@ function ParticipantStart({
           disabled={busy}
           onClick={() => void handleStart()}
         >
-          {busy ? "Starting session…" : "Start MarketLens session"}
+          {busy ? "Opening session…" : "Open MarketLens session"}
         </button>
       </main>
     </div>
@@ -109,23 +156,45 @@ function ParticipantStart({
 }
 
 function App() {
-  const [sessionId, setSessionId] = useState<string | null>(
-    sessionFromUrl,
+  const [auth, setAuth] =
+    useState<ParticipantAuthSession | null>(
+      readParticipantAuthSession,
+    );
+
+  useEffect(() => {
+    removeLegacySessionIdFromUrl();
+
+    function requireAuthentication() {
+      clearParticipantAuthSession();
+      setAuth(null);
+    }
+
+    window.addEventListener(
+      AUTH_REQUIRED_EVENT,
+      requireAuthentication,
+    );
+
+    return () => {
+      window.removeEventListener(
+        AUTH_REQUIRED_EVENT,
+        requireAuthentication,
+      );
+    };
+  }, []);
+
+  if (!auth) {
+    return (
+      <ParticipantStart
+        onAuthenticated={setAuth}
+      />
+    );
+  }
+
+  return (
+    <ParticipantSession
+      sessionId={auth.session_id}
+    />
   );
-
-  function handleStarted(value: string) {
-    const url = new URL(window.location.href);
-    url.searchParams.set("session_id", value);
-    window.history.replaceState({}, "", url);
-
-    setSessionId(value);
-  }
-
-  if (!sessionId) {
-    return <ParticipantStart onStarted={handleStarted} />;
-  }
-
-  return <ParticipantSession sessionId={sessionId} />;
 }
 
 export default App;

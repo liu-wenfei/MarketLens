@@ -15,6 +15,20 @@ export type ParticipantAssessmentMode =
   | "POST_UPDATE"
   | "LATER";
 
+export interface ParticipantAuthLoginRead {
+  access_token: string;
+  token_type: "bearer";
+  expires_at: string;
+  session: SessionRead;
+}
+
+export interface ParticipantAuthSession {
+  participant_id: string;
+  session_id: string;
+  access_token: string;
+  expires_at: string;
+}
+
 export interface SessionRead {
   session_id: string;
   participant_id: string;

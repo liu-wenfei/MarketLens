@@ -21,7 +21,7 @@ function storageKey(
 
 function readStored<T>(key: string): T | null {
   try {
-    const value = sessionStorage.getItem(key);
+    const value = localStorage.getItem(key);
     return value ? (JSON.parse(value) as T) : null;
   } catch {
     return null;
@@ -95,13 +95,13 @@ export function ParticipantSession({
     payload: ParticipantBackgroundRead,
   ) {
     setBackground(payload);
-    sessionStorage.setItem(
+    localStorage.setItem(
       storageKey(sessionId, "background"),
       JSON.stringify(payload),
     );
 
     setInformationUpdate(null);
-    sessionStorage.removeItem(
+    localStorage.removeItem(
       storageKey(sessionId, "information-update"),
     );
 
@@ -112,7 +112,7 @@ export function ParticipantSession({
     payload: ParticipantInformationUpdateRead,
   ) {
     setInformationUpdate(payload);
-    sessionStorage.setItem(
+    localStorage.setItem(
       storageKey(sessionId, "information-update"),
       JSON.stringify(payload),
     );
