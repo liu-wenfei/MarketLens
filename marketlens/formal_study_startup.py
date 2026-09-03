@@ -80,6 +80,33 @@ def resolve_formal_auth_db_path(
     return runtime_db_path.parent / FORMAL_AUTH_DB_FILENAME
 
 
+def _enforce_private_formal_db_permissions(
+    *paths: Path,
+) -> None:
+    # Fail closed unless each formal-study SQLite file is mode 600.
+
+    for path in paths:
+        if not path.is_file():
+            raise FormalStudyStartupConfigurationError(
+                "formal study database was not created as expected: "
+                f"{path}"
+            )
+
+        try:
+            os.chmod(path, 0o600)
+        except OSError as exc:
+            raise FormalStudyStartupConfigurationError(
+                "cannot enforce private permissions on formal study "
+                f"database: {path}"
+            ) from exc
+
+        if (path.stat().st_mode & 0o777) != 0o600:
+            raise FormalStudyStartupConfigurationError(
+                "formal study database permissions are not private: "
+                f"{path}"
+            )
+
+
 def _reject_database_environment_override(
     environ: Mapping[str, str],
 ) -> None:
@@ -153,6 +180,12 @@ def create_persistent_formal_participant_app(
 
     auth_store = FormalAuthStore(
         auth_db_path
+    )
+
+    _enforce_private_formal_db_permissions(
+        runtime_db_path,
+        event_db_path,
+        auth_db_path,
     )
 
     app = create_authenticated_formal_gateway(

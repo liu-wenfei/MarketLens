@@ -109,6 +109,9 @@ def test_persistent_formal_factory_injects_all_paths_and_auth(
         calls["gateway_kwargs"] = kwargs
         return fake_gateway
 
+    def fake_permission_enforcer(*paths):
+        calls["permission_paths"] = paths
+
     monkeypatch.setattr(
         startup,
         "create_formal_openai_feedback_generator",
@@ -128,6 +131,11 @@ def test_persistent_formal_factory_injects_all_paths_and_auth(
         startup,
         "create_authenticated_formal_gateway",
         fake_gateway_factory,
+    )
+    monkeypatch.setattr(
+        startup,
+        "_enforce_private_formal_db_permissions",
+        fake_permission_enforcer,
     )
 
     app = startup.create_persistent_formal_participant_app(
@@ -172,6 +180,11 @@ def test_persistent_formal_factory_injects_all_paths_and_auth(
     assert calls["auth_store_path"] == (
         expected_auth
     )
+    assert calls["permission_paths"] == (
+        expected_runtime,
+        expected_events,
+        expected_auth,
+    )
     assert calls["gateway_kwargs"] == {
         "inner_app": fake_inner,
         "auth_store": fake_auth_store,
@@ -201,3 +214,40 @@ def test_persistent_formal_factory_injects_all_paths_and_auth(
 def test_acceptance_entrypoint_remains_loopback_only():
     assert startup.LOCAL_PREAUTH_HOST == "127.0.0.1"
     assert startup.LOCAL_PREAUTH_PORT == 8000
+
+
+def test_private_formal_db_permissions_are_enforced(
+    tmp_path,
+):
+    paths = (
+        tmp_path / "participant_runtime.db",
+        tmp_path / "participant_events.db",
+        tmp_path / "participant_auth.db",
+    )
+
+    for path in paths:
+        path.write_bytes(b"sqlite-placeholder")
+        path.chmod(0o644)
+
+    startup._enforce_private_formal_db_permissions(
+        *paths
+    )
+
+    assert {
+        path.stat().st_mode & 0o777
+        for path in paths
+    } == {0o600}
+
+
+def test_private_formal_db_permissions_fail_closed_when_missing(
+    tmp_path,
+):
+    missing = tmp_path / "missing.db"
+
+    with pytest.raises(
+        startup.FormalStudyStartupConfigurationError,
+        match="was not created as expected",
+    ):
+        startup._enforce_private_formal_db_permissions(
+            missing
+        )
