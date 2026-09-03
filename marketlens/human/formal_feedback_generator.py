@@ -42,7 +42,7 @@ from marketlens.human.feedback.formal_policy import (
 
 
 FORMAL_GENERATOR_CONTRACT_VERSION = (
-    "marketlens-formal-feedback-generator-v7"
+    "marketlens-formal-feedback-generator-v8"
 )
 FORMAL_GENERATOR_ID = (
     "marketlens-openai-compatible-responses-v7"
@@ -58,7 +58,7 @@ FORMAL_TOTAL_TIMEOUT_SECONDS = FORMAL_TOTAL_WAIT_SECONDS
 FORMAL_SDK_MAX_RETRIES = 0
 FORMAL_OPENAI_SDK_VERSION = "2.54.0"
 FORMAL_CORRECTIVE_RETRY_POLICY_VERSION = (
-    "marketlens-formal-feedback-corrective-retry-v2"
+    "marketlens-formal-feedback-corrective-retry-v3"
 )
 
 
@@ -242,6 +242,7 @@ def _corrective_retry_user_prompt(
     *,
     base_user_prompt: str,
     validation_reason: str,
+    feedback_kind: str,
 ) -> str:
     """Build one deterministic retry instruction without rejected text."""
 
@@ -285,6 +286,17 @@ def _corrective_retry_user_prompt(
         + "rejected language.\n"
         + "Before returning, check that the reflection remains within "
         + "the exact word-count range stated in the original request.\n"
+        + (
+            "For this feedback checkpoint, the reflection MUST contain "
+            + (
+                "110-170 English words"
+                if feedback_kind == "multi_period_decision_feedback"
+                else "250-350 English words"
+                if feedback_kind == "final_session_summary"
+                else ""
+            )
+            + ".\n"
+        )
         + "Return only the complete JSON object required by the "
         + "original schema."
     )
@@ -521,6 +533,7 @@ class OpenAIResponsesFormalFeedbackGenerator:
                         validation_reason=(
                             active_validation_reason
                         ),
+                        feedback_kind=prompt.feedback_kind,
                     )
                 )
                 request_mode = "corrective_retry"

@@ -405,6 +405,11 @@ def test_corrective_retry_uses_validator_reason_without_rejected_output():
         "The original word-count requirement remains mandatory."
         in second_input
     )
+    assert (
+        "For this feedback checkpoint, the reflection MUST contain "
+        "110-170 English words."
+        in second_input
+    )
 
     assert (
         "Do not shorten the reflection in order to repair the "
