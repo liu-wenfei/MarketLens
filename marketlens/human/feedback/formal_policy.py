@@ -18,7 +18,7 @@ from .prompt import FrozenFeedbackPrompt
 
 
 FORMAL_LIVE_FEEDBACK_POLICY_VERSION = (
-    "marketlens-formal-live-adaptive-feedback-v1"
+    "marketlens-formal-live-adaptive-feedback-v2"
 )
 FORMAL_CONTEXT_LIMITS = ContextLimits(
     policy_version="marketlens-formal-feedback-context-limits-v1",
@@ -41,22 +41,23 @@ FORMAL_MAX_PROVIDER_ATTEMPTS = 2
 
 FORMAL_PROVIDER_SUCCESS_STATUS = "formal_live_provider_validated"
 FORMAL_FALLBACK_STATUS = "formal_live_fallback_validated"
-FORMAL_FALLBACK_POLICY_VERSION = "marketlens-formal-feedback-fallback-v1"
+FORMAL_FALLBACK_POLICY_VERSION = "marketlens-formal-feedback-fallback-v2"
 
 _MID_FALLBACK = (
     "Across this feedback window, the recorded assessments, confidence "
-    "reports, rationales, evidence selections, and portfolio actions form "
+    "reports, rationales, evidence selections, and portfolio behaviour form "
     "separate parts of the decision record. The reflection can describe "
     "where the stated market view remained stable or changed, and whether "
-    "confidence and action moved together or separately. Information shown "
-    "in the interface is treated as available context only; the record does "
-    "not establish that every item was read, relied upon, or believed. "
-    "References to evidence therefore remain limited to sources explicitly "
-    "selected and reasons recorded at the time. Trading and choosing not to "
-    "trade are both retained as behaviour, without treating either as a "
-    "better response. This feedback makes patterns in the recorded process "
-    "easier to inspect while leaving accuracy judgements, hidden conditions, "
-    "later outcomes, and investment recommendations outside the reflection."
+    "confidence and portfolio behaviour changed together or separately. "
+    "Information shown in the interface is treated as available context "
+    "only; the record does not establish that every item was read, relied "
+    "upon, or believed. References to evidence therefore remain limited to "
+    "sources explicitly selected and reasons recorded at the time. Trading "
+    "and choosing not to trade are both retained as behaviour, without "
+    "treating either as a better response. This feedback makes patterns in "
+    "the recorded process easier to inspect while leaving accuracy "
+    "judgements, hidden conditions, later outcomes, and investment "
+    "recommendations outside the reflection."
 )
 
 _FINAL_FALLBACK = (
@@ -69,25 +70,25 @@ _FINAL_FALLBACK = (
     "explicitly reported as part of the decision process. Material displayed "
     "in the interface remains available context only and does not establish "
     "that every item was read, relied upon, or believed.\n\n"
-    "Confidence reports and portfolio actions provide a separate view of the "
-    "same journey. A change in assessment may appear with or without a change "
-    "in confidence, and it may appear with a trade or with a decision not to "
-    "trade. Those relationships are descriptive. They do not establish the "
-    "quality of a judgement or make one type of action preferable to another. "
-    "Portfolio values and transaction records are likewise retained as "
-    "descriptions of participant behaviour within the simulated environment, "
-    "not as measures of decision accuracy.\n\n"
+    "Confidence reports and portfolio behaviour provide a separate view of "
+    "the same journey. A change in assessment may appear with or without a "
+    "change in confidence, and it may appear with a trade or with a decision "
+    "not to trade. Those relationships are descriptive. They do not establish "
+    "the quality of a judgement or make one type of portfolio behaviour "
+    "preferable to another. Portfolio values and transaction records are "
+    "likewise retained as descriptions of participant behaviour within the "
+    "simulated environment, not as measures of decision accuracy.\n\n"
     "Taken together, these records support a process-level review of where "
     "views stayed stable, where they changed, how confidence developed, how "
-    "action related to stated judgement, and which reasons or sources were "
-    "explicitly reported. The reflection does not infer hidden attention, "
-    "belief, causality, or experimental conditions from those records. It "
-    "also leaves scoring, comparison with other people, later market "
-    "information, and investment recommendations outside the feedback. Its "
-    "role is limited to presenting the recorded decision process in a "
-    "coherent form while preserving the distinction between information "
-    "availability, participant-reported evidence, judgement, confidence, and "
-    "portfolio action."
+    "portfolio behaviour related to stated judgement, and which reasons or "
+    "sources were explicitly reported. The reflection does not infer hidden "
+    "attention, belief, causality, or experimental conditions from those "
+    "records. It also leaves scoring, comparison with other people, later "
+    "market information, and investment recommendations outside the "
+    "feedback. Its role is limited to presenting the recorded decision "
+    "process in a coherent form while preserving the distinction between "
+    "information availability, participant-reported evidence, judgement, "
+    "confidence, and portfolio behaviour."
 )
 
 FORMAL_FALLBACK_TRIGGER_CATEGORIES = frozenset(
@@ -109,7 +110,7 @@ FORMAL_LIVE_FEEDBACK_POLICY: Mapping[str, object] = MappingProxyType(
             "participant-reported confidence",
             "participant-authored rationale",
             "participant-selected evidence",
-            "participant portfolio actions and no-action records",
+            "participant trades and no-trade records",
             "participant-visible information available by the checkpoint",
         ),
         "allowed_personalisation": (

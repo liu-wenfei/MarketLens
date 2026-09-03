@@ -19,7 +19,7 @@ from .context import FeedbackContextPack
 
 
 OUTPUT_CONTRACT_VERSION = (
-    "marketlens-feedback-reflection-output-v3"
+    "marketlens-feedback-reflection-output-v4"
 )
 
 
@@ -78,6 +78,43 @@ _DIRECT_PARTICIPANT_STATE_RE = re.compile(
     r"(?:were|was)\s+(?:cautious|methodical|deliberate|patient)"
     r")\b",
     re.IGNORECASE,
+)
+
+
+_UNSUPPORTED_STATE_NOUN_RE = re.compile(
+    r"\b(?:"
+    r"neutral stance|"
+    r"cautious stance|"
+    r"cautious progression|"
+    r"measured approach|"
+    r"methodical approach|"
+    r"deliberate strategy|"
+    r"deliberate pacing|"
+    r"measured engagement|"
+    r"risk posture|"
+    r"risk containment|"
+    r"validation of signals"
+    r")\b",
+    re.IGNORECASE,
+)
+
+
+_AMBIGUOUS_ACTION_TERMINOLOGY_RE = re.compile(
+    r"\bactions?\b",
+    re.IGNORECASE,
+)
+
+
+_MALFORMED_SENTENCE_SPACING_RE = re.compile(
+    r"(?<=[a-z0-9])[.!?](?=[A-Z][a-z])"
+)
+
+
+_MALFORMED_JOINED_WORD_RE = re.compile(
+    r"\b(?:The|Your|This)(?:"
+    r"information|participant|assessment|confidence|"
+    r"portfolio|market|evidence|record|behaviour"
+    r")\b"
 )
 
 
@@ -351,6 +388,17 @@ def _validate_evidence_attribution(
                 "attentional, intentional, or strategic attribution"
             )
 
+        if (
+            _UNSUPPORTED_STATE_NOUN_RE.search(sentence)
+            and not _PARTICIPANT_REPORTING_CUE_RE.search(
+                sentence
+            )
+        ):
+            raise FeedbackOutputValidationError(
+                "reflection contains unsupported psychological, "
+                "attentional, intentional, or strategic attribution"
+            )
+
 
 def _validate_language(
     text: str,
@@ -365,6 +413,19 @@ def _validate_language(
     _validate_evidence_attribution(
         text
     )
+
+    if _AMBIGUOUS_ACTION_TERMINOLOGY_RE.search(text):
+        raise FeedbackOutputValidationError(
+            "reflection contains ambiguous assessment/trade terminology"
+        )
+
+    if (
+        _MALFORMED_SENTENCE_SPACING_RE.search(text)
+        or _MALFORMED_JOINED_WORD_RE.search(text)
+    ):
+        raise FeedbackOutputValidationError(
+            "reflection contains malformed participant-facing spacing"
+        )
 
     if _NUMERIC_LITERAL_RE.search(text):
         raise FeedbackOutputValidationError(

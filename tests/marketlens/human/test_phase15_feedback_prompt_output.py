@@ -420,12 +420,12 @@ def test_markdown_fence_fails():
         )
 
 
-def test_prompt_v4_explicitly_forbids_first_person_participant_voice():
+def test_prompt_v8_explicitly_forbids_first_person_participant_voice():
     prompt = build_feedback_prompt(_context())
 
     assert (
         prompt.prompt_contract_version
-        == "marketlens-feedback-reflection-prompt-v4"
+        == "marketlens-feedback-reflection-prompt-v8"
     )
 
     assert (
@@ -465,6 +465,293 @@ def test_prompt_v4_explicitly_forbids_first_person_participant_voice():
 
     assert (
         "Only describe such a state when it was explicitly participant-reported"
+        in prompt.user_prompt
+    )
+
+
+def test_prompt_v8_aligns_with_prescriptive_validator_language():
+    prompt = build_feedback_prompt(_context())
+
+    assert (
+        "PRESCRIPTIVE AND OPTIMISATION LANGUAGE RULE"
+        in prompt.system_prompt
+    )
+
+    for phrase in (
+        "moving forward",
+        "going forward",
+        "aim to",
+        "aiming to",
+        "try to",
+        "trying to",
+        "potential edge",
+        "risk management",
+        "investment strategy",
+        "trading strategy",
+        "disciplined",
+        "discipline",
+    ):
+        assert phrase in prompt.system_prompt
+
+    assert (
+        "Keep the reflection retrospective and descriptive."
+        in prompt.system_prompt
+    )
+
+    assert (
+        "Do not tell the participant"
+        in prompt.system_prompt
+    )
+
+
+def test_prompt_v8_aligns_with_attribution_validator_language():
+    prompt = build_feedback_prompt(_context())
+
+    assert (
+        "OBSERVATION-ONLY ATTRIBUTION RULE"
+        in prompt.system_prompt
+    )
+
+    for phrase in (
+        "the pattern suggests",
+        "this indicates",
+        "this implies",
+        "this reflects",
+        "this shows",
+        "this reveals",
+        "this points to",
+        "this hints at",
+        "this appears to",
+        "this may suggest",
+        "this may indicate",
+        "this may reflect",
+    ):
+        assert phrase in prompt.system_prompt
+
+    for state in (
+        "preference",
+        "reliance",
+        "patience",
+        "motivation",
+        "intention",
+        "attention",
+        "strategy",
+        "risk posture",
+        "cautious stance",
+        "deliberate pacing",
+    ):
+        assert state in prompt.system_prompt
+
+    assert (
+        "describe the observable record directly"
+        in prompt.system_prompt.lower()
+    )
+
+
+def test_unreported_state_noun_language_is_rejected():
+    pack = _context()
+
+    for phrase in (
+        "The observed sequence aligns with a cautious progression in view.",
+        "The record contains a neutral stance across the period.",
+        "The sequence forms a measured approach to the market.",
+        "The portfolio record represents a deliberate strategy.",
+    ):
+        with pytest.raises(
+            FeedbackOutputValidationError,
+            match=(
+                "unsupported psychological, attentional, "
+                "intentional, or strategic attribution"
+            ),
+        ):
+            validate_feedback_output(
+                {
+                    "feedback_kind": (
+                        "multi_period_decision_feedback"
+                    ),
+                    "reflection": (
+                        phrase
+                        + " "
+                        + _words(118)
+                    ),
+                },
+                context_pack=pack,
+            )
+
+
+def test_explicitly_reported_state_noun_remains_allowed():
+    pack = _context()
+
+    validated = validate_feedback_output(
+        {
+            "feedback_kind": (
+                "multi_period_decision_feedback"
+            ),
+            "reflection": (
+                "Your rationale described a neutral stance. "
+                + _words(118)
+            ),
+        },
+        context_pack=pack,
+    )
+
+    assert validated.word_count >= 110
+
+
+def test_generic_action_terminology_is_rejected():
+    pack = _context()
+
+    with pytest.raises(
+        FeedbackOutputValidationError,
+        match="ambiguous assessment/trade terminology",
+    ):
+        validate_feedback_output(
+            {
+                "feedback_kind": (
+                    "multi_period_decision_feedback"
+                ),
+                "reflection": (
+                    "The initial SELL action was followed by "
+                    "a later change in the recorded view. "
+                    + _words(112)
+                ),
+            },
+            context_pack=pack,
+        )
+
+
+def test_malformed_participant_facing_spacing_is_rejected():
+    pack = _context()
+
+    for phrase in (
+        "The recorded assessment changed.The participant record continued.",
+        "Theinformation environment remained available during the period.",
+    ):
+        with pytest.raises(
+            FeedbackOutputValidationError,
+            match="malformed participant-facing spacing",
+        ):
+            validate_feedback_output(
+                {
+                    "feedback_kind": (
+                        "multi_period_decision_feedback"
+                    ),
+                    "reflection": (
+                        phrase
+                        + " "
+                        + _words(112)
+                    ),
+                },
+                context_pack=pack,
+            )
+
+
+def test_live_provider_false_negative_fixture_is_now_rejected():
+    pack = _context()
+
+    live_provider_text = (
+        "Observations show a shift in stated assessment from SELL to BUY "
+        "across the reviewed periods. Confidence levels decreased from the "
+        "first assessment to the latest, while the participant recorded a "
+        "rationale tying uncertainty to the available information. The "
+        "decision pattern includes a single action of BUY in a later period "
+        "and no SELL actions after the initial SELL; meanwhile, several "
+        "periods show no trade. Available evidence sources were selected to "
+        "support the actions, with company information cited for the initial "
+        "action and broader market information cited for the later action. "
+        "The participant noted relevance of recorded market information while "
+        "maintaining uncertainty. The information environment included both "
+        "community and market updates, with a neutral stance described in "
+        "rationales. The observed sequence aligns with a cautious progression "
+        "in view, as reflected by changes in confidence and a revision of "
+        "judgement in conjunction with the single trade action within the "
+        "window of periods reviewed."
+    )
+
+    with pytest.raises(
+        FeedbackOutputValidationError,
+    ):
+        validate_feedback_output(
+            {
+                "feedback_kind": (
+                    "multi_period_decision_feedback"
+                ),
+                "reflection": live_provider_text,
+            },
+            context_pack=pack,
+        )
+
+
+def test_prompt_v8_separates_assessment_from_trade_terminology():
+    prompt = build_feedback_prompt(_context())
+
+    assert (
+        "ASSESSMENT AND TRADE TERMINOLOGY RULE"
+        in prompt.system_prompt
+    )
+    assert (
+        "Do not use the generic noun"
+        in prompt.system_prompt
+    )
+    assert (
+        "STATE-LABEL PRESERVATION RULE"
+        in prompt.system_prompt
+    )
+    assert (
+        "LANGUAGE QUALITY RULE"
+        in prompt.system_prompt
+    )
+    assert (
+        "Do not use action or actions as a generic noun."
+        in prompt.user_prompt
+    )
+
+
+def test_prompt_v8_defines_participant_reflection_action_as_assessment():
+    prompt = build_feedback_prompt(_context())
+
+    assert (
+        'participant_reflections[].action = "SELL"'
+        in prompt.system_prompt
+    )
+
+    assert (
+        "It does NOT mean:"
+        in prompt.system_prompt
+    )
+
+    assert (
+        "Never infer a portfolio transaction from "
+        "participant_reflections[].action."
+        in prompt.system_prompt
+    )
+
+    assert (
+        "participant_reflections[].action is an assessment field"
+        in prompt.user_prompt
+    )
+
+    assert (
+        "Use only trading_metrics and judgement_action_metrics"
+        in prompt.user_prompt
+    )
+
+
+def test_prompt_v8_has_hard_mid_session_word_bounds():
+    prompt = build_feedback_prompt(_context())
+
+    assert (
+        "MUST contain 110-170 English words"
+        in prompt.user_prompt
+    )
+
+    assert (
+        "Fewer than 110 words or more than 170 words is invalid"
+        in prompt.user_prompt
+    )
+
+    assert (
+        "Count only the words inside the reflection field"
         in prompt.user_prompt
     )
 

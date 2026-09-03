@@ -278,7 +278,7 @@ def test_formal_factory_accepts_live_provider_generator_at_runtime(
         assert preparation.limits == FORMAL_CONTEXT_LIMITS
         assert app.state.formal_feedback_runtime_policy[
             "policy_version"
-        ] == "marketlens-formal-live-adaptive-feedback-v1"
+        ] == "marketlens-formal-live-adaptive-feedback-v2"
         assert client.responses.calls == []
     finally:
         app.state.formal_participant_event_store.dispose()
@@ -414,6 +414,73 @@ def test_corrective_retry_uses_validator_reason_without_rejected_output():
     assert (
         "Do not shorten the reflection in order to repair the "
         "rejected language."
+        in second_input
+    )
+
+    assert (
+        "rewrite the reflection as retrospective description only"
+        in second_input
+    )
+
+    for phrase in (
+        "moving forward",
+        "going forward",
+        "aim to",
+        "aiming to",
+        "try to",
+        "trying to",
+        "potential edge",
+        "risk management",
+        "investment strategy",
+        "trading strategy",
+        "disciplined",
+        "discipline",
+    ):
+        assert phrase in second_input
+
+    assert (
+        "remove all inferred internal states"
+        in second_input
+    )
+
+    for phrase in (
+        "the pattern suggests",
+        "this indicates",
+        "this implies",
+        "this reflects",
+        "this shows",
+        "this reveals",
+        "this points to",
+        "this hints at",
+        "this appears to",
+        "this may suggest",
+        "this may indicate",
+        "this may reflect",
+    ):
+        assert phrase in second_input
+
+    assert (
+        "do not use action or actions"
+        in second_input.lower()
+    )
+
+    assert (
+        "do not repeat or introduce any numerical values"
+        in second_input.lower()
+    )
+
+    assert (
+        "regardless of which single rule caused the previous rejection"
+        in second_input.lower()
+    )
+
+    assert (
+        "Preserve explicitly reported state labels"
+        in second_input
+    )
+
+    assert (
+        "normal English spacing"
         in second_input
     )
 
