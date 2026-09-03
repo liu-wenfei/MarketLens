@@ -490,9 +490,19 @@ def create_authenticated_formal_gateway(
             runtime.assignments.allocate_balanced_random(
                 session.session_id
             )
-            runtime.orchestration.initialize(
+
+            # SessionRead intentionally does not expose the protocol stage.
+            # Read the authoritative orchestration state to distinguish a
+            # genuinely new session from an in-progress/completed session.
+            orchestration_state = runtime.orchestration.get(
                 session.session_id
             )
+
+            if orchestration_state.current_stage is None:
+                runtime.orchestration.initialize(
+                    session.session_id
+                )
+
             session = runtime.sessions.get(
                 session.session_id
             )

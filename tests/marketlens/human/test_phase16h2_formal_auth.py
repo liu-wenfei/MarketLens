@@ -353,3 +353,87 @@ def test_auth_error_responses_receive_cors_headers(
         ]
         == "http://localhost:5173"
     )
+
+
+def test_completed_participant_relogin_resumes_same_session(
+    authenticated_app,
+):
+    gateway, inner, _auth = authenticated_app
+
+    with TestClient(gateway) as client:
+        first = _login(
+            client,
+            "P001",
+        )
+
+        assert first.status_code == 200
+        first_body = first.json()
+        session_id = first_body["session"]["session_id"]
+
+        with inner.state.db.connect() as connection:
+            connection.execute(
+                sessions.update()
+                .where(
+                    sessions.c.session_id
+                    == session_id
+                )
+                .values(
+                    current_step=14,
+                    current_stage="COMPLETED",
+                    experiment_status="completed",
+                    completed=True,
+                )
+            )
+
+        def fail_if_reinitialized(_session_id: str):
+            raise AssertionError(
+                "completed formal session must not be reinitialized"
+            )
+
+        original_initialize = (
+            inner.state.participant_runtime
+            .orchestration.initialize
+        )
+        inner.state.participant_runtime.orchestration.initialize = (
+            fail_if_reinitialized
+        )
+
+        try:
+            second = _login(
+                client,
+                "P001",
+            )
+        finally:
+            inner.state.participant_runtime.orchestration.initialize = (
+                original_initialize
+            )
+
+    assert second.status_code == 200
+
+    second_body = second.json()
+    assert (
+        second_body["session"]["session_id"]
+        == session_id
+    )
+    assert (
+        second_body["session"]["participant_id"]
+        == "P001"
+    )
+    assert (
+        second_body["session"]["completed"]
+        is True
+    )
+    assert (
+        second_body["session"]["experiment_status"]
+        == "completed"
+    )
+
+    orchestration_state = (
+        inner.state.participant_runtime
+        .orchestration.get(session_id)
+    )
+    assert (
+        orchestration_state.current_stage
+        == "COMPLETED"
+    )
+    assert orchestration_state.completed is True
