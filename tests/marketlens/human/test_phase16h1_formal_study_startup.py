@@ -7,9 +7,13 @@ import pytest
 import marketlens.formal_study_startup as startup
 
 
-def test_formal_data_paths_are_exact_and_separate(tmp_path):
-    root, runtime_db, event_db = startup.resolve_formal_data_paths(
-        tmp_path
+def test_formal_data_paths_are_exact_and_separate(
+    tmp_path,
+):
+    root, runtime_db, event_db = (
+        startup.resolve_formal_data_paths(
+            tmp_path
+        )
     )
 
     assert root == tmp_path.resolve()
@@ -32,7 +36,35 @@ def test_formal_data_paths_are_exact_and_separate(tmp_path):
     assert runtime_db != event_db
 
 
-def test_formal_startup_rejects_generic_database_override(tmp_path):
+def test_formal_auth_path_is_separate(
+    tmp_path,
+):
+    root, runtime_db, event_db = (
+        startup.resolve_formal_data_paths(
+            tmp_path
+        )
+    )
+    auth_db = startup.resolve_formal_auth_db_path(
+        tmp_path
+    )
+
+    assert auth_db == (
+        root
+        / "data"
+        / "marketlens"
+        / "human"
+        / "formal"
+        / "participant_auth.db"
+    )
+    assert auth_db not in {
+        runtime_db,
+        event_db,
+    }
+
+
+def test_formal_startup_rejects_generic_database_override(
+    tmp_path,
+):
     with pytest.raises(
         startup.FormalStudyStartupConfigurationError,
         match="MARKETLENS_DATABASE_URL",
@@ -40,18 +72,26 @@ def test_formal_startup_rejects_generic_database_override(tmp_path):
         startup.create_persistent_formal_participant_app(
             repo_root=tmp_path,
             environ={
-                "MARKETLENS_DATABASE_URL": "sqlite:///unexpected.db"
+                "MARKETLENS_DATABASE_URL": (
+                    "sqlite:///unexpected.db"
+                )
             },
         )
 
 
-def test_persistent_formal_factory_injects_paths_and_live_feedback(
+def test_persistent_formal_factory_injects_all_paths_and_auth(
     monkeypatch,
     tmp_path,
 ):
     calls: dict[str, object] = {}
     fake_generator = object()
-    fake_app = SimpleNamespace(state=SimpleNamespace())
+    fake_inner = SimpleNamespace(
+        state=SimpleNamespace()
+    )
+    fake_gateway = SimpleNamespace(
+        state=SimpleNamespace()
+    )
+    fake_auth_store = object()
 
     def fake_generator_factory(**kwargs):
         calls["generator_kwargs"] = kwargs
@@ -59,7 +99,15 @@ def test_persistent_formal_factory_injects_paths_and_live_feedback(
 
     def fake_formal_factory(**kwargs):
         calls["formal_factory_kwargs"] = kwargs
-        return fake_app
+        return fake_inner
+
+    def fake_auth_store_factory(path):
+        calls["auth_store_path"] = path
+        return fake_auth_store
+
+    def fake_gateway_factory(**kwargs):
+        calls["gateway_kwargs"] = kwargs
+        return fake_gateway
 
     monkeypatch.setattr(
         startup,
@@ -70,6 +118,16 @@ def test_persistent_formal_factory_injects_paths_and_live_feedback(
         startup,
         "create_formal_participant_app",
         fake_formal_factory,
+    )
+    monkeypatch.setattr(
+        startup,
+        "FormalAuthStore",
+        fake_auth_store_factory,
+    )
+    monkeypatch.setattr(
+        startup,
+        "create_authenticated_formal_gateway",
+        fake_gateway_factory,
     )
 
     app = startup.create_persistent_formal_participant_app(
@@ -84,33 +142,62 @@ def test_persistent_formal_factory_injects_paths_and_live_feedback(
         / "human"
         / "formal"
     )
-    expected_runtime = expected_dir / "participant_runtime.db"
-    expected_events = expected_dir / "participant_events.db"
+    expected_runtime = (
+        expected_dir / "participant_runtime.db"
+    )
+    expected_events = (
+        expected_dir / "participant_events.db"
+    )
+    expected_auth = (
+        expected_dir / "participant_auth.db"
+    )
 
-    assert app is fake_app
+    assert app is fake_gateway
     assert expected_dir.is_dir()
-    assert calls["generator_kwargs"] == {"environ": {}}
-
-    kwargs = calls["formal_factory_kwargs"]
-    assert kwargs == {
-        "repo_root": tmp_path.resolve(),
-        "db_path": expected_runtime,
-        "participant_event_db_path": expected_events,
-        "feedback_generator": fake_generator,
+    assert calls["generator_kwargs"] == {
+        "environ": {}
     }
 
-    assert app.state.formal_study_runtime_db_path == str(
-        expected_runtime
+    assert calls["formal_factory_kwargs"] == {
+        "repo_root": tmp_path.resolve(),
+        "db_path": expected_runtime,
+        "participant_event_db_path": (
+            expected_events
+        ),
+        "allowed_origins": (
+            "http://localhost:5173",
+        ),
+        "feedback_generator": fake_generator,
+    }
+    assert calls["auth_store_path"] == (
+        expected_auth
     )
-    assert app.state.formal_study_event_db_path == str(
-        expected_events
+    assert calls["gateway_kwargs"] == {
+        "inner_app": fake_inner,
+        "auth_store": fake_auth_store,
+        "allowed_origins": (
+            "http://localhost:5173",
+        ),
+    }
+
+    assert (
+        app.state.formal_study_runtime_db_path
+        == str(expected_runtime)
+    )
+    assert (
+        app.state.formal_study_event_db_path
+        == str(expected_events)
+    )
+    assert (
+        app.state.formal_study_auth_db_path
+        == str(expected_auth)
     )
     assert (
         app.state.formal_study_startup_mode
-        == "persistent_local_preauth"
+        == "persistent_local_authenticated"
     )
 
 
-def test_preauth_entrypoint_is_loopback_only():
+def test_acceptance_entrypoint_remains_loopback_only():
     assert startup.LOCAL_PREAUTH_HOST == "127.0.0.1"
     assert startup.LOCAL_PREAUTH_PORT == 8000
