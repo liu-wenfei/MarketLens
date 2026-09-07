@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0",
+  "profile_id": "marketlens-participant-cash-only-v1",
+  "status": "formal_frozen",
+  "initial_cash": 10000.0,
+  "initial_holdings": {},
+  "transaction_cost_bps": 0.0,
+  "max_position_weight": null,
+  "whole_units": true,
+  "allow_short": false,
+  "allow_leverage": false,
+  "design_note": "Human participants start cash-only and price-taking. No transaction fee or position cap is imposed because neither is part of the experimental construct and both are unnecessary for participant-market isolation.",
+  "evidence": {
+    "cash_endowment_validation": "artifacts/participant_cash_endowment_validation_v1",
+    "fee_sensitivity": "artifacts/participant_cash_endowment_validation_v1_fee0",
+    "position_cap_audit": "pre-study deterministic behavioural-censoring audit",
+    "superseded_account_capacity_evidence": "artifacts/account_capacity_validation*"
+  }
+}

@@ -456,7 +456,15 @@ def create_formal_participant_app(
                 "feedback generator requires generation_status"
             )
 
+        from marketlens.human.portfolio.formal_account import (
+            assert_formal_participant_account_runtime,
+        )
+
         runtime = app.state.participant_runtime
+        assert_formal_participant_account_runtime(
+            initial_cash=runtime.sessions.initial_cash,
+            policy=app.state.portfolio_policy,
+        )
         if runtime is None:
             raise FormalParticipantServerConfigurationError(
                 "participant runtime was not composed"

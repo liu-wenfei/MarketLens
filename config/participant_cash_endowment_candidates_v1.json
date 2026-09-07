@@ -1,0 +1,26 @@
+{
+  "schema_version": "1.0",
+  "target_stock_id": "MEI",
+  "asset_ids": ["CGEI","CPEI","EREI","FSEI","IEEI","MEI","REEI","TLEI","TSEI","TTEI"],
+  "period_dates": [
+    "2023-06-19","2023-06-20","2023-06-21","2023-06-26","2023-06-27",
+    "2023-06-28","2023-06-29","2023-06-30","2023-07-03","2023-07-04",
+    "2023-07-05","2023-07-06","2023-07-07","2023-07-10","2023-07-11"
+  ],
+  "critical_periods": [1,8,15],
+  "order_fraction_probes": [0.01,0.025,0.05,0.10],
+  "families": {
+    "cash_only_endowment_fee10_nocap_v1": {
+      "description": "Cash-only participant endowment sweep; 10 bps fee; no position cap. Isolates endowment scale and whole-unit granularity.",
+      "transaction_cost_bps": 10.0,
+      "max_position_weight": null,
+      "initial_cash_candidates": [10000,25000,50000,100000,250000,500000,1000000]
+    },
+    "cash_only_endowment_fee0_nocap_v1": {
+      "description": "Fee sensitivity for the cash-only endowment sweep; no position cap.",
+      "transaction_cost_bps": 0.0,
+      "max_position_weight": null,
+      "initial_cash_candidates": [10000,25000,50000,100000,250000,500000,1000000]
+    }
+  }
+}
