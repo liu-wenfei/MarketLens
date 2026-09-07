@@ -1,6 +1,6 @@
 # Superseded Account-Capacity Diagnostic — c35
 
-**Status:** SUPERSEDED DEVELOPMENT DIAGNOSTIC  
+**Status:** SUPERSEDED DEVELOPMENT DIAGNOSTIC
 **Not formal participant-account evidence.**
 
 This archive preserves the earlier MarketLens account-capacity analysis that
