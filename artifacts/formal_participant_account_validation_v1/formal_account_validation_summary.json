@@ -1,0 +1,232 @@
+{
+  "cash_endowment": {
+    "decision": 10000.0,
+    "decision_basis": "10,000 was the smallest already-implemented simple cash endowment shown adequate for all predefined research-relevant deterministic paths; larger endowments improved whole-unit resolution but did not add behavioural feasibility.",
+    "research_relevant_fee10_summary": {
+      "cases": 27,
+      "critical_invalid_orders": 0,
+      "invalid_below_one_unit": 0,
+      "invalid_cash": 0,
+      "invalid_holdings": 0,
+      "invalid_orders": 0,
+      "invalid_position_limit": 0,
+      "min_cash_ratio": 0.5010890434326729,
+      "orders_executed": 111,
+      "orders_requested": 111
+    },
+    "resolution_summary": {
+      "below_one_unit": 0,
+      "canonical_price_max": 14.92,
+      "canonical_price_min": 5.1,
+      "initial_cash": 10000.0,
+      "interpretation": "Standardised engineering resolution probes; these fractions are not participant-facing selectable order increments.",
+      "max_one_unit_fraction_pp": 0.1492,
+      "max_portfolio_weight_error": 0.0014479999999999,
+      "max_relative_order_error": 0.1353999999999999,
+      "probe_order_fractions": [
+        0.01,
+        0.025,
+        0.05,
+        0.1
+      ]
+    }
+  },
+  "evidence_id": "marketlens-formal-participant-account-validation-v1",
+  "formal_account": {
+    "allow_leverage": false,
+    "allow_short": false,
+    "initial_cash": 10000.0,
+    "initial_holdings": {},
+    "max_position_weight": null,
+    "transaction_cost_bps": 0.0,
+    "whole_units": true
+  },
+  "formal_profile_id": "marketlens-participant-cash-only-v1",
+  "git": {
+    "branch": "phase16-formal-deployment-auth",
+    "head": "ae2e1ec249e1c1fa372289c6bf2aa10d6ac36234",
+    "status_file": "git_status_before.txt"
+  },
+  "position_cap": {
+    "binding_cases": [
+      {
+        "cap": "10%",
+        "episode_id": "marketlens-canonical-episode-v2-e01",
+        "path_id": "focal_build_then_correction_unwind",
+        "position_limit": 1
+      },
+      {
+        "cap": "10%",
+        "episode_id": "marketlens-canonical-episode-v2-e02",
+        "path_id": "focal_build_then_correction_unwind",
+        "position_limit": 1
+      },
+      {
+        "cap": "10%",
+        "episode_id": "marketlens-canonical-episode-v2-e03",
+        "path_id": "focal_build_then_correction_unwind",
+        "position_limit": 1
+      },
+      {
+        "cap": "13%",
+        "episode_id": "marketlens-canonical-episode-v2-e01",
+        "path_id": "focal_build_then_correction_unwind",
+        "position_limit": 1
+      },
+      {
+        "cap": "13%",
+        "episode_id": "marketlens-canonical-episode-v2-e02",
+        "path_id": "focal_build_then_correction_unwind",
+        "position_limit": 1
+      },
+      {
+        "cap": "13%",
+        "episode_id": "marketlens-canonical-episode-v2-e03",
+        "path_id": "focal_build_then_correction_unwind",
+        "position_limit": 1
+      }
+    ],
+    "by_cap": {
+      "10%": {
+        "cases": 27,
+        "cash_invalid": 0,
+        "holdings_invalid": 3,
+        "invalid_orders": 6,
+        "orders_executed": 105,
+        "orders_requested": 111,
+        "position_limit": 3
+      },
+      "13%": {
+        "cases": 27,
+        "cash_invalid": 0,
+        "holdings_invalid": 3,
+        "invalid_orders": 6,
+        "orders_executed": 105,
+        "orders_requested": 111,
+        "position_limit": 3
+      },
+      "20%": {
+        "cases": 27,
+        "cash_invalid": 0,
+        "holdings_invalid": 0,
+        "invalid_orders": 0,
+        "orders_executed": 111,
+        "orders_requested": 111,
+        "position_limit": 0
+      },
+      "25%": {
+        "cases": 27,
+        "cash_invalid": 0,
+        "holdings_invalid": 0,
+        "invalid_orders": 0,
+        "orders_executed": 111,
+        "orders_requested": 111,
+        "position_limit": 0
+      },
+      "None": {
+        "cases": 27,
+        "cash_invalid": 0,
+        "holdings_invalid": 0,
+        "invalid_orders": 0,
+        "orders_executed": 111,
+        "orders_requested": 111,
+        "position_limit": 0
+      }
+    },
+    "decision": "None",
+    "decision_basis": "10% and 13% caps mechanically constrained the focal build-then-correction-unwind path. 20%, 25%, and None did not bind in the predefined research-relevant paths. None was selected to avoid unnecessary censoring because the participant is price-taking and cannot affect the canonical market."
+  },
+  "regressions": {
+    "cash_validation_tests": {
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.13/bin/python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/marketlens/validation/test_cash_only_account_validation.py"
+      ],
+      "output_file": "cash_validation_tests.txt",
+      "passed": true,
+      "returncode": 0
+    },
+    "git_diff_check": {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "output_file": "git_diff_check.txt",
+      "passed": true,
+      "returncode": 0
+    },
+    "human_backend_tests": {
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.13/bin/python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/marketlens/human"
+      ],
+      "output_file": "human_backend_tests.txt",
+      "passed": true,
+      "returncode": 0
+    },
+    "targeted_tests": {
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.13/bin/python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/marketlens/human/test_formal_participant_account_freeze.py",
+        "tests/marketlens/human/test_phase14b3c1_runtime_wiring.py"
+      ],
+      "output_file": "targeted_tests.txt",
+      "passed": true,
+      "returncode": 0
+    }
+  },
+  "runtime_formalisation": {
+    "behaviour_change_intended": false,
+    "manifest_status": "formal_frozen",
+    "startup_assertion": true
+  },
+  "schema_version": "1.0",
+  "superseded_development_diagnostics": {
+    "note": "Historical c35 evidence assumed non-zero initial risky holdings and is retained only as superseded development diagnostic material.",
+    "paths": [
+      "artifacts/account_capacity_validation/",
+      "artifacts/account_capacity_validation_v2/",
+      "artifacts/account_capacity_validation_v2_fee0/",
+      "config/account_capacity_candidates_v1.json"
+    ],
+    "status": "not formal participant-account evidence"
+  },
+  "transaction_fee": {
+    "decision_basis": "Both 10 bps and 0 bps preserved research-relevant execution feasibility. Because transaction cost was not part of the experimental construct, 0 bps was selected to avoid an unnecessary behavioural friction.",
+    "decision_bps": 0.0,
+    "fee0_research_relevant_summary": {
+      "cases": 27,
+      "critical_invalid_orders": 0,
+      "invalid_below_one_unit": 0,
+      "invalid_cash": 0,
+      "invalid_holdings": 0,
+      "invalid_orders": 0,
+      "invalid_position_limit": 0,
+      "min_cash_ratio": 0.5013380000000001,
+      "orders_executed": 111,
+      "orders_requested": 111
+    },
+    "fee10_research_relevant_summary": {
+      "cases": 27,
+      "critical_invalid_orders": 0,
+      "invalid_below_one_unit": 0,
+      "invalid_cash": 0,
+      "invalid_holdings": 0,
+      "invalid_orders": 0,
+      "invalid_position_limit": 0,
+      "min_cash_ratio": 0.5010890434326729,
+      "orders_executed": 111,
+      "orders_requested": 111
+    }
+  }
+}

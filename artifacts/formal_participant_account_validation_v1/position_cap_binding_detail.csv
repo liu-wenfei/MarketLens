@@ -1,0 +1,7 @@
+cap,episode_id,path_id,orders_requested,orders_executed,invalid_orders,position_limit,cash_invalid,holdings_invalid
+10%,marketlens-canonical-episode-v2-e01,focal_build_then_correction_unwind,4,2,2,1,0,1
+10%,marketlens-canonical-episode-v2-e02,focal_build_then_correction_unwind,4,2,2,1,0,1
+10%,marketlens-canonical-episode-v2-e03,focal_build_then_correction_unwind,4,2,2,1,0,1
+13%,marketlens-canonical-episode-v2-e01,focal_build_then_correction_unwind,4,2,2,1,0,1
+13%,marketlens-canonical-episode-v2-e02,focal_build_then_correction_unwind,4,2,2,1,0,1
+13%,marketlens-canonical-episode-v2-e03,focal_build_then_correction_unwind,4,2,2,1,0,1

@@ -1,0 +1,6 @@
+cap,cases,orders_requested,orders_executed,invalid_orders,position_limit,cash_invalid,holdings_invalid
+10%,27,111,105,6,3,0,3
+13%,27,111,105,6,3,0,3
+20%,27,111,111,0,0,0,0
+25%,27,111,111,0,0,0,0
+None,27,111,111,0,0,0,0

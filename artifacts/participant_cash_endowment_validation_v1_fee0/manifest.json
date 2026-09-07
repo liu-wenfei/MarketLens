@@ -1,0 +1,92 @@
+{
+  "asset_ids": [
+    "CGEI",
+    "CPEI",
+    "EREI",
+    "FSEI",
+    "IEEI",
+    "MEI",
+    "REEI",
+    "TLEI",
+    "TSEI",
+    "TTEI"
+  ],
+  "candidate_initial_cash": [
+    10000.0,
+    25000.0,
+    50000.0,
+    100000.0,
+    250000.0,
+    500000.0,
+    1000000.0
+  ],
+  "config_path": "config/participant_cash_endowment_candidates_v1.json",
+  "config_sha256": "46f2c9b2b8a979f4060eabaeb6997fa9cf8fc778702a07a67a63d4f8b2174e5d",
+  "created_at_utc": "2026-09-07T15:07:27.889010+00:00",
+  "critical_periods": [
+    1,
+    8,
+    15
+  ],
+  "design_contract": {
+    "initial_cash_fraction": 1.0,
+    "initial_holdings": "none",
+    "leverage": false,
+    "position_cap_in_endowment_sweep": null,
+    "position_cap_note": "Position-cap sensitivity is deferred until initial cash endowment is selected.",
+    "short_selling": false,
+    "whole_units": true
+  },
+  "deterministic_path_ids": [
+    "boundary_full_deployment_10asset_buy10",
+    "distributed_build_then_partial_unwind",
+    "focal_build_then_correction_unwind",
+    "focal_buy10_p1",
+    "focal_buy5_p1",
+    "hold_all",
+    "late_same_period_5asset_buy5",
+    "same_period_10asset_buy5",
+    "same_period_5asset_buy10",
+    "same_period_5asset_buy5"
+  ],
+  "episode_ids": [
+    "marketlens-canonical-episode-v2-e01",
+    "marketlens-canonical-episode-v2-e02",
+    "marketlens-canonical-episode-v2-e03"
+  ],
+  "family_description": "Fee sensitivity for the cash-only endowment sweep; no position cap.",
+  "family_id": "cash_only_endowment_fee0_nocap_v1",
+  "git_branch": "phase16-formal-deployment-auth",
+  "git_head": "445d8cf0a4ccdec1be8b2b0008235ad2567f63a5",
+  "git_status": "?? artifacts/account_capacity_validation/\n?? artifacts/account_capacity_validation_v2/\n?? artifacts/account_capacity_validation_v2_fee0/\n?? artifacts/participant_cash_endowment_validation_v1/\n?? artifacts/participant_cash_endowment_validation_v1_fee0/\n?? config/account_capacity_candidates_v1.json\n?? config/participant_cash_endowment_candidates_v1.json\n?? marketlens/validation/\n?? scripts/validation/\n?? tests/marketlens/validation/",
+  "interpretation_note": "Random resolution probes are not a participant-behaviour model. They test whole-unit execution resolution across the frozen canonical price/date/asset space. Position-cap effects are intentionally excluded.",
+  "monte_carlo_probe_count": 1000,
+  "monte_carlo_seed": 20260907,
+  "order_fraction_probes": [
+    0.01,
+    0.025,
+    0.05,
+    0.1
+  ],
+  "period_dates": [
+    "2023-06-19",
+    "2023-06-20",
+    "2023-06-21",
+    "2023-06-26",
+    "2023-06-27",
+    "2023-06-28",
+    "2023-06-29",
+    "2023-06-30",
+    "2023-07-03",
+    "2023-07-04",
+    "2023-07-05",
+    "2023-07-06",
+    "2023-07-07",
+    "2023-07-10",
+    "2023-07-11"
+  ],
+  "runner_sha256": "c1b9e073ff5b8a843acd6950ef7cb9b34e2543a3578f9dedba0d9b5fdf74a53c",
+  "schema_version": "1.0",
+  "superseded_evidence_note": "Earlier c25-c40/c35 artifacts assumed non-zero initial holdings and remain development diagnostics only.",
+  "validation_method_version": "marketlens-cash-only-endowment-v1"
+}
