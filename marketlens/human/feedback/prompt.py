@@ -15,7 +15,7 @@ from .context import FeedbackContextPack
 
 
 PROMPT_CONTRACT_VERSION = (
-    "marketlens-feedback-reflection-prompt-v9"
+    "marketlens-feedback-reflection-prompt-v10"
 )
 
 
@@ -222,6 +222,22 @@ If a derived value such as a percentage change, confidence-point change,
 trade count, or portfolio change is explicitly supplied by the backend,
 you may quote it exactly. Otherwise, describe the relationship
 qualitatively rather than calculating it yourself.
+
+REFLECTIVE LANGUAGE RULE
+
+You may use natural descriptive behavioural wording such as cautious,
+measured, stable, more active, less active, consistent, or inconsistent
+when that description is directly grounded in the participant's recorded
+assessments, confidence, trades, portfolio behaviour, or explicitly
+reported evidence.
+
+Do not present such descriptions as hidden beliefs, motives, preferences,
+intentions, or attention states.
+
+You may use a non-directive reflection cue such as "Consider how..." or
+"Reflect on how..." when it invites reflection on already recorded
+behaviour. A reflection cue must not recommend any BUY, HOLD, SELL,
+portfolio, or future investment action.
 
 Return ONLY valid JSON matching the requested output schema.
 Do not use Markdown, code fences, commentary, or text outside the JSON object.

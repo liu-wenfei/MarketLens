@@ -58,7 +58,7 @@ FORMAL_TOTAL_TIMEOUT_SECONDS = FORMAL_TOTAL_WAIT_SECONDS
 FORMAL_SDK_MAX_RETRIES = 0
 FORMAL_OPENAI_SDK_VERSION = "2.54.0"
 FORMAL_CORRECTIVE_RETRY_POLICY_VERSION = (
-    "marketlens-formal-feedback-corrective-retry-v8"
+    "marketlens-formal-feedback-corrective-retry-v9"
 )
 
 
@@ -293,12 +293,14 @@ def _corrective_retry_user_prompt(
         + "invent any numerical value. If a derived value is not explicitly "
         + "supplied, describe the relationship qualitatively instead.\n"
         + "- Keep assessment/judgement separate from portfolio trade behaviour.\n"
-        + "- Do not infer unreported psychological, attentional, intentional, "
-        + "or strategic states.\n"
+        + "- Do not claim unreported preferences, beliefs, reliance, "
+        + "intentions, or attention states. Descriptive behavioural wording "
+        + "such as cautious, measured, stable, or consistent is permitted "
+        + "when grounded in the recorded context.\n"
         + "- Preserve explicitly participant-reported state labels rather than "
         + "renaming them.\n"
-        + "- Do not use prescriptive, coaching, optimisation, or investment-"
-        + "advice language.\n"
+        + "- Do not give financial or trading advice. Non-directive "
+        + "reflection cues are permitted.\n"
         + "- Keep the reflection retrospective and descriptive.\n"
         + "- Use normal participant-facing English spacing.\n"
         + "Also correct the specific validation issue below.\n"

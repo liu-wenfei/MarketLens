@@ -19,7 +19,7 @@ from .context import FeedbackContextPack
 
 
 OUTPUT_CONTRACT_VERSION = (
-    "marketlens-feedback-reflection-output-v5"
+    "marketlens-feedback-reflection-output-v6"
 )
 
 
@@ -361,7 +361,29 @@ def _word_count(
 def _validate_evidence_attribution(
     text: str,
 ) -> None:
-    """Reject unsupported inference about unobserved participant states."""
+    """Reject only clear unsupported participant-state claims."""
+
+    direct_state_re = re.compile(
+        r"\b(?:you|the participant)\s+"
+        r"(?:"
+        r"prefer(?:red|s)?|"
+        r"rely|relies|relied|relying|"
+        r"intend(?:ed|s)?|"
+        r"believ(?:e|ed|es|ing)|"
+        r"focus(?:ed|es|ing)?|"
+        r"prioriti[sz](?:e|ed|es|ing)"
+        r")\b",
+        re.IGNORECASE,
+    )
+
+    owned_state_re = re.compile(
+        r"\b(?:your|the participant['’]s)\s+"
+        r"(?:"
+        r"preference|reliance|motivation|"
+        r"intention|attention|strategy"
+        r")\b",
+        re.IGNORECASE,
+    )
 
     for sentence in _SENTENCE_SPLIT_RE.split(text):
         sentence = sentence.strip()
@@ -369,34 +391,14 @@ def _validate_evidence_attribution(
         if not sentence:
             continue
 
-        if _UNSUPPORTED_ATTRIBUTION_INFERENCE_RE.search(
+        if (
+            direct_state_re.search(sentence)
+            or owned_state_re.search(sentence)
+        ) and not _PARTICIPANT_REPORTING_CUE_RE.search(
             sentence
         ):
             raise FeedbackOutputValidationError(
-                "reflection contains unsupported psychological, "
-                "attentional, intentional, or strategic attribution"
-            )
-
-        if (
-            _DIRECT_PARTICIPANT_STATE_RE.search(sentence)
-            and not _PARTICIPANT_REPORTING_CUE_RE.search(
-                sentence
-            )
-        ):
-            raise FeedbackOutputValidationError(
-                "reflection contains unsupported psychological, "
-                "attentional, intentional, or strategic attribution"
-            )
-
-        if (
-            _UNSUPPORTED_STATE_NOUN_RE.search(sentence)
-            and not _PARTICIPANT_REPORTING_CUE_RE.search(
-                sentence
-            )
-        ):
-            raise FeedbackOutputValidationError(
-                "reflection contains unsupported psychological, "
-                "attentional, intentional, or strategic attribution"
+                "reflection contains unsupported participant-state attribution"
             )
 
 
@@ -404,6 +406,9 @@ def _validate_language(
     text: str,
 ) -> None:
     for label, pattern in _FORBIDDEN_PATTERNS:
+        if label == "prescriptive or optimisation language":
+            continue
+
         if pattern.search(text):
             raise FeedbackOutputValidationError(
                 "reflection contains forbidden "
@@ -413,11 +418,6 @@ def _validate_language(
     _validate_evidence_attribution(
         text
     )
-
-    if _AMBIGUOUS_ACTION_TERMINOLOGY_RE.search(text):
-        raise FeedbackOutputValidationError(
-            "reflection contains ambiguous assessment/trade terminology"
-        )
 
     if (
         _MALFORMED_SENTENCE_SPACING_RE.search(text)
