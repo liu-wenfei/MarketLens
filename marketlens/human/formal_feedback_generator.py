@@ -58,7 +58,7 @@ FORMAL_TOTAL_TIMEOUT_SECONDS = FORMAL_TOTAL_WAIT_SECONDS
 FORMAL_SDK_MAX_RETRIES = 0
 FORMAL_OPENAI_SDK_VERSION = "2.54.0"
 FORMAL_CORRECTIVE_RETRY_POLICY_VERSION = (
-    "marketlens-formal-feedback-corrective-retry-v7"
+    "marketlens-formal-feedback-corrective-retry-v8"
 )
 
 
@@ -286,12 +286,12 @@ def _corrective_retry_user_prompt(
         + "- Do not use the generic noun action or actions. Use assessment, "
         + "judgement, stated view, trade, transaction, no trade, or portfolio "
         + "behaviour as appropriate.\n"
-        + "- Do not repeat or introduce any numerical values. Do not include "
-        + "digits, percentages, prices, currency amounts, dates, exact counts, "
-        + "confidence values, or other numerical metrics in the reflection. "
-        + "Describe quantitative relationships qualitatively instead, for "
-        + "example: confidence decreased, the assessment changed, or a "
-        + "portfolio transaction was recorded.\n"
+        + "- Numerical values may be quoted only when they are explicitly "
+        + "supplied in <participant_context>. Quote supplied values exactly "
+        + "and selectively when they materially support the reflection. "
+        + "Do not calculate, estimate, infer, transform, round, combine, or "
+        + "invent any numerical value. If a derived value is not explicitly "
+        + "supplied, describe the relationship qualitatively instead.\n"
         + "- Keep assessment/judgement separate from portfolio trade behaviour.\n"
         + "- Do not infer unreported psychological, attentional, intentional, "
         + "or strategic states.\n"

@@ -15,7 +15,7 @@ from .context import FeedbackContextPack
 
 
 PROMPT_CONTRACT_VERSION = (
-    "marketlens-feedback-reflection-prompt-v8"
+    "marketlens-feedback-reflection-prompt-v9"
 )
 
 
@@ -205,17 +205,23 @@ Within-period ordering describes temporal sequence only. Do not make causal
 claims from timing alone.
 
 QUANTITATIVE DATA RULE
-All quantitative metrics supplied in <participant_context>
-have already been deterministically calculated and validated
-by the MarketLens backend.
-Treat these values as authoritative.
-Do not recalculate, estimate, infer, round, or replace them.
-You may interpret relationships between supplied metrics,
-but you must not create new quantitative measures unless they
-are explicitly provided in the context.
 
-The deterministic feedback panels display numerical values separately.
-Do not repeat or introduce numerical values in the reflection.
+All quantitative values supplied in <participant_context> have already
+been deterministically calculated and validated by the MarketLens backend.
+
+You MAY quote or restate numerical values that are explicitly present
+in <participant_context> when they materially help explain a pattern.
+
+Use numerical values selectively. Do not turn the reflection into a
+list of statistics.
+
+Never calculate, estimate, infer, transform, round, combine, or invent
+a numerical value that is not explicitly supplied in <participant_context>.
+
+If a derived value such as a percentage change, confidence-point change,
+trade count, or portfolio change is explicitly supplied by the backend,
+you may quote it exactly. Otherwise, describe the relationship
+qualitatively rather than calculating it yourself.
 
 Return ONLY valid JSON matching the requested output schema.
 Do not use Markdown, code fences, commentary, or text outside the JSON object.

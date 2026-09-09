@@ -19,7 +19,7 @@ from .context import FeedbackContextPack
 
 
 OUTPUT_CONTRACT_VERSION = (
-    "marketlens-feedback-reflection-output-v4"
+    "marketlens-feedback-reflection-output-v5"
 )
 
 
@@ -427,12 +427,6 @@ def _validate_language(
             "reflection contains malformed participant-facing spacing"
         )
 
-    if _NUMERIC_LITERAL_RE.search(text):
-        raise FeedbackOutputValidationError(
-            "reflection must not repeat or introduce "
-            "numerical values; deterministic panels "
-            "display them separately"
-        )
 
 
 def _canonical_sha256(
