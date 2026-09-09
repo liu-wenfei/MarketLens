@@ -19,7 +19,7 @@ from .context import FeedbackContextPack
 
 
 OUTPUT_CONTRACT_VERSION = (
-    "marketlens-feedback-reflection-output-v6"
+    "marketlens-feedback-reflection-output-v7"
 )
 
 
@@ -361,26 +361,84 @@ def _word_count(
 def _validate_evidence_attribution(
     text: str,
 ) -> None:
-    """Reject only clear unsupported participant-state claims."""
+    """Enforce only hard epistemic and directive boundaries.
 
+    Natural behavioural description is permitted. The validator rejects
+    direct claims about hidden participant states, unsupported inference
+    of preference/reliance/etc., and clearly directive optimisation
+    wording.
+    """
+
+    # Direct hidden-state claims about the participant.
     direct_state_re = re.compile(
         r"\b(?:you|the participant)\s+"
         r"(?:"
         r"prefer(?:red|s)?|"
         r"rely|relies|relied|relying|"
         r"intend(?:ed|s)?|"
-        r"believ(?:e|ed|es|ing)|"
+        r"believ(?:e|ed|es|ing)?|"
         r"focus(?:ed|es|ing)?|"
-        r"prioriti[sz](?:e|ed|es|ing)"
+        r"prioriti[sz](?:e|ed|es|ing)|"
+        r"(?:were|was)\s+"
+        r"(?:patient|cautious|methodical|deliberate)"
         r")\b",
         re.IGNORECASE,
     )
 
+    # Possessive hidden-state claims.
     owned_state_re = re.compile(
         r"\b(?:your|the participant['’]s)\s+"
         r"(?:"
         r"preference|reliance|motivation|"
         r"intention|attention|strategy"
+        r")\b",
+        re.IGNORECASE,
+    )
+
+    # Inference from behaviour into an unreported hidden state.
+    #
+    # Deliberately NOT included here:
+    # cautious progression, measured engagement,
+    # methodical approach, stable/consistent behaviour.
+    # Those are allowed as descriptive language under v10.
+    inferred_hidden_state_re = re.compile(
+        r"\b(?:"
+        r"suggest(?:s|ed|ing)?|"
+        r"indicat(?:e|es|ed|ing)|"
+        r"impl(?:y|ies|ied|ying)|"
+        r"reflect(?:s|ed|ing)?|"
+        r"show(?:s|ed|ing)?|"
+        r"reveal(?:s|ed|ing)?|"
+        r"point(?:s|ed|ing)?\s+to|"
+        r"hint(?:s|ed|ing)?\s+at|"
+        r"appear(?:s|ed|ing)?\s+to|"
+        r"may\s+(?:reflect|indicate|suggest|imply)"
+        r")\b"
+        r"[\s\S]{0,120}?"
+        r"\b(?:"
+        r"preference|reliance|motivation|"
+        r"intent(?:ion)?|attention|strategy|"
+        r"risk posture|risk containment|"
+        r"monitoring process|validation of signals"
+        r")\b",
+        re.IGNORECASE,
+    )
+
+    # Narrow directive / optimisation guard.
+    #
+    # Non-directive cues such as "Consider how..." and
+    # "Reflect on how..." remain permitted.
+    directive_optimisation_re = re.compile(
+        r"\b(?:"
+        r"moving forward|"
+        r"going forward|"
+        r"aim to|"
+        r"aiming to|"
+        r"try to|"
+        r"trying to|"
+        r"potential edge|"
+        r"disciplined|"
+        r"discipline"
         r")\b",
         re.IGNORECASE,
     )
@@ -391,11 +449,23 @@ def _validate_evidence_attribution(
         if not sentence:
             continue
 
-        if (
+        if directive_optimisation_re.search(sentence):
+            raise FeedbackOutputValidationError(
+                "reflection contains prescriptive or optimisation language"
+            )
+
+        hidden_state = (
             direct_state_re.search(sentence)
             or owned_state_re.search(sentence)
-        ) and not _PARTICIPANT_REPORTING_CUE_RE.search(
-            sentence
+            or inferred_hidden_state_re.search(sentence)
+        )
+
+        # Explicit participant reporting remains valid evidence.
+        if (
+            hidden_state
+            and not _PARTICIPANT_REPORTING_CUE_RE.search(
+                sentence
+            )
         ):
             raise FeedbackOutputValidationError(
                 "reflection contains unsupported participant-state attribution"

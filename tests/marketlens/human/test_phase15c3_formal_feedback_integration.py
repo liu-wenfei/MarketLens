@@ -465,7 +465,14 @@ def test_corrective_retry_uses_validator_reason_without_rejected_output():
     )
 
     assert (
-        "do not repeat or introduce any numerical values"
+        "numerical values may be quoted only when they are explicitly "
+        "supplied"
+        in second_input.lower()
+    )
+
+    assert (
+        "do not calculate, estimate, infer, transform, round, combine, "
+        "or invent any numerical value"
         in second_input.lower()
     )
 

@@ -130,8 +130,13 @@ def test_prompt_is_deterministic_and_reflection_only():
     )
 
     assert (
-        "Do not repeat or introduce "
-        "numerical values"
+        "You MAY quote or restate numerical values"
+        in first.system_prompt
+    )
+
+    assert (
+        "Never calculate, estimate, infer, transform, "
+        "round, combine, or invent"
         in first.system_prompt
     )
 
@@ -282,14 +287,8 @@ def test_final_word_limit_fails_closed():
         "The pattern points to a reliance on internal assessment",
         "This suggests an emphasis on risk containment",
         "The activity indicates a steady monitoring process",
-        "The pattern hints at a methodical approach",
-        "The confidence record shows a cautious stance",
         "You preferred to wait before acting",
         "The participant relied on internal assessment",
-        "This pattern suggests a pace of action that included patience",
-        "The overall arc points to a measured engagement with the material",
-        "The overall arc points to a cautious progression in confidence",
-        "The activity showed a methodical approach",
         "The pattern indicated a preference for waiting",
         "The behaviour suggested a reliance on internal assessment",
         "You were patient before acting",
@@ -319,6 +318,39 @@ def test_forbidden_reflection_language_fails(
 
 
 @pytest.mark.parametrize(
+    "phrase",
+    [
+        "The pattern hints at a methodical approach",
+        "The confidence record shows a cautious stance",
+        "This pattern suggests a pace of action that included patience",
+        "The overall arc points to a measured engagement with the material",
+        "The overall arc points to a cautious progression in confidence",
+        "The activity showed a methodical approach",
+    ],
+)
+def test_natural_behavioural_description_is_allowed_under_v7(
+    phrase,
+):
+    pack = _context()
+
+    validated = validate_feedback_output(
+        {
+            "feedback_kind": (
+                "multi_period_decision_feedback"
+            ),
+            "reflection": (
+                phrase
+                + " "
+                + _words(118)
+            ),
+        },
+        context_pack=pack,
+    )
+
+    assert validated.word_count >= 110
+
+
+@pytest.mark.parametrize(
     "literal",
     [
         "70",
@@ -327,29 +359,27 @@ def test_forbidden_reflection_language_fails(
         "1,010",
     ],
 )
-def test_numeric_literal_is_rejected(
+def test_numeric_literal_is_allowed_under_v7(
     literal,
 ):
     pack = _context()
 
-    with pytest.raises(
-        FeedbackOutputValidationError,
-        match="numerical values",
-    ):
-        validate_feedback_output(
-            {
-                "feedback_kind": (
-                    "multi_period_decision_feedback"
-                ),
-                "reflection": (
-                    "The recorded value was "
-                    + literal
-                    + " "
-                    + _words(115)
-                ),
-            },
-            context_pack=pack,
-        )
+    validated = validate_feedback_output(
+        {
+            "feedback_kind": (
+                "multi_period_decision_feedback"
+            ),
+            "reflection": (
+                "The recorded value was "
+                + literal
+                + " "
+                + _words(115)
+            ),
+        },
+        context_pack=pack,
+    )
+
+    assert validated.word_count >= 110
 
 
 def test_wrong_feedback_kind_fails():
@@ -420,12 +450,12 @@ def test_markdown_fence_fails():
         )
 
 
-def test_prompt_v8_explicitly_forbids_first_person_participant_voice():
+def test_prompt_v10_explicitly_forbids_first_person_participant_voice():
     prompt = build_feedback_prompt(_context())
 
     assert (
         prompt.prompt_contract_version
-        == "marketlens-feedback-reflection-prompt-v8"
+        == "marketlens-feedback-reflection-prompt-v11"
     )
 
     assert (
@@ -548,35 +578,55 @@ def test_prompt_v8_aligns_with_attribution_validator_language():
     )
 
 
-def test_unreported_state_noun_language_is_rejected():
-    pack = _context()
-
-    for phrase in (
+@pytest.mark.parametrize(
+    "phrase",
+    [
         "The observed sequence aligns with a cautious progression in view.",
         "The record contains a neutral stance across the period.",
         "The sequence forms a measured approach to the market.",
-        "The portfolio record represents a deliberate strategy.",
-    ):
-        with pytest.raises(
-            FeedbackOutputValidationError,
-            match=(
-                "unsupported psychological, attentional, "
-                "intentional, or strategic attribution"
+    ],
+)
+def test_observable_state_description_is_allowed_under_v7(
+    phrase,
+):
+    pack = _context()
+
+    validated = validate_feedback_output(
+        {
+            "feedback_kind": (
+                "multi_period_decision_feedback"
             ),
-        ):
-            validate_feedback_output(
-                {
-                    "feedback_kind": (
-                        "multi_period_decision_feedback"
-                    ),
-                    "reflection": (
-                        phrase
-                        + " "
-                        + _words(118)
-                    ),
-                },
-                context_pack=pack,
-            )
+            "reflection": (
+                phrase
+                + " "
+                + _words(118)
+            ),
+        },
+        context_pack=pack,
+    )
+
+    assert validated.word_count >= 110
+
+
+def test_unreported_strategy_claim_remains_rejected():
+    pack = _context()
+
+    with pytest.raises(
+        FeedbackOutputValidationError,
+        match="unsupported participant-state attribution",
+    ):
+        validate_feedback_output(
+            {
+                "feedback_kind": (
+                    "multi_period_decision_feedback"
+                ),
+                "reflection": (
+                    "Your strategy remained deliberate. "
+                    + _words(118)
+                ),
+            },
+            context_pack=pack,
+        )
 
 
 def test_explicitly_reported_state_noun_remains_allowed():
@@ -598,26 +648,24 @@ def test_explicitly_reported_state_noun_remains_allowed():
     assert validated.word_count >= 110
 
 
-def test_generic_action_terminology_is_rejected():
+def test_generic_action_terminology_is_allowed_under_v7():
     pack = _context()
 
-    with pytest.raises(
-        FeedbackOutputValidationError,
-        match="ambiguous assessment/trade terminology",
-    ):
-        validate_feedback_output(
-            {
-                "feedback_kind": (
-                    "multi_period_decision_feedback"
-                ),
-                "reflection": (
-                    "The initial SELL action was followed by "
-                    "a later change in the recorded view. "
-                    + _words(112)
-                ),
-            },
-            context_pack=pack,
-        )
+    validated = validate_feedback_output(
+        {
+            "feedback_kind": (
+                "multi_period_decision_feedback"
+            ),
+            "reflection": (
+                "The initial SELL action was followed by "
+                "a later change in the recorded view. "
+                + _words(112)
+            ),
+        },
+        context_pack=pack,
+    )
+
+    assert validated.word_count >= 110
 
 
 def test_malformed_participant_facing_spacing_is_rejected():
@@ -646,7 +694,7 @@ def test_malformed_participant_facing_spacing_is_rejected():
             )
 
 
-def test_live_provider_false_negative_fixture_is_now_rejected():
+def test_live_provider_fixture_is_allowed_under_v7():
     pack = _context()
 
     live_provider_text = (
@@ -668,21 +716,20 @@ def test_live_provider_false_negative_fixture_is_now_rejected():
         "window of periods reviewed."
     )
 
-    with pytest.raises(
-        FeedbackOutputValidationError,
-    ):
-        validate_feedback_output(
-            {
-                "feedback_kind": (
-                    "multi_period_decision_feedback"
-                ),
-                "reflection": live_provider_text,
-            },
-            context_pack=pack,
-        )
+    validated = validate_feedback_output(
+        {
+            "feedback_kind": (
+                "multi_period_decision_feedback"
+            ),
+            "reflection": live_provider_text,
+        },
+        context_pack=pack,
+    )
+
+    assert 110 <= validated.word_count <= 170
 
 
-def test_prompt_v8_separates_assessment_from_trade_terminology():
+def test_prompt_v10_separates_assessment_from_trade_terminology():
     prompt = build_feedback_prompt(_context())
 
     assert (

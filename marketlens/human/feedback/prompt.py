@@ -15,7 +15,7 @@ from .context import FeedbackContextPack
 
 
 PROMPT_CONTRACT_VERSION = (
-    "marketlens-feedback-reflection-prompt-v10"
+    "marketlens-feedback-reflection-prompt-v11"
 )
 
 
@@ -239,6 +239,12 @@ You may use a non-directive reflection cue such as "Consider how..." or
 behaviour. A reflection cue must not recommend any BUY, HOLD, SELL,
 portfolio, or future investment action.
 
+PARTICIPANT-FACING TEXT QUALITY RULE
+Use normal English word spacing and punctuation throughout.
+Never concatenate adjacent words or sentences.
+Always place normal spacing after sentence-ending punctuation when another
+sentence follows.
+
 Return ONLY valid JSON matching the requested output schema.
 Do not use Markdown, code fences, commentary, or text outside the JSON object.
 """
@@ -327,11 +333,13 @@ def build_feedback_prompt(
                 "final_session_summary"
             ),
             "reflection": (
-                "250-350 English words"
+                "250-350 English words; aim for 285-315 words"
             ),
         }
         length_rule = (
             "The reflection field MUST contain 250-350 English words. "
+            "Aim for approximately 285-315 words so the response remains "
+            "safely inside the required range. "
             "Fewer than 250 words or more than 350 words is invalid. "
             "Count only the words inside the reflection field."
         )
@@ -372,6 +380,15 @@ def build_feedback_prompt(
         "process, caution, or deliberateness from recorded behaviour. "
         "Only describe such a state when it was explicitly participant-reported, "
         "and label it as reported or stated.\n\n"
+        "Use normal participant-facing English spacing and punctuation. "
+        "Never concatenate adjacent words or sentences.\\n\\n"
+        "Keep the reflection retrospective and descriptive rather than "
+        "coaching or optimisation. A brief neutral reflection cue is allowed, "
+        "but do not tell the participant how to improve or what to do next. "
+        "Avoid wording such as moving forward, going forward, aim to, aiming "
+        "to, try to, trying to, you should, you need to, disciplined, "
+        "discipline, risk management, investment strategy, trading strategy, "
+        "or potential edge.\\n\\n"
         "Keep assessment and portfolio behaviour separate. Use assessment, "
         "judgement, or stated view for the recorded BUY/HOLD/SELL judgement; "
         "use trade, transaction, no trade, or portfolio behaviour for actual "
