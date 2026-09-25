@@ -12,7 +12,7 @@ from marketlens.human.portfolio.models import AccountState
 from marketlens.human.portfolio.policy import PortfolioPolicy
 from marketlens.human.portfolio.preview import PortfolioAction, PreviewReason, preview_order
 from marketlens.human.portfolio.settlement import execute_preview
-from marketlens.validation.account_capacity import (
+from marketlens.validation.canonical_prices import (
     canonical_price_matrix,
     load_canonical_journey_price_providers,
 )
