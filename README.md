@@ -6,8 +6,6 @@ MarketLens is a web-based financial decision simulation platform where participa
 
 **60 participants** · **60/60 completed sessions** · **180/180 feedback delivered** · **755/755 regression tests passed**
 
-> Built as a human-participant product layer on top of TwinMarket, with controlled information exposure, independent participant state, traceable decision records, and system-level evaluation.
-
 <p align="center">
   <img src="docs/images/marketlens_market_overview.png" alt="MarketLens market overview" width="100%">
 </p>
@@ -16,25 +14,73 @@ MarketLens is a web-based financial decision simulation platform where participa
 
 ## Why MarketLens?
 
-Most financial simulations record only the final trade. That misses an important part of the decision process: a user may change their judgement without trading, or trade without changing their stated view.
+A trade alone does not reveal how a person reached a decision. Someone may change their judgement without trading, or trade without changing their stated view.
 
 MarketLens therefore captures the full decision chain:
 
 **Information → Judgement → Confidence → Evidence → Action → New Information → Revision → Reflection**
 
-For each formal judgement, the platform records:
-
-- BUY / HOLD / SELL judgement
-- confidence
-- evidence used
-- written rationale
-- requested and executed orders
-- portfolio position
-- information exposure
-
-This makes it possible to compare **what users think** with **what they actually do**.
+For each formal judgement, the platform records the user's stated view, confidence, evidence, rationale, portfolio action and information exposure, making it possible to compare **what users think** with **what they actually do**.
 
 ---
+
+
+## Product Scope & Ownership
+
+MarketLens is designed as a **dynamic Human-AI financial decision environment** where users continuously interact with evolving Agent behaviour, market information, community activity and simulated portfolio state.
+
+The product goal is not to predict stock prices or automate investment decisions. It is to create a persistent environment where users can:
+
+**Observe → Judge → Act → Receive New Information → Revise → Reflect**
+
+### Product Vision
+
+The target experience is a continuously evolving market in which:
+
+- LLM Agents update beliefs and behaviours over time
+- market and community information changes dynamically
+- users make repeated judgements rather than one-off predictions
+- users can trade, observe consequences and revise their views
+- system state, information exposure and user actions remain traceable
+
+### MVP Strategy
+
+The first MVP deliberately used **frozen canonical Agent episodes** for participant replay.
+
+This was a validation decision, not the final product model.
+
+Freezing the Agent trajectory made it possible to first verify:
+
+- the full Human-AI decision loop
+- frontend/backend state consistency
+- participant isolation
+- controlled information release
+- judgement and trading capture
+- feedback delivery
+- end-to-end observability
+
+Once this core loop is stable, the product can progressively move toward more live and adaptive Agent-market interaction.
+
+**Product direction: Controlled MVP → Dynamic Runtime → Richer Human-Agent Interaction**
+
+### Product Architecture
+
+MarketLens combines a dynamic Multi-Agent market environment with a human-facing decision layer.
+
+| Layer | Role |
+|---|---|
+| **Agent Environment** | Generates market behaviour, trading activity and social interaction |
+| **Market Dynamics** | Provides evolving prices, information and community context |
+| **Human Interaction** | Supports repeated judgement, simulated trading and reflection |
+| **Participant State** | Maintains session, cash, holdings, orders, judgement and feedback |
+| **Information Control** | Governs what information becomes visible at each decision state |
+| **Measurement** | Tracks exposure, confidence, judgement, rationale, action and position |
+| **Reliability** | Applies state validation, isolation, guardrails, retry and fallback |
+| **Evaluation** | Measures both system reliability and Human-AI interaction outcomes |
+
+
+---
+
 
 ## Product Experience
 
@@ -91,43 +137,58 @@ Participant trades affect only the participant ledger and do **not** change the 
 
 ---
 
-## AI vs Deterministic System
+## Source of Truth, Context & State Architecture
 
-A key product decision was not to let the LLM control every part of the system.
+MarketLens separates **reasoning**, **authoritative state** and **participant interaction** rather than allowing the LLM to control the whole system.
 
-| LLM / Agent | Deterministic system |
-|---|---|
-| Semantic interpretation | Cash |
-| Market reasoning | Holdings |
-| Belief update | Price state |
-| Information interpretation | Order validation |
-| Social content | Settlement |
-| Reflective feedback | Session progression |
-|  | Information release |
-|  | Record linkage |
+### Authoritative State
 
-> **Use the model where reasoning is valuable; use deterministic code where correctness must be exact.**
+The backend is the source of truth for session progression, financial state, information release and participant records.
 
----
+| Component | Responsibility | Product boundary |
+|---|---|---|
+| **Canonical Agent World** | Agent activity, market state, prices, news and visible forum context | Frozen per canonical episode; participants do not modify it |
+| **Participant Runtime** | Period, judgement, confidence, cash, holdings, orders, portfolio, feedback and session state | Isolated per participant/session |
+| **Controlled Stimulus Layer** | Unverified information, correction and release timing | Released only when protocol state allows |
+| **Event / Provenance Records** | Exposure, judgement, order, execution and feedback events | Used to reconstruct the decision path |
+| **Frontend** | Presents current state and submits user actions | Does not independently derive price, cash, position, period or checkpoint |
+| **LLM / Agent Reasoning** | Semantic interpretation, market reasoning, belief update and reflective feedback | Never acts as the source of truth for exact financial or protocol state |
 
-## Context and State
+This creates a simple rule:
 
-MarketLens separates context into four layers:
+> **Reasoning can be probabilistic; financial and experimental state cannot be.**
 
-- **Static Profile** — persona, strategy and behavioural attributes
-- **Dynamic State** — belief, holdings, cash and previous actions
-- **Turn Context** — current market, news, visible posts and task
-- **Participant Session State** — period, exposure, judgement, confidence, order and feedback
+### Context Model
 
-The context pipeline follows:
+Context is divided by lifecycle and responsibility rather than treated as one continuously growing prompt.
+
+| Context layer | Examples | Lifecycle |
+|---|---|---|
+| **Static Profile** | Persona, strategy, behavioural attributes, social attributes | Relatively stable |
+| **Dynamic State** | Belief, cash, holdings, portfolio, previous actions, historical performance | Updated over time |
+| **Turn Context** | Current market, news, visible posts, task, available assets and constraints | Current tick / task |
+| **Participant Session State** | Period, exposure history, judgement, confidence, orders, portfolio and feedback status | Persisted per session |
+
+The retrieval path is:
 
 **Hard Filter → Candidate Retrieval → Context Assembly → LLM**
 
-Time, session, participant and information-access boundaries are enforced before semantic relevance is considered.
+Participant, session, episode, period, timestamp and information-access constraints are enforced before semantic relevance is considered.
 
-The codebase includes embedding operations for semantic representation/retrieval support, but MarketLens does not present this as a complete production RAG pipeline.
+> **Deterministic boundary first, semantic relevance second.**
+
+### End-to-End Decision Trace
+
+Measurement is part of the architecture rather than an after-the-fact analytics layer.
+
+**Exposure → Judgement → Confidence → Evidence → Reason → Order → Execution → Position → Feedback**
+
+Records are correlated using participant, session, episode, period and checkpoint identifiers, allowing the system to reconstruct what information a participant had seen before a judgement or trade.
+
+This is also why MarketLens stores **judgement and action separately**: a participant can change their view without trading, or trade without changing the formal judgement.
 
 ---
+
 
 ## Reliability by Design
 
@@ -167,6 +228,21 @@ Formal deployment delivered **180 / 180 feedback responses**, including:
 
 ---
 
+## Data & Runtime Model
+
+MarketLens combines three data layers:
+
+- **Agent-generated environment** — simulated market activity, prices, news and community context produced by the underlying Multi-Agent environment
+- **Controlled product information** — information released according to the current session and decision state
+- **User interaction records** — judgement, confidence, evidence, rationale, orders, execution, position and feedback
+
+The current MVP uses generated-and-frozen Agent episodes to make early validation reproducible. The broader product direction is a more dynamic runtime while retaining the same state, safety and observability boundaries.
+
+MarketLens does not present its simulated prices or Agent-generated narratives as live financial-market data.
+
+---
+
+
 ## Evaluation
 
 MarketLens uses system-level release gates rather than relying on one model metric.
@@ -175,7 +251,7 @@ MarketLens uses system-level release gates rather than relying on one model metr
 
 Population adequacy was tested across **100 fixed seeds × 27 simulation ticks**.
 
-| Population | Zero-active critical trajectories | Mean active agents | Decision |
+| Population | Zero-active critical trajectories | Minimum mean active agents | Decision |
 |---|---:|---:|---|
 | N20 | 9 / 100 | 3.88 | Fail |
 | N30 | 0 / 100 | 6.26 | Pass |
@@ -202,50 +278,60 @@ The frozen release completed **755 / 755 automated regression tests passed**.
 
 ---
 
-## Formal Product Results
+> **Evidence boundary:** behavioural metrics are calculated from formal MarketLens participant-session records, while Agent-market activity metrics come from canonical episode and validation runs. The **755 / 755 regression result applies to the frozen documented release**. Formal participant sessions did not persist an immutable per-session build identifier, so this repository does not claim that every participant session ran on that exact final commit.
 
-| Metric | Result |
-|---|---:|
-| Participants | **60** |
-| Session completion | **60 / 60** |
-| Episodes | **3 × 20 participants** |
-| Periods | **15 / participant** |
-| Formal judgements | **300** |
-| Period records | **900** |
-| Feedback | **180 / 180 delivered** |
-| Executed transactions | **64** |
-| Main outcome coverage | **60 / 60** |
+## MVP Validation
 
----
+The first MVP was validated with **60 participants** across the full 15-period decision journey, with **60 / 60 sessions completed**. The frozen documented release also passed **755 / 755 retained regression tests**.
 
-## Product Insight
-
-One of the strongest results was the difference between attention, judgement and behaviour.
-
-After authoritative corrective information:
-
-**59 / 60 noticed the correction → 3 / 60 changed judgement → 1 / 50 immediately reduced the target position**
+The validation supported one key measurement principle:
 
 > **Attention ≠ Judgement Change ≠ Behaviour Change**
 
-This is why MarketLens measures information attention, confidence, judgement and action separately instead of using a single final-trade metric.
+MarketLens therefore keeps information exposure, confidence, judgement and action as separate product signals.
+
+This validation demonstrates that the core interaction and measurement model works end to end; it does not define the final dynamic runtime.
 
 ---
 
-## Key Product Decisions
 
-| Trade-off | Decision |
-|---|---|
-| **Dynamic AI vs Comparability** | Generate dynamic Agent environments, then freeze canonical episodes for participant replay |
-| **AI Autonomy vs Reliability** | LLM for reasoning, deterministic code for financial state |
-| **Semantic Retrieval vs State Control** | Hard boundaries before semantic retrieval |
-| **Personalisation vs Stability** | Validated feedback with retry and fallback |
-| **Agent Richness vs Runtime** | Select N30 through explicit environment gates |
-| **Participant Influence vs Integrity** | Participant trades do not change the canonical Agent world |
+## Product Decisions & Trade-offs
+
+MarketLens prioritises a complete and traceable Human-AI decision loop over maximum Agent autonomy.
+
+**MVP priority: Decision Loop → State Consistency → Record Integrity → AI Richness**
+
+| Trade-off | Decision | Why |
+|---|---|---|
+| **Dynamic Product vs MVP Comparability** | MVP: generated Agent environment → frozen episode replay; future: progressively more live Agent interaction | Validate the Human-AI loop first, then increase runtime dynamism without losing state integrity |
+| **AI Autonomy vs Reliability** | LLM for reasoning; deterministic code for financial and protocol state | Cash, holdings, settlement and session progression cannot depend on probabilistic model output |
+| **Semantic Retrieval vs State Control** | Hard Filter → Candidate Retrieval → Context Assembly | Time, session, access and protocol boundaries matter more than semantic similarity |
+| **Personalisation vs Flow Stability** | Live feedback + validation + retry + fallback | Personalisation should not be allowed to break the participant journey |
+| **Agent Richness vs Runtime** | Select N30 through explicit activity gates | Use enough Agents to sustain a heterogeneous environment without adding complexity for its own sake |
+| **Participant Influence vs Environment Integrity** | Participant trades affect only the participant ledger | Sacrifice some market interactivity to preserve comparability, traceability and reproducibility |
+
+### MVP to Dynamic Runtime
+
+The frozen canonical-episode approach is an **MVP validation mode**, not the intended end state of MarketLens.
+
+The product direction is:
+
+**Generated Agent Environment → Validated Human-AI Loop → Increasingly Dynamic Runtime → Richer Human-Agent Interaction**
+
+The key requirement is that greater Agent autonomy must not break session state, financial-state correctness, information boundaries or traceability.
+
+
+> **Reliability first, autonomy second.**
 
 ---
 
-## Tech Stack
+
+## Technical Details
+
+<details>
+<summary><strong>Open technical implementation, repository, privacy and attribution details</strong></summary>
+
+### Tech Stack
 
 **Frontend:** React · TypeScript · Vite
 
@@ -257,7 +343,7 @@ This is why MarketLens measures information attention, confidence, judgement and
 
 ---
 
-## Repository Structure
+### Repository Structure
 
 ```text
 MarketLens/
@@ -282,7 +368,7 @@ MarketLens/
 
 ---
 
-## Local Development
+### Local Development
 
 Create the Python environment:
 
@@ -303,7 +389,7 @@ Provider-specific configuration should be created locally and must not be commit
 
 ---
 
-## Research Data and Privacy
+### Research Data and Privacy
 
 Formal participant credentials and participant runtime databases are intentionally excluded from the public repository.
 
@@ -313,7 +399,7 @@ MarketLens is a research simulation environment and does not provide financial a
 
 ---
 
-## Research Context
+### Research Context
 
 MarketLens was developed as part of an MSc Applied Artificial Intelligence dissertation at the University of Warwick.
 
@@ -321,7 +407,7 @@ The project studies how participants revise financial judgements following corre
 
 ---
 
-## Upstream Attribution
+### Upstream Attribution
 
 MarketLens uses **TwinMarket** as the underlying LLM-agent financial simulation environment.
 
@@ -332,6 +418,10 @@ The original upstream README is retained at:
 `docs/upstream/TWINMARKET_ORIGINAL_README.md`
 
 MarketLens-specific work focuses on the human-participant product layer, controlled information flow, participant state, interaction design, evaluation, validation and formal deployment.
+
+---
+
+</details>
 
 ---
 
