@@ -1,184 +1,338 @@
 # MarketLens
 
-**Human financial judgement and judgement-revision research environment built on TwinMarket**
+### Human-AI Multi-Agent Financial Decision Environment
 
-MarketLens extends the inherited TwinMarket LLM-agent financial-market environment with a controlled human-participant layer for studying how people form and revise financial judgements when exposed to experimentally controlled misinformation and authoritative correction.
+MarketLens is a web-based financial decision simulation platform where participants interact with a dynamic LLM-agent market, make repeated investment judgements and simulated trades, receive new evidence, and decide whether to revise their views over time.
 
-> **TwinMarket provides the inherited LLM-agent market environment. MarketLens controls what the participant experiences, records how the participant responds, and prevents participant behaviour from changing the Agent world.**
+**60 participants** · **60/60 completed sessions** · **180/180 feedback delivered** · **755/755 regression tests passed**
 
-## Research environment
+> Built as a human-participant product layer on top of TwinMarket, with controlled information exposure, independent participant state, traceable decision records, and system-level evaluation.
 
-The formal participant study uses:
-
-- a 15-period participant journey;
-- one fixed focal assessment asset: **MEI — Manufacturing Index**;
-- a 10-asset participant-visible market;
-- repeated formal judgements **J0–J4**;
-- controlled misinformation at P1 and authoritative correction at P8;
-- participant-only simulated portfolio trading;
-- reflective feedback checkpoints after **P4 (F1)**, **P11 (F2)**, and **P15 (Final Session Summary)**;
-- a backend-owned experiment state machine and participant-safe information boundary.
-
-Participant decisions and trades never alter the inherited Agent world.
-
-## Current validated release
-
-Release branch:
-
-```text
-phase15-participant-ui
-```
-
-Validated runtime release HEAD:
-
-```text
-92e7a12bfdce502f680238d8becc7e490227b608
-```
-
-The release passed the complete deterministic P1–P15 formal participant end-to-end journey, including judgement timing, controlled information exposure, portfolio continuity, F1/F2/Final feedback boundaries, validated fail-closed fallback delivery, debrief gating, participant isolation, and canonical episode byte-identity checks.
-
-**Important evidence boundary:** the deterministic formal-runtime fallback path is validated; this does not claim accepted live-provider output under the final provider preflight contract.
-
-## Formal participant data and analysis
-
-Participant-study data are intentionally kept **local-only** and must not be committed to GitHub.
-
-Recommended local structure:
-
-```text
-data/marketlens/human/
-├── admin/
-│   └── participant_credentials.xlsx
-├── formal/
-│   ├── participant_runtime.db
-│   └── participant_events.db
-├── exports/
-│   ├── participants.csv
-│   ├── judgements_long.csv
-│   ├── trades_long.csv
-│   ├── portfolio_long.csv
-│   ├── feedback_long.csv
-│   └── exposures_long.csv
-└── preflight/
-    └── formal_feedback_provider_v*/
-```
-
-Data ownership:
-
-| Data | Authoritative source |
-| --- | --- |
-| participant/session state | `participant_runtime.db` |
-| J0–J4 judgement, confidence, rationale/evidence | `participant_runtime.db` |
-| participant trades, holdings, cash, portfolio state | `participant_runtime.db` |
-| F1/F2/Final feedback shown to participant | `participant_runtime.db` → `participant_feedback` |
-| feedback generation/fallback provenance | `participant_runtime.db` → `participant_feedback_generation` |
-| exposure/event provenance | `participant_events.db` → `participant_events` |
-| account/password administration | `admin/participant_credentials.xlsx` |
-| engineering provider preflight evidence | `preflight/` — **not participant-study observations** |
-
-`participant_events.db` is an append-only exposure/provenance ledger. It is **not** a second source of truth for judgement, trade, or portfolio values.
-
-The intended analysis exports use `participant_id`, `session_id`, `experiment_step`, and `agent_world_date` as the core linking identifiers. Passwords and participant contact information must never be included in analysis exports.
-
-## Inherited foundation
-
-The original TwinMarket project and citation are retained below because MarketLens is built on that technical foundation.
+<p align="center">
+  <img src="docs/images/marketlens_market_overview.png" alt="MarketLens market overview" width="100%">
+</p>
 
 ---
 
-# TwinMarket: A Scalable Behavioral and Social Simulation for Financial Markets
+## Why MarketLens?
 
+Most financial simulations record only the final trade. That misses an important part of the decision process: a user may change their judgement without trading, or trade without changing their stated view.
 
-[![arXiv](https://img.shields.io/badge/arXiv-2502.01506-b31b1b.svg)](https://arxiv.org/abs/2502.01506)
-[![Project Page](https://img.shields.io/badge/Project-Page-blue.svg)](https://freedomintelligence.github.io/TwinMarket/)
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-Post-0A66C2.svg)](https://www.linkedin.com/feed/update/urn:li:activity:7325176225235173376/)
-[![Jiqizhixin](https://img.shields.io/badge/机器之心-Post-0A66C2.svg)](https://mp.weixin.qq.com/s/hxarK4Rxwd4W5mxCMfo_uQ)
-[![README](https://img.shields.io/badge/README-English-green.svg)](README.md)
-[![README_zh](https://img.shields.io/badge/README-中文-green.svg)](README_zh.md)
+MarketLens therefore captures the full decision chain:
 
- ## 💡 Update
-- **09/2025:** TwinMarket was accepted to NeurIPS 2025. See you in San Diego! 🌊
-- **04/2025:** TwinMarket won the [Best Paper Award](https://yuzheyang.com/src/img/best_paper.jpg) 🏆 at the [Advances in Financial AI Workshop @ ICLR 2025](https://sites.google.com/view/financialaiiclr25/home).
+**Information → Judgement → Confidence → Evidence → Action → New Information → Revision → Reflection**
 
-<div align="center">
-  <img src="assets/img/TwinMarket.png" alt="TwinMarket Overview" width="100%" style="max-width: 1000px; margin: 0 auto; display: block;">
-</div>
+For each formal judgement, the platform records:
 
-## 📖 Overview
+- BUY / HOLD / SELL judgement
+- confidence
+- evidence used
+- written rationale
+- requested and executed orders
+- portfolio position
+- information exposure
 
-TwinMarket is an innovative stock market simulation system powered by Large Language Models (LLMs). It simulates realistic trading environments through multi-agent collaboration, covering personalized trading strategies, social network interactions, and news/information analysis for an end-to-end market simulation.
+This makes it possible to compare **what users think** with **what they actually do**.
 
-## 🎯 Key Features
+---
 
-- **🤖 Intelligent Trading Agents**: LLM-driven, personalized decision-making
-- **🌐 Social Network Simulation**: Forum-style interactions and user relationship graphs
-- **📊 Multi-dimensional Analytics**: Technical indicators, news, and market sentiment
-- **🎲 Behavioral Finance Modeling**: Includes disposition effect, lottery preference, and more
-- **⚡ High-performance Concurrency**: Scalable simulation for large user populations
-- **📈 Real-time Matching Engine**: Full order matching and execution
+## Product Experience
 
-## 🚀 Quick Start
+Each participant completes a continuous 15-period financial decision journey with five formal judgement checkpoints.
+
+| Checkpoint | User task |
+|---|---|
+| **J0** | Form an initial judgement |
+| **J1** | Reassess after new unverified information |
+| **J2** | Reassess after continued market activity |
+| **J3** | Respond immediately after authoritative correction |
+| **J4** | Form a final judgement after subsequent market activity |
+
+Core journey:
+
+**Market Context → Judgement → Simulated Trade → New Information → Correction → Judgement Update → Reflection**
+
+---
+
+## How It Works
+
+MarketLens combines two layers.
+
+### Multi-Agent Market
+
+The formal environment uses **30 financial agents**:
+
+- 12 Fundamental agents
+- 18 Technical agents
+
+Agents maintain differentiated strategies, beliefs, behavioural characteristics and portfolio states. Their decision process follows a BDI-style loop:
+
+**Belief → Desire → Intention → Action → Environment Response → Belief Update**
+
+### Human Participant Layer
+
+Participants share the simulated market context but maintain independent:
+
+- sessions
+- cash
+- holdings
+- judgements
+- orders
+- feedback
+- event histories
+
+Participant trades affect only the participant ledger and do **not** change the canonical Agent world.
+
+**Shared Environment Context + Independent Participant State**
+
+---
+
+## AI vs Deterministic System
+
+A key product decision was not to let the LLM control every part of the system.
+
+| LLM / Agent | Deterministic system |
+|---|---|
+| Semantic interpretation | Cash |
+| Market reasoning | Holdings |
+| Belief update | Price state |
+| Information interpretation | Order validation |
+| Social content | Settlement |
+| Reflective feedback | Session progression |
+|  | Information release |
+|  | Record linkage |
+
+> **Use the model where reasoning is valuable; use deterministic code where correctness must be exact.**
+
+---
+
+## Context and State
+
+MarketLens separates context into four layers:
+
+- **Static Profile** — persona, strategy and behavioural attributes
+- **Dynamic State** — belief, holdings, cash and previous actions
+- **Turn Context** — current market, news, visible posts and task
+- **Participant Session State** — period, exposure, judgement, confidence, order and feedback
+
+The context pipeline follows:
+
+**Hard Filter → Candidate Retrieval → Context Assembly → LLM**
+
+Time, session, participant and information-access boundaries are enforced before semantic relevance is considered.
+
+The codebase includes embedding operations for semantic representation/retrieval support, but MarketLens does not present this as a complete production RAG pipeline.
+
+---
+
+## Reliability by Design
+
+### Trading Guardrails
+
+Trading actions are checked against deterministic constraints including:
+
+- available cash
+- current holdings
+- valid price
+- valid action
+- position limits
+- no short selling
+
+The order flow separates preview from execution so that a proposed trade can be inspected before it changes portfolio state.
+
+<p align="center">
+  <img src="docs/images/marketlens_order_preview.png" alt="MarketLens order preview and execution guardrail" width="100%">
+</p>
+
+### Session Isolation
+
+Each participant has an independent ledger and session state. One participant cannot alter another participant's portfolio, judgement history or feedback.
+
+### Feedback Reliability
+
+Reflective feedback follows:
+
+**Authoritative Records → Deterministic Statistics → Bounded Context → LLM → Validation → Retry → Validated Output / Fallback**
+
+Formal deployment delivered **180 / 180 feedback responses**, including:
+
+- **152 validated live-provider responses**
+- **28 validated fallback responses**
+
+> **Validated fallback > invalid AI output > broken user flow**
+
+---
+
+## Evaluation
+
+MarketLens uses system-level release gates rather than relying on one model metric.
+
+### Agent Activity
+
+Population adequacy was tested across **100 fixed seeds × 27 simulation ticks**.
+
+| Population | Zero-active critical trajectories | Mean active agents | Decision |
+|---|---:|---:|---|
+| N20 | 9 / 100 | 3.88 | Fail |
+| N30 | 0 / 100 | 6.26 | Pass |
+
+N30 was selected for the formal environment.
+
+### Trading Validation
+
+Across 27 research-relevant trading paths, **111 / 111 order requests executed** under both 0 bps and 10 bps transaction-cost settings.
+
+### Session Integrity
+
+Formal audit confirmed:
+
+- **60 / 60 completed sessions**
+- **60 / 60 completed all 15 periods**
+- **60 unique sessions**
+- **60 / 60 completed J0–J4**
+- complete participant-visible histories
+
+### Regression
+
+The frozen release completed **755 / 755 automated regression tests passed**.
+
+---
+
+## Formal Product Results
+
+| Metric | Result |
+|---|---:|
+| Participants | **60** |
+| Session completion | **60 / 60** |
+| Episodes | **3 × 20 participants** |
+| Periods | **15 / participant** |
+| Formal judgements | **300** |
+| Period records | **900** |
+| Feedback | **180 / 180 delivered** |
+| Executed transactions | **64** |
+| Main outcome coverage | **60 / 60** |
+
+---
+
+## Product Insight
+
+One of the strongest results was the difference between attention, judgement and behaviour.
+
+After authoritative corrective information:
+
+**59 / 60 noticed the correction → 3 / 60 changed judgement → 1 / 50 immediately reduced the target position**
+
+> **Attention ≠ Judgement Change ≠ Behaviour Change**
+
+This is why MarketLens measures information attention, confidence, judgement and action separately instead of using a single final-trade metric.
+
+---
+
+## Key Product Decisions
+
+| Trade-off | Decision |
+|---|---|
+| **Dynamic AI vs Comparability** | Generate dynamic Agent environments, then freeze canonical episodes for participant replay |
+| **AI Autonomy vs Reliability** | LLM for reasoning, deterministic code for financial state |
+| **Semantic Retrieval vs State Control** | Hard boundaries before semantic retrieval |
+| **Personalisation vs Stability** | Validated feedback with retry and fallback |
+| **Agent Richness vs Runtime** | Select N30 through explicit environment gates |
+| **Participant Influence vs Integrity** | Participant trades do not change the canonical Agent world |
+
+---
+
+## Tech Stack
+
+**Frontend:** React · TypeScript · Vite
+
+**Backend:** Python · FastAPI · SQLite · SQLAlchemy
+
+**AI / Agent:** LLM-driven agents · BDI-style reasoning · Tool-use · Structured output validation · Bounded context assembly · Embedding support · Retry / fallback runtime
+
+**Evaluation:** pytest · deterministic protocol audits · population-sensitivity testing · trajectory validation · participant/session audits
+
+---
+
+## Repository Structure
+
+```text
+MarketLens/
+├── frontend/              # Participant-facing React application
+├── marketlens/
+│   ├── agents/
+│   ├── episode/
+│   ├── experiment/
+│   ├── human/
+│   ├── information/
+│   ├── market/
+│   ├── measurement/
+│   ├── persistence/
+│   ├── stimulus/
+│   └── validation/
+├── scripts/
+├── tests/
+├── data/
+├── docs/
+└── trader/
+```
+
+---
+
+## Local Development
+
+Create the Python environment:
 
 ```bash
-# Configure your API and embedding models
-cp config/api_example.yaml config/api.yaml
-cp config/embedding_example.yaml config/embedding.yaml
-
-# Run the demo
-bash script/run.sh
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements-marketlens-backend.txt
 ```
 
-## 📝 Development Guide
+Install frontend dependencies:
 
-### Extend Trading Strategies
-
-Implement new strategies in `trader/trading_agent.py`:
-
-```python
-def custom_strategy(self, market_data):
-    """Custom trading strategy"""
-    # Implement your strategy logic here
-    pass
+```bash
+cd frontend
+npm install
 ```
 
-### Add New Evaluation Metrics
+Provider-specific configuration should be created locally and must not be committed.
 
-Add metrics in `trader/utility.py`:
+---
 
-```python
-def calculate_custom_metric(trades):
-    """Compute custom metric"""
-    # Implement metric calculation here
-    pass
-```
+## Research Data and Privacy
 
-## 📚 Awesome Papers Using TwinMarket
+Formal participant credentials and participant runtime databases are intentionally excluded from the public repository.
 
-We welcome community contributions. If your paper uses TwinMarket, feel free to open a PR and add it here.
+The public repository contains simulation assets required for reproducibility, while participant-private study data remain local.
 
-| Title | Code | Paper |
-| --- | --- | --- |
-| Interpreting Emergent Extreme Events in Multi-Agent Systems | https://github.com/mjl0613ddm/IEEE | https://arxiv.org/abs/2601.20538 |
+MarketLens is a research simulation environment and does not provide financial advice or live trading services.
 
-## 🧾 Citation
+---
 
-```bibtex
-@inproceedings{yang2025twinmarket,
-  title     = {TwinMarket: A Scalable Behavioral and Social Simulation for Financial Markets},
-  author    = {Yuzhe Yang and Yifei Zhang and Minghao Wu and Kaidi Zhang and
-               Yunmiao Zhang and Honghai Yu and Yan Hu and Benyou Wang},
-  booktitle = {The Thirty-ninth Annual Conference on Neural Information Processing Systems (NeurIPS)},
-  series    = {NeurIPS},
-  volume    = {39},
-  year      = {2025},
-  url       = {https://arxiv.org/abs/2502.01506}
-}
-```
+## Research Context
 
-## 📄 License
+MarketLens was developed as part of an MSc Applied Artificial Intelligence dissertation at the University of Warwick.
 
-This project is licensed under the MIT License. See `LICENSE` for details.
+The project studies how participants revise financial judgements following corrective evidence within a continuing LLM-agent financial information environment.
 
-## 🌟 Star History
+---
 
-[![Star History Chart](https://api.star-history.com/svg?repos=FreedomIntelligence/TwinMarket&type=date&legend=top-left)](https://www.star-history.com/#FreedomIntelligence/TwinMarket&type=date&legend=top-left)
+## Upstream Attribution
+
+MarketLens uses **TwinMarket** as the underlying LLM-agent financial simulation environment.
+
+TwinMarket was developed by Yuzhe Yang, Yifei Zhang, Minghao Wu, Kaidi Zhang, Yunmiao Zhang, Honghai Yu, Yan Hu and Benyou Wang, and was accepted at NeurIPS 2025.
+
+The original upstream README is retained at:
+
+`docs/upstream/TWINMARKET_ORIGINAL_README.md`
+
+MarketLens-specific work focuses on the human-participant product layer, controlled information flow, participant state, interaction design, evaluation, validation and formal deployment.
+
+---
+
+## License
+
+This repository retains the applicable MIT License.
+
+Please also refer to the original TwinMarket project and authors when reusing the underlying simulation components.

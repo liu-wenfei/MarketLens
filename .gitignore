@@ -63,3 +63,42 @@ config/feedback.yaml
 logs*/data/guba_data.csv
 config/feedback.local.env
 config/feedback.local.yaml
+
+# --- MarketLens portfolio safety ---
+.DS_Store
+__pycache__/
+*.pyc
+.pytest_cache/
+.tmp/
+
+# Frontend local/build files
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+
+# Local secrets / provider config
+.env
+.env.*
+config/api.yaml
+config/embedding.yaml
+config/feedback.local.yaml
+
+# Participant / study private data
+data/marketlens/human/admin/
+data/marketlens/human/formal/
+marketlens/human/data/
+**/participant_credentials.*
+**/participant_auth.db
+**/participant_events.db
+**/participant_runtime.db
+
+# Local study outputs
+artifacts/synthetic_participants/
+
+.venv/
+
+# Keep safe environment templates public
+!.env.example
+!frontend/.env.example
