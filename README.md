@@ -58,6 +58,10 @@ Core journey:
 
 MarketLens combines two layers.
 
+<p align="center">
+  <img src="docs/images/marketlens_architecture.png" alt="MarketLens system architecture" width="100%">
+</p>
+
 ### Multi-Agent Market
 
 The formal environment uses **30 financial agents**:
