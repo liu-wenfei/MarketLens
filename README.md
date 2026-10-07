@@ -18,9 +18,11 @@ Unlike a conventional trading simulator that focuses mainly on portfolio outcome
 
 A walkthrough of the MarketLens Human-AI decision journey — from market observation and judgement to simulated trading, new information and decision revision.
 
-[![Watch the MarketLens Product Demo](docs/images/marketlens_market_overview.png)](https://www.youtube.com/watch?v=XQXaM8Aws8o)
-
-▶ **[Watch the MarketLens Product Demo on YouTube](https://www.youtube.com/watch?v=XQXaM8Aws8o)**
+<p align="center">
+  <a href="https://www.youtube.com/watch?v=XQXaM8Aws8o">
+    <img src="https://img.youtube.com/vi/XQXaM8Aws8o/hqdefault.jpg" alt="Watch the MarketLens Product Demo" width="720">
+  </a>
+</p>
 
 ---
 
